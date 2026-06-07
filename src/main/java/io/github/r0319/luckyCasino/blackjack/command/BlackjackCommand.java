@@ -67,6 +67,7 @@ public class BlackjackCommand implements CommandExecutor, TabCompleter {
             case "cleardealer"            -> cmdClearDealer(sender);
             case "setplayer"              -> cmdSetPlayer(sender, args);
             case "clearplayer"            -> cmdClearPlayer(sender, args);
+            case "cleartable"             -> cmdClearTable(sender);
             case "start"                  -> cmdStart(sender);
             case "testcard"               -> cmdTestCard(sender);
             case "info", "status"         -> cmdInfo(sender);
@@ -161,6 +162,14 @@ public class BlackjackCommand implements CommandExecutor, TabCompleter {
         module.clearPlayerSlot(player, slot);
     }
 
+    /** /bj cleartable */
+    private void cmdClearTable(CommandSender sender) {
+        if (!sender.hasPermission(PERM_ADMIN)) { noPermission(sender); return; }
+        Player player = requirePlayer(sender);
+        if (player == null) return;
+        module.clearTable(player);
+    }
+
     private void cmdStart(CommandSender sender) {
         if (!sender.hasPermission(PERM_ADMIN)) { noPermission(sender); return; }
         module.forceStart();
@@ -253,7 +262,7 @@ public class BlackjackCommand implements CommandExecutor, TabCompleter {
                     List.of("join", "joindealer", "leave", "bet", "hit", "stand", "doubledown", "info"));
             if (sender.hasPermission(PERM_ADMIN)) {
                 all.addAll(List.of("setdealer", "cleardealer", "setplayer", "clearplayer",
-                        "start", "testcard"));
+                        "cleartable", "start", "testcard"));
             }
             return all.stream()
                     .filter(s -> s.startsWith(args[0].toLowerCase(Locale.ROOT)))
@@ -375,6 +384,7 @@ public class BlackjackCommand implements CommandExecutor, TabCompleter {
             sender.sendMessage("§e/bj cleardealer §7— ディーラー位置を削除");
             sender.sendMessage("§e/bj setplayer <1-4> [x y z] §7— プレイヤースロット位置を設定");
             sender.sendMessage("§e/bj clearplayer <1-4> §7— プレイヤースロット位置を削除");
+            sender.sendMessage("§e/bj cleartable §7— ディーラー位置・全スロット・NPCをすべて削除");
             sender.sendMessage("§e/bj start §7— ゲームを強制開始");
             sender.sendMessage("§e/bj testcard §7— カードアニメーションのテスト表示");
         }

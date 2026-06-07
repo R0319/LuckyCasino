@@ -25,8 +25,10 @@ import org.bukkit.util.Transformation;
 import org.joml.AxisAngle4f;
 import org.joml.Vector3f;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -131,13 +133,12 @@ public class BlackjackModule {
         }
 
         // Remove any NPCs/markers left from a previous server session, then
-        // spawn fresh ones.  Chunk must be loaded first so persisted entities
+        // spawn fresh ones.  Chunks must be loaded first so persisted entities
         // are visible to the world scan.
         removeStaleNpcDealers();
         spawnNpcDealerIfNeeded();
 
-        // Slot markers are NOT persistent — they disappear on server stop/crash.
-        // Just spawn them fresh every startup.
+        removeStaleSlotMarkers(); // cleans up markers persisted from a previous session
         spawnAllSlotMarkers();
     }
 
@@ -266,7 +267,7 @@ public class BlackjackModule {
         BlackjackTable table = tableManager.getDefaultTable();
         table.setDealerLocation(null);
         tableManager.save(table);
-        removeNpcDealer();
+        removeNpcDealer(); // stage-1 (tracked ref) + stage-2 (world scan)
         admin.sendMessage("§aディーラー位置を削除しました。");
         plugin.getLogger().info("[LuckyCasino] ディーラー位置削除");
     }
@@ -283,11 +284,39 @@ public class BlackjackModule {
             admin.sendMessage("§cスロット " + (slotIndex + 1) + " は設定されていません。");
             return;
         }
+        // NOTE: removeSlotMarker must be called BEFORE nulling the location so the
+        // world-scan stage can still load the correct chunk using the saved coords.
+        removeSlotMarker(slotIndex); // stage-1 (tracked ref) + stage-2 (chunk scan)
         table.setPlayerLocation(slotIndex, null);
         tableManager.save(table);
-        removeSlotMarker(slotIndex);
         admin.sendMessage("§aプレイヤースロット §2" + (slotIndex + 1) + " §aを削除しました。");
         plugin.getLogger().info("[LuckyCasino] スロット " + (slotIndex + 1) + " 削除");
+    }
+
+    /**
+     * Clears ALL table positions (dealer + all player slots) and removes
+     * all associated entities (NPC + markers).
+     */
+    public void clearTable(Player admin) {
+        BlackjackTable table = tableManager.getDefaultTable();
+
+        // Remove NPC + all slot markers (world scan included)
+        removeNpcDealer();
+        removeAllSlotMarkers();
+
+        // Clear all positions in the table data
+        table.setDealerLocation(null);
+        for (int i = 0; i < 4; i++) {
+            table.setPlayerLocation(i, null);
+        }
+        tableManager.save(table);
+
+        // Cancel any in-progress game
+        cancelStartTimer();
+        cancelActiveGame();
+
+        admin.sendMessage("§aテーブルの全設定（ディーラー位置・全スロット）を削除しました。");
+        plugin.getLogger().info("[LuckyCasino] テーブル全設定削除");
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -642,10 +671,36 @@ public class BlackjackModule {
         plugin.getLogger().info("[LuckyCasino] ディーラーNPCをスポーンしました。");
     }
 
+    /**
+     * Removes the dealer NPC completely.
+     * <p>
+     * Two-stage removal:
+     * <ol>
+     *   <li>Remove the tracked {@link #dealerNpc} Java reference (fast path).</li>
+     *   <li>Load the dealer chunk and scan ALL worlds for any remaining tagged
+     *       Villagers — handles the case where the Java reference is stale or where
+     *       a persisted NPC from a previous session was not cleaned up on startup.</li>
+     * </ol>
+     */
     private void removeNpcDealer() {
+        // Stage 1: tracked reference
         if (dealerNpc != null) {
             if (!dealerNpc.isDead()) dealerNpc.remove();
             dealerNpc = null;
+        }
+
+        // Stage 2: world scan (belt-and-suspenders — removes any stale/duplicate NPCs)
+        BlackjackTable table = tableManager.getDefaultTable();
+        if (table.getDealerLocation() != null) {
+            Location loc = table.getDealerLocation().toLocation();
+            if (loc.getWorld() != null) loc.getChunk().load(true);
+        }
+        for (org.bukkit.World w : plugin.getServer().getWorlds()) {
+            for (Entity e : new ArrayList<>(w.getEntitiesByClass(Villager.class))) {
+                if (e.getPersistentDataContainer().has(DEALER_NPC_KEY, PersistentDataType.BYTE)) {
+                    e.remove();
+                }
+            }
         }
     }
 
@@ -717,16 +772,42 @@ public class BlackjackModule {
         plugin.getLogger().info("[LuckyCasino] スロット " + (slotIndex + 1) + " マーカーをスポーンしました。");
     }
 
+    /**
+     * Removes the slot marker for a specific slot index.
+     * <p>
+     * Two-stage: tracked Java reference first, then a world scan of the slot's
+     * chunk to catch any stale/persisted entities the map didn't know about.
+     */
     private void removeSlotMarker(int slotIndex) {
+        // Stage 1: tracked reference
         BlockDisplay old = slotMarkers.remove(slotIndex);
         if (old != null && !old.isDead()) old.remove();
+
+        // Stage 2: world scan of the slot's chunk
+        BlackjackTable table = tableManager.getDefaultTable();
+        SerializableLocation[] locs = table.getPlayerLocations();
+        if (slotIndex >= 0 && slotIndex < locs.length && locs[slotIndex] != null) {
+            Location loc = locs[slotIndex].toLocation();
+            if (loc.getWorld() != null) {
+                loc.getChunk().load(true);
+                for (Entity e : java.util.Arrays.asList(loc.getChunk().getEntities())) {
+                    if (e instanceof BlockDisplay) {
+                        Integer tag = e.getPersistentDataContainer()
+                                .get(SLOT_MARKER_KEY, PersistentDataType.INTEGER);
+                        if (tag != null && tag == slotIndex) e.remove();
+                    }
+                }
+            }
+        }
     }
 
     /** Removes all managed slot markers from the world. */
     private void removeAllSlotMarkers() {
-        for (int slot : new HashSet<>(slotMarkers.keySet())) {
-            removeSlotMarker(slot);
+        // Collect all slot indices (0-3) regardless of map contents
+        for (int i = 0; i < 4; i++) {
+            removeSlotMarker(i);
         }
+        slotMarkers.clear();
     }
 
     /** Spawns markers for every currently configured player slot. */
@@ -737,6 +818,37 @@ public class BlackjackModule {
             if (locs[i] != null) {
                 spawnSlotMarker(i, locs[i].toLocation());
             }
+        }
+    }
+
+    /**
+     * Scans all player slot chunks and removes any {@link BlockDisplay} entities
+     * tagged with {@link #SLOT_MARKER_KEY} that survived from a previous session.
+     * Call once on startup before {@link #spawnAllSlotMarkers()}.
+     */
+    private void removeStaleSlotMarkers() {
+        BlackjackTable table = tableManager.getDefaultTable();
+        SerializableLocation[] locs = table.getPlayerLocations();
+
+        // Force-load all player slot chunks so persisted markers are visible
+        for (SerializableLocation sl : locs) {
+            if (sl != null) {
+                Location loc = sl.toLocation();
+                if (loc.getWorld() != null) loc.getChunk().load(true);
+            }
+        }
+
+        int removed = 0;
+        for (org.bukkit.World w : plugin.getServer().getWorlds()) {
+            for (Entity e : new ArrayList<>(w.getEntitiesByClass(BlockDisplay.class))) {
+                if (e.getPersistentDataContainer().has(SLOT_MARKER_KEY, PersistentDataType.INTEGER)) {
+                    e.remove();
+                    removed++;
+                }
+            }
+        }
+        if (removed > 0) {
+            plugin.getLogger().info("[LuckyCasino] 古いスロットマーカー " + removed + " 個を削除しました。");
         }
     }
 

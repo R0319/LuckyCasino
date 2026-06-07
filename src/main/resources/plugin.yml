@@ -21,7 +21,7 @@ commands:
 
   bj:
     description: ブラックジャックコマンド
-    usage: /bj <join|joindealer|leave|bet|hit|stand|doubledown|info|setdealer|cleardealer|setplayer|clearplayer|start|testcard>
+    usage: /bj <join|joindealer|leave|bet|hit|stand|doubledown|info|setdealer|cleardealer|setplayer|clearplayer|cleartable|start|testcard>
     permission: luckycasino.blackjack.player
 
   wallet:
