@@ -332,6 +332,9 @@ public class BlackjackModule {
         sender.sendMessage("§6§l══ ブラックジャックテーブル情報 ══");
         sender.sendMessage("§eID: §f" + table.getTableId());
         sender.sendMessage("§e状態: §f" + stateLabel(table.getState()));
+        boolean inProgress = table.getState() != TableState.WAITING;
+        sender.sendMessage("§eゲーム進行中: "
+                + (inProgress ? "§cはい （参加不可）" : "§aいいえ （参加可能）"));
 
         // Countdown
         long secsStart = (startTimerFiresAt > 0)
@@ -427,14 +430,16 @@ public class BlackjackModule {
             return;
         }
 
-        // Create game object if this is the first player after a full reset
-        if (activeGame == null) {
-            activeGame = createGame(table);
-        }
-
+        // Reject immediately if a round is already running — do this BEFORE
+        // creating the game object so we never leave a playerless zombie game.
         if (table.getState() != TableState.WAITING) {
             player.sendMessage("§cゲームはすでに進行中です。次のラウンドをお待ちください。");
             return;
+        }
+
+        // Create game object if this is the first player after a full reset
+        if (activeGame == null) {
+            activeGame = createGame(table);
         }
         if (activeGame.isPlayerInGame(player.getUniqueId())) {
             player.sendMessage("§cすでにテーブルに参加しています。");
@@ -871,13 +876,17 @@ public class BlackjackModule {
     }
 
     /**
-     * Cancels and discards the active game.
+     * Cancels and discards the active game, and resets the table state to
+     * WAITING so new players can join immediately.
      * Calls {@link BlackjackGame#cancel()} to prevent zombie scheduler tasks.
      */
     private void cancelActiveGame() {
         if (activeGame != null) {
             activeGame.cancel();
             activeGame = null;
+            // IMPORTANT: reset state so the next /bj join is not blocked by a
+            // stale non-WAITING state left over from the cancelled round.
+            tableManager.getDefaultTable().setState(TableState.WAITING);
         }
     }
 
