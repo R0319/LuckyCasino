@@ -1,0 +1,59 @@
+name: LuckyCasino
+version: '${version}'
+
+main: io.github.r0319.luckyCasino.LuckyCasino
+api-version: '1.21.11'
+load: POSTWORLD
+
+softdepend:
+  # Vault: ExcellentEconomy や EssentialsX 等とのブリッジ
+  - Vault
+  # ExcellentEconomy: Vault 非導入時の直接 API フォールバック用にも先読みが必要
+  - ExcellentEconomy
+  # DonutAuction: Vault/ExcellentEconomy を経由して決済するため先読みが必要
+  - donutauction
+
+commands:
+  spawnblockdisplay:
+    description: 指定座標にBlockDisplayを召喚する（テスト用）
+    usage: /spawnblockdisplay <x> <y> <z> <ブロック>
+    permission: luckycasino.spawnblockdisplay
+
+  bj:
+    description: ブラックジャックコマンド
+    usage: /bj <join|joindealer|leave|bet|hit|stand|doubledown|info|setdealer|cleardealer|setplayer|clearplayer|start|testcard>
+    permission: luckycasino.blackjack.player
+
+  wallet:
+    description: |
+      内蔵ウォレットの残高確認・管理者操作。
+      外部経済プラグイン使用時も管理コマンドとして動作します。
+    usage: /wallet [give|take|set <プレイヤー> <金額>]
+    permission: luckycasino.blackjack.player
+    aliases: [lcwallet]
+
+  pay:
+    description: |
+      プレイヤー間の送金コマンド。
+      内蔵ウォレット使用時はこのコマンドが直接動作します。
+      Vault/EssentialsX がある場合はそちらが優先されます
+      （/luckycasino:pay で内蔵版を明示指定できます）。
+    usage: /pay <プレイヤー> <金額>
+    permission: luckycasino.blackjack.player
+
+permissions:
+  luckycasino.spawnblockdisplay:
+    description: BlockDisplayを召喚できる
+    default: op
+
+  luckycasino.blackjack.admin:
+    description: ブラックジャックのテーブル設定・管理者操作
+    default: op
+
+  luckycasino.blackjack.player:
+    description: ブラックジャックをプレイできる
+    default: true
+
+  luckycasino.wallet.admin:
+    description: /wallet give・take・set などの管理者操作
+    default: op
