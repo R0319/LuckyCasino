@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """トランプ 52 枚 + 裏面のテクスチャとモデル定義を生成する。
 
-使い方: python3 prototype/tools/gen_cards.py
-出力先: prototype/resourcepacks/java と prototype/resourcepacks/bedrock
+使い方: python3 tools/gen_cards.py
+出力先: resourcepacks/java と resourcepacks/bedrock
 生成物はリポジトリにコミットするので、ビルド時に Python は不要。
 """
 import json

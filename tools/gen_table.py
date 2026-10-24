@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """ブラックジャックテーブルとチップのテクスチャ・モデル定義を生成する（Java 版）。
 
-使い方: python3 prototype/tools/gen_table.py
+使い方: python3 tools/gen_table.py
 座標の決まりは paper の TableLayout と合わせること（テーブル中心の床 = モデルの (8, 8, 8)、
 表示倍率 4/3 で 1 ブロック = 12 モデル単位、プレイヤー側が +Z）。
 """

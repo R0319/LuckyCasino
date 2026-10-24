@@ -1,118 +1,78 @@
-# LuckyCasino
+# カード 1 枚の表示試作（方式 C の検証）
 
-Paper プラグイン — Minecraft サーバー向けブラックジャックカジノ。
+Java 版は ItemDisplay + リソースパック、統合版は自作 Geyser 拡張で独自エンティティに差し替える方式が、実機で動くかを確かめるための試作です。リポジトリ直下の旧プラグイン（Paper 1.21.11）とは別のビルドで、旧コードには手を入れていません。
 
-## 必要環境
+## しくみ
 
-| 項目 | バージョン |
-|------|-----------|
-| Minecraft | 1.21.11 |
-| サーバーソフト | [Paper](https://papermc.io/) 1.21.11+ |
-| Java | 21 以上 |
-
-## 依存関係
-
-### 必須
-なし — プラグイン単体で動作します（内蔵ウォレット使用）。
-
-### ソフト依存（任意）
-
-| プラグイン | 用途 |
-|-----------|------|
-| [Vault](https://www.spigotmc.org/resources/vault.34315/) | 外部経済プラグインとのブリッジ API |
-| [EssentialsX](https://essentialsx.net/) | Vault 経由で経済連携 |
-| [ExcellentEconomy](https://github.com/nulli0n/ExcellentEconomy-spigot) | Vault 経由または直接 API で経済連携 |
-| [DonutAuction](https://www.spigotmc.org/resources/donutauction.106843/) | Vault/ExcellentEconomy 経由で決済 |
-
-> Vault がない場合は内蔵ウォレットが自動で有効になります（初期残高 1,000 コイン/プレイヤー）。
-
-### ビルド依存
-
-`build.gradle.kts` に定義されています。
-
-```kotlin
-dependencies {
-    // Paper API (compileOnly — サーバーが提供)
-    compileOnly("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT")
-
-    // Vault API (compileOnly — サーバーが提供)
-    compileOnly("com.github.MilkBowl:VaultAPI:1.7.1")
-}
+```
+Paper（hub / survival）                         Velocity
+ ├ ItemDisplay … Java 版に見えるカード            └ Geyser-Velocity
+ └ TextDisplay（文字も背景も空）… 運び役              └ LuckyCasino 拡張
+      Java 版では何も描かれない                          運び役を luckycasino:card に差し替え
+        │                                                  ↑
+        └── LAN 内 TCP（共有鍵で認証）: 「この運び役は♠A・表向き」 ──┘
 ```
 
-ビルドツール: [Gradle](https://gradle.org/) 9.5.1  
-ビルドプラグイン: [run-paper](https://github.com/jpenilla/run-task) 3.0.2（開発用サーバー起動）
+- 運び役は、拡張が登録を受け取る（ACK）まで誰にも送りません。先に統合版へ届くと差し替えが間に合わないためです。
+- 裏向きのカードは番号 0 で送るので、通信や統合版クライアントから伏せ札は読めません。Java 版も裏向きの間は裏面のモデルだけを持たせています。
+- 配る動き・めくる動きは、Java 版は Display の補間、統合版はリソースパック内のアニメーション（エンティティプロパティで切り替え）で再生します。
 
-## インストール
+## ビルド
 
-1. [Releases](../../releases) から最新の `LuckyCasino-x.x.x.jar` をダウンロード
-2. サーバーの `plugins/` フォルダに配置
-3. サーバーを起動（または `/reload confirm`）
-4. 管理者として `/bj setdealer` → `/bj setplayer 1〜4` でテーブルを設定
+Java 25 が必要です（Paper 26.2 の API が Java 25 向けのため）。
 
-## ビルド方法
-
-```bash
-git clone https://github.com/R0319/LuckyCasino.git
-cd LuckyCasino
+```
 ./gradlew build
-# → build/libs/LuckyCasino-1.0-SNAPSHOT.jar
 ```
 
-開発用サーバー起動（Paper 1.21.11 を自動ダウンロード）:
+| 出力 | 置き場所 |
+| --- | --- |
+| `paper/build/libs/LuckyCasino-Paper-0.1.0-SNAPSHOT.jar` | Paper（Purpur）の `plugins/` |
+| `geyser/build/libs/LuckyCasino-Geyser-0.1.0-SNAPSHOT.jar` | Velocity の `plugins/Geyser-Velocity/extensions/`（統合版パックを同梱、自動で配信） |
+| `paper/build/resourcepack/LuckyCasino-java-pack.zip` | Java 版プレイヤーへ配信（`server.properties` の `resource-pack` など） |
 
-```bash
-./gradlew runServer
-```
+## 設定
 
-## コマンド一覧
+1. Geyser 拡張を入れて Velocity を起動すると `plugins/Geyser-Velocity/extensions/luckycasino/config.properties` ができ、共有鍵 `key` が自動生成されます。`bind-address`（既定 `0.0.0.0`）と `port`（既定 `25590`）もここで変えられます。
+2. Paper 側の `plugins/LuckyCasino/config.yml` に、Velocity マシンの LAN 内 IP（`bridge.host`）、ポート、同じ `key` を書いて再起動します。
+3. ポートは LAN 内からだけ届くようにしてください（インターネット側には開けない）。
 
-### プレイヤーコマンド
+Geyser は API 2.11.0 以上（Minecraft 26.2 対応版）が必要です。
 
-| コマンド | 説明 |
-|---------|------|
-| `/bj join` | テーブルに参加 |
-| `/bj joindealer` | ディーラーポジションに参加 |
-| `/bj leave` | テーブルを離れる |
-| `/bj bet <金額>` | ベット（待機中は次ラウンドへの予約ベット） |
-| `/bj hit` | カードを引く |
-| `/bj stand` | スタンド |
-| `/bj doubledown` | ダブルダウン（最初の2枚のみ） |
-| `/bj info` | テーブル情報・スロット状況を表示 |
-| `/wallet` | 残高確認 |
-| `/pay <プレイヤー> <金額>` | プレイヤー間送金 |
+## ブラックジャックの遊び方
 
-### 管理者コマンド（`luckycasino.blackjack.admin` 権限 / OP）
+1. テーブルを手に入れる：クラフト（緑のカーペット 3・板材 3・金インゴット 1）か、管理者が `/casino give`
+2. ブロックの上面に右クリックで置く（4 x 2 ブロック、高さ 2 の空きが必要。手前に椅子、奥にディーラーが出る）
+3. 椅子をクリック → チップに両替して座る（経済プラグインが無いサーバーでは練習用チップを無料で配る）
+4. 賭け金メニューで額を決める。全員が決めるか、締め切り（15 秒）で配り始める
+5. 自分の番になったらチャットのボタン（ヒット / スタンド / ダブルダウン / スプリット）を押す。20 秒で自動スタンド
+6. スニークで席を立つとチップをお金に戻す（勝負中なら、勝負が終わってから精算）
 
-| コマンド | 説明 |
-|---------|------|
-| `/bj setdealer [x y z [world]]` | ディーラー立ち位置を設定（省略時は現在地） |
-| `/bj cleardealer` | ディーラー位置・NPC を削除 |
-| `/bj setplayer <1-4> [x y z [world]]` | プレイヤースロット位置を設定 |
-| `/bj clearplayer <1-4>` | プレイヤースロットを削除 |
-| `/bj start` | ベットフェーズを強制開始 |
-| `/bj testcard` | カードアニメーションのデバッグ表示 |
+置いた人はスニーク + 右クリックでテーブルを片付けられます（座っている人がいないときだけ）。
 
-> 座標には `~` （相対指定）が使えます。例: `/bj setdealer ~ ~ ~`
+| コマンド | 内容 |
+| --- | --- |
+| `/casino hit` `stand` `double` `split` | 自分の番の行動（チャットのボタンと同じ） |
+| `/casino bet` | 賭け金メニューを開き直す |
+| `/casino leave` | 席を立つ |
+| `/casino give [プレイヤー]` | テーブルを渡す（管理者） |
+| `/casino remove` | 近くのテーブルを片付ける（管理者。座っている人は精算） |
+| `/casino status` | 通貨と Geyser 拡張の状態（管理者） |
 
-## ゲームの流れ
+チップの控えを `plugins/LuckyCasino/chips.yml` に書いているので、勝負の途中でサーバーが落ちても、次の起動時に賭け金を含めてお金に戻します。
 
-```
-参加 → 待機 → ベット(60秒) → ディール → プレイヤーターン → ディーラーターン → 精算 → 次ラウンド待機(10秒) → …
-```
+## 実機で確かめること
 
-- **予約ベット**: 待機中に `/bj bet <金額>` で登録しておくと、ラウンド開始時に自動でベットされます
-- **ディーラー NPC**: ディーラー位置が設定されている場合、人間ディーラーがいないときは NoAI のヴィレッジャーが自動スポーン
-- **スロットマーカー**: 設定したスロット位置に 1/4 スケールの羊毛ブロックが表示されます
+- 統合版でカードが表示され、配る・めくるのアニメーションが動くか（方式 C の成否）
+- 統合版でカードの向き（エンティティの向きが反映されるか）、表面の絵柄が鏡写しになっていないか
+- Java 版で表面の絵柄の向き（モデルの下面の UV）
+- 統合版の配る方向が Java 版と同じ（奥から手前）か
+- 後から近づいた統合版プレイヤーに、配る動きが再生されずに置かれた状態で見えるか
 
-## 権限
+## テクスチャの作り直し
 
-| 権限ノード | 説明 | デフォルト |
-|-----------|------|----------|
-| `luckycasino.blackjack.player` | ゲームに参加・プレイできる | `true` |
-| `luckycasino.blackjack.admin` | テーブルの設定・管理者操作 | OP |
-| `luckycasino.wallet.admin` | `/wallet give/take/set` などの管理操作 | OP |
+`tools/gen_cards.py`（Python 3 + Pillow）が 52 枚 + 裏面の画像、Java 版のモデル定義、統合版のエンティティ定義を生成します。生成物はコミット済みなので、ビルドに Python は不要です。
 
-## ライセンス
+## Java 版リソースパックの配信
 
-[MIT License](LICENSE)
+`config.yml` の `resource-pack.url` と `resource-pack.sha1` を設定すると、参加した Java 版プレイヤーにパックを送ります。試験用に、ビルド済みの zip を `dist/` に置いています（GitHub の raw URL をコミット固定で指定して配信）。パックを変えたら `./gradlew build` のあと zip をここへコピーし、SHA-1 を更新してください。

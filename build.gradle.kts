@@ -1,45 +1,23 @@
-plugins {
-    id("java-library")
-    id("xyz.jpenilla.run-paper") version "3.0.2"
-}
+// LuckyCasino: common（ゲーム処理と通信の取り決め）・paper（プラグイン）・geyser（統合版の拡張）
+subprojects {
+    apply(plugin = "java")
 
-repositories {
-    mavenCentral()
-    maven("https://repo.papermc.io/repository/maven-public/")
-    maven("https://jitpack.io")
-}
+    group = "io.github.r0319"
+    version = "0.1.0-SNAPSHOT"
 
-dependencies {
-    compileOnly("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT")
+    repositories {
+        mavenCentral()
+        maven("https://repo.papermc.io/repository/maven-public/")
+        maven("https://repo.opencollab.dev/main/")
+        maven("https://repo.opencollab.dev/maven-snapshots/")
+    }
 
-    // Vault: ExcellentEconomy を含む全 Vault 互換経済プラグインへの橋渡し API
-    compileOnly("com.github.MilkBowl:VaultAPI:1.7.1")
+    extensions.configure<JavaPluginExtension> {
+        toolchain.languageVersion = JavaLanguageVersion.of(25)
+    }
 
-    // ExcellentEconomy: Vault 非導入時の直接 API フォールバック用
-    // リフレクション経由で呼び出すため compileOnly 不要だが、
-    // IDE 補完を活かしたい場合は以下のコメントアウトを外して
-    // JitPack 経由で追加可能（バージョンはサーバーに合わせること）:
-    // compileOnly("com.github.nulli0n:ExcellentEconomy-spigot:VERSION")
-}
-
-java {
-    toolchain.languageVersion = JavaLanguageVersion.of(21)
-}
-
-tasks {
-    withType<JavaCompile> {
+    tasks.withType<JavaCompile>().configureEach {
+        options.encoding = "UTF-8"
         options.compilerArgs.addAll(listOf("-Xlint:deprecation"))
-    }
-
-    runServer {
-        minecraftVersion("1.21.11")
-        jvmArgs("-Xms2G", "-Xmx2G")
-    }
-
-    processResources {
-        val props = mapOf("version" to version)
-        filesMatching("plugin.yml") {
-            expand(props)
-        }
     }
 }
