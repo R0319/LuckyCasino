@@ -34,20 +34,32 @@ Java 25 が必要です（Paper 26.2 の API が Java 25 向けのため）。
 ## 設定
 
 1. Geyser 拡張を入れて Velocity を起動すると `plugins/Geyser-Velocity/extensions/luckycasino/config.properties` ができ、共有鍵 `key` が自動生成されます。`bind-address`（既定 `0.0.0.0`）と `port`（既定 `25590`）もここで変えられます。
-2. Paper 側の `plugins/LuckyCasinoPrototype/config.yml` に、Velocity マシンの LAN 内 IP（`bridge.host`）、ポート、同じ `key` を書いて再起動します。
+2. Paper 側の `plugins/LuckyCasino/config.yml` に、Velocity マシンの LAN 内 IP（`bridge.host`）、ポート、同じ `key` を書いて再起動します。
 3. ポートは LAN 内からだけ届くようにしてください（インターネット側には開けない）。
 
 Geyser は API 2.11.0 以上（Minecraft 26.2 対応版）が必要です。
 
-## 試し方（OP 権限）
+## ブラックジャックの遊び方
 
-| コマンド | 動き |
+1. テーブルを手に入れる：クラフト（緑のカーペット 3・板材 3・金インゴット 1）か、管理者が `/casino give`
+2. ブロックの上面に右クリックで置く（4 x 2 ブロック、高さ 2 の空きが必要。手前に椅子、奥にディーラーが出る）
+3. 椅子をクリック → チップに両替して座る（経済プラグインが無いサーバーでは練習用チップを無料で配る）
+4. 賭け金メニューで額を決める。全員が決めるか、締め切り（15 秒）で配り始める
+5. 自分の番になったらチャットのボタン（ヒット / スタンド / ダブルダウン / スプリット）を押す。20 秒で自動スタンド
+6. スニークで席を立つとチップをお金に戻す（勝負中なら、勝負が終わってから精算）
+
+置いた人はスニーク + 右クリックでテーブルを片付けられます（座っている人がいないときだけ）。
+
+| コマンド | 内容 |
 | --- | --- |
-| `/lccard deal [spade_a 等 / random]` | 見ているブロックの上に、奥から滑らせて裏向きに配る |
-| `/lccard flip` | 表に返す |
-| `/lccard unflip` | 裏に戻す |
-| `/lccard remove` | 片付ける |
-| `/lccard status` | Geyser 拡張との通信状態 |
+| `/casino hit` `stand` `double` `split` | 自分の番の行動（チャットのボタンと同じ） |
+| `/casino bet` | 賭け金メニューを開き直す |
+| `/casino leave` | 席を立つ |
+| `/casino give [プレイヤー]` | テーブルを渡す（管理者） |
+| `/casino remove` | 近くのテーブルを片付ける（管理者。座っている人は精算） |
+| `/casino status` | 通貨と Geyser 拡張の状態（管理者） |
+
+チップの控えを `plugins/LuckyCasino/chips.yml` に書いているので、勝負の途中でサーバーが落ちても、次の起動時に賭け金を含めてお金に戻します。
 
 ## 実機で確かめること
 
