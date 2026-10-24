@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """トランプ 52 枚 + 裏面のテクスチャとモデル定義を生成する。
 
-使い方: python3 prototype/tools/gen_cards.py [フォントのパス]
+使い方: python3 prototype/tools/gen_cards.py
 出力先: prototype/resourcepacks/java と prototype/resourcepacks/bedrock
 生成物はリポジトリにコミットするので、ビルド時に Python は不要。
 """
@@ -9,79 +9,130 @@ import json
 import sys
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
 
 ROOT = Path(__file__).resolve().parent.parent
 JAVA = ROOT / "resourcepacks" / "java" / "assets" / "luckycasino"
 BEDROCK = ROOT / "resourcepacks" / "bedrock"
 
-FONT_PATH = sys.argv[1] if len(sys.argv) > 1 else "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+# ドット絵（マイクラ風）。カード 1 面は 21x29 ピクセル、1 ピクセル = 0.5 モデル単位（1/32 ブロック）。
+W, H = 21, 29
 
-# 並び順は common の CardCode と同じにすること（番号 = スート * 13 + ランク + 1、0 は裏向き）
-SUITS = [("spade", "♠", (20, 20, 28)), ("heart", "♥", (196, 28, 36)),
-         ("diamond", "♦", (196, 28, 36)), ("club", "♣", (20, 20, 28))]
+CREAM = (240, 232, 214, 255)
+CREAM_SHADE = (214, 204, 184, 255)
+OUTLINE = (58, 48, 44, 255)
+RED = (186, 32, 40, 255)
+BLACK = (36, 36, 44, 255)
+BACK_RED = (122, 22, 30, 255)
+BACK_DARK = (92, 14, 22, 255)
+GOLD = (222, 176, 72, 255)
+GOLD_DARK = (168, 124, 44, 255)
+FRAME = (232, 210, 160, 255)
+
+# スートと色（並び順は common の CardCode と同じにすること。番号 = スート * 13 + ランク + 1、0 は裏向き）
+SUITS = [("spade", BLACK), ("heart", RED), ("diamond", RED), ("club", BLACK)]
 RANKS = ["a", "2", "3", "4", "5", "6", "7", "8", "9", "10", "j", "q", "k"]
 
-W, H = 90, 126  # カード 1 面のピクセル数（縦横比 ≒ 63:88）
+SMALL = {
+    "spade": ["..#..", ".###.", "#####", "..#..", ".###."],
+    "heart": [".#.#.", "#####", "#####", ".###.", "..#.."],
+    "diamond": ["..#..", ".###.", "#####", ".###.", "..#.."],
+    "club": ["..#..", ".###.", "#####", "#.#.#", ".###."],
+}
+BIG = {
+    "spade": ["....#....", "...###...", "..#####..", ".#######.", "#########",
+              "#########", ".##.#.##.", "....#....", "...###..."],
+    "heart": [".##...##.", "####.####", "#########", "#########", ".#######.",
+              "..#####..", "...###...", "....#....", "........."],
+    "diamond": ["....#....", "...###...", "..#####..", ".#######.", "#########",
+                ".#######.", "..#####..", "...###...", "....#...."],
+    "club": ["...###...", "..#####..", "...###...", ".##.#.##.", "#########",
+             ".##.#.##.", "....#....", "...###...", "........."],
+}
+# 3x5 の数字・文字（10 は 1 と 0 を並べる）
+FONT = {
+    "a": [".#.", "#.#", "###", "#.#", "#.#"], "2": ["##.", "..#", ".#.", "#..", "###"],
+    "3": ["##.", "..#", ".#.", "..#", "##."], "4": ["#.#", "#.#", "###", "..#", "..#"],
+    "5": ["###", "#..", "##.", "..#", "##."], "6": [".##", "#..", "###", "#.#", "###"],
+    "7": ["###", "..#", ".#.", ".#.", ".#."], "8": ["###", "#.#", "###", "#.#", "###"],
+    "9": ["###", "#.#", "###", "..#", "##."], "1": [".#", "##", ".#", ".#", ".#"],
+    "0": ["###", "#.#", "#.#", "#.#", "###"], "j": ["..#", "..#", "..#", "#.#", ".#."],
+    "q": [".#.", "#.#", "#.#", "#.#", ".##"], "k": ["#.#", "#.#", "##.", "#.#", "#.#"],
+}
+# 絵札の中央に置く 5x7 の大きい文字と王冠
+BIG_LETTER = {
+    "j": ["..###", "...#.", "...#.", "...#.", "#..#.", "#..#.", ".##.."],
+    "q": [".###.", "#...#", "#...#", "#...#", "#.#.#", "#..#.", ".##.#"],
+    "k": ["#...#", "#..#.", "#.#..", "##...", "#.#..", "#..#.", "#...#"],
+}
+CROWN = ["#.#.#", "#####", "#####"]
 
 
-def font(size):
-    return ImageFont.truetype(FONT_PATH, size)
+def plot(img, bitmap, x0, y0, color):
+    for y, row in enumerate(bitmap):
+        for x, ch in enumerate(row):
+            if ch == "#":
+                img.putpixel((x0 + x, y0 + y), color)
 
 
-def rounded_base(fill, border):
+def blank(fill, shade):
     img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
-    d.rounded_rectangle([0, 0, W - 1, H - 1], radius=7, fill=fill, outline=border, width=2)
-    return img, d
+    d.rectangle([0, 0, W - 1, H - 1], fill=OUTLINE)
+    d.rectangle([1, 1, W - 2, H - 2], fill=fill)
+    # 右と下の内側に影を入れて立体感を出す
+    d.line([(2, H - 2), (W - 2, H - 2)], fill=shade)
+    d.line([(W - 2, 2), (W - 2, H - 2)], fill=shade)
+    for x, y in [(0, 0), (W - 1, 0), (0, H - 1), (W - 1, H - 1)]:
+        img.putpixel((x, y), (0, 0, 0, 0))
+    return img
 
 
-def corner(rank, symbol, color):
-    """左上の隅（ランク + 小さいスート）。右下は 180 度回して使う。"""
-    tile = Image.new("RGBA", (24, 40), (0, 0, 0, 0))
-    d = ImageDraw.Draw(tile)
-    label = rank.upper()
-    f = font(15 if len(label) == 1 else 12)
-    d.text((12, 10), label, font=f, fill=color, anchor="mm")
-    d.text((12, 28), symbol, font=font(14), fill=color, anchor="mm")
-    return tile
+def rank_bitmap(rank):
+    if rank != "10":
+        return FONT[rank]
+    return [a + "." + b for a, b in zip(FONT["1"], FONT["0"])]
 
 
 def front(suit_idx, rank_idx):
-    _, symbol, color = SUITS[suit_idx]
+    suit, color = SUITS[suit_idx]
     rank = RANKS[rank_idx]
-    img, d = rounded_base((250, 248, 240, 255), (150, 150, 150, 255))
-    c = corner(rank, symbol, color)
-    img.alpha_composite(c, (3, 3))
-    img.alpha_composite(c.rotate(180), (W - 27, H - 43))
+    img = blank(CREAM, CREAM_SHADE)
+    # 隅はランクと小さいスートを横に並べ、中央の絵と重ならないようにする
+    label = rank_bitmap(rank)
+    corner = Image.new("RGBA", (12, 5), (0, 0, 0, 0))
+    plot(corner, label, 0, 0, color)
+    plot(corner, SMALL[suit], len(label[0]) + 1, 0, color)
+    img.alpha_composite(corner, (2, 2))
+    img.alpha_composite(corner.rotate(180), (W - 14, H - 7))
     if rank in ("j", "q", "k"):
-        d.rounded_rectangle([22, 28, W - 23, H - 29], radius=4, outline=color, width=2, fill=(244, 232, 200, 255))
-        d.text((W // 2, H // 2 - 10), rank.upper(), font=font(34), fill=color, anchor="mm")
-        d.text((W // 2, H // 2 + 20), symbol, font=font(22), fill=color, anchor="mm")
-    elif rank == "a":
-        d.text((W // 2, H // 2), symbol, font=font(52), fill=color, anchor="mm")
+        ImageDraw.Draw(img).rectangle([6, 8, 14, 20], fill=FRAME, outline=color)
+        plot(img, CROWN, 8, 9, GOLD_DARK)
+        plot(img, BIG_LETTER[rank], 8, 12, color)
     else:
-        d.text((W // 2, H // 2 - 4), symbol, font=font(40), fill=color, anchor="mm")
-        d.text((W // 2, H // 2 + 30), rank.upper(), font=font(16), fill=color, anchor="mm")
+        plot(img, BIG[suit], 6, 10, color)
     return img
 
 
 def back():
-    img, d = rounded_base((128, 18, 30, 255), (230, 190, 90, 255))
-    d.rounded_rectangle([6, 6, W - 7, H - 7], radius=4, outline=(230, 190, 90, 255), width=1)
-    gold = (214, 170, 70, 255)
-    step = 12
-    for y in range(10, H - 8, step):
-        for x in range(10, W - 8, step):
-            if (x // step + y // step) % 2 == 0:
-                d.polygon([(x, y - 3), (x + 3, y), (x, y + 3), (x - 3, y)], fill=gold)
-    d.ellipse([W // 2 - 20, H // 2 - 20, W // 2 + 20, H // 2 + 20], fill=(128, 18, 30, 255), outline=gold, width=2)
-    d.text((W // 2, H // 2), "LC", font=font(18), fill=gold, anchor="mm")
+    img = blank(BACK_RED, BACK_DARK)
+    d = ImageDraw.Draw(img)
+    d.rectangle([2, 2, W - 3, H - 3], outline=GOLD)
+    cx, cy = W // 2, H // 2
+    # 中心を基準にした斜め格子（上下左右対称）
+    for y in range(4, H - 4):
+        for x in range(4, W - 4):
+            dx, dy = x - cx, y - cy
+            if (dx + dy) % 4 == 0 and (dx - dy) % 4 == 0:
+                img.putpixel((x, y), GOLD_DARK)
+    for dx, dy in [(0, -2), (-1, -1), (1, -1), (-2, 0), (2, 0), (-1, 1), (1, 1), (0, 2)]:
+        img.putpixel((cx + dx, cy + dy), GOLD)
+    img.putpixel((cx, cy), GOLD)
     return img
 
 
 def card_ids():
-    for s, (suit, _, _) in enumerate(SUITS):
+    for s, (suit, _) in enumerate(SUITS):
         for r, rank in enumerate(RANKS):
             yield s * 13 + r + 1, f"{suit}_{rank}", s, r
 
@@ -92,11 +143,11 @@ def write_json(path, data):
 
 
 def bedrock_sheet(front_img, back_img):
-    # 256x128: 表 (0,0) / 裏 (128,0) / 側面用の白 (100,0)
-    sheet = Image.new("RGBA", (256, 128), (0, 0, 0, 0))
+    # 64x32: 表 (0,0) / 裏 (32,0) / 側面用の縁の色 (24,0)
+    sheet = Image.new("RGBA", (64, 32), (0, 0, 0, 0))
     sheet.alpha_composite(front_img, (0, 0))
-    sheet.alpha_composite(back_img, (128, 0))
-    ImageDraw.Draw(sheet).rectangle([100, 0, 115, 15], fill=(236, 232, 222, 255))
+    sheet.alpha_composite(back_img, (32, 0))
+    ImageDraw.Draw(sheet).rectangle([24, 0, 25, 1], fill=OUTLINE)
     return sheet
 
 
