@@ -36,6 +36,14 @@ public final class LuckyCasinoPaper extends JavaPlugin {
             bridge.start();
         }
 
+        String packUrl = getConfig().getString("resource-pack.url", "");
+        String packSha1 = getConfig().getString("resource-pack.sha1", "");
+        if (!packUrl.isEmpty() && packSha1.matches("[0-9a-f]{40}")) {
+            getServer().getPluginManager().registerEvents(new ResourcePackListener(packUrl, packSha1), this);
+        } else if (!packUrl.isEmpty()) {
+            getLogger().warning("resource-pack.sha1 が 40 文字の 16 進ではないため、リソースパックを送りません");
+        }
+
         registerCommand("lccard", "カード表示の試作", new CardCommand(this));
     }
 

@@ -60,3 +60,7 @@ Geyser は API 2.11.0 以上（Minecraft 26.2 対応版）が必要です。
 ## テクスチャの作り直し
 
 `prototype/tools/gen_cards.py`（Python 3 + Pillow）が 52 枚 + 裏面の画像、Java 版のモデル定義、統合版のエンティティ定義を生成します。生成物はコミット済みなので、ビルドに Python は不要です。
+
+## Java 版リソースパックの配信
+
+`config.yml` の `resource-pack.url` と `resource-pack.sha1` を設定すると、参加した Java 版プレイヤーにパックを送ります。試験用に、ビルド済みの zip を `prototype/dist/` に置いています（GitHub の raw URL をコミット固定で指定して配信）。パックを変えたら `./gradlew -p prototype build` のあと zip をここへコピーし、SHA-1 を更新してください。

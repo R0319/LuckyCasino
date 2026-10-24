@@ -7,3 +7,9 @@ bridge:
   port: 25590
   # Geyser 拡張の config.properties にある key と同じ値を入れる
   key: ''
+
+# Java 版プレイヤーに参加時に送るリソースパック（空なら送らない）
+resource-pack:
+  url: ''
+  # zip の SHA-1（小文字 16 進 40 文字）
+  sha1: ''
