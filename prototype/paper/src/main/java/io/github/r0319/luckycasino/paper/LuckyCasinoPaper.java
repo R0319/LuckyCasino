@@ -1,10 +1,14 @@
 package io.github.r0319.luckycasino.paper;
 
 import io.github.r0319.luckycasino.bridge.BridgeProtocol;
+import net.milkbowl.vault.economy.Economy;
+import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.MemoryConfiguration;
+import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.io.File;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -13,20 +17,54 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-/** カード 1 枚の表示試作。/lccard で配る・めくる・片付けるを試す。 */
+/** LuckyCasino（ブラックジャック）。 */
 public final class LuckyCasinoPaper extends JavaPlugin {
 
-    /** プレイヤーごとに 1 枚だけ持てる。メインスレッドからだけ触る。 */
-    private final Map<UUID, PrototypeCard> cards = new HashMap<>();
     private BridgeClient bridge;
+    private Bank bank;
+    private ChipLedger ledger;
+    private TableSettings tableSettings;
+    private TableItem tableItem;
+    private Menus menus;
+    private TableManager tables;
 
     @Override
     public void onEnable() {
         saveDefaultConfig();
+        startBridge();
+        startResourcePack();
+
+        ledger = new ChipLedger(new File(getDataFolder(), "chips.yml"), getLogger());
+        bank = createBank();
+        refundLedger();
+
+        ConfigurationSection blackjack = getConfig().getConfigurationSection("blackjack");
+        tableSettings = TableSettings.load(blackjack == null ? new MemoryConfiguration() : blackjack);
+        tableItem = new TableItem(this);
+        tableItem.registerRecipe(this, getConfig().getConfigurationSection("table-recipe"), getLogger());
+        menus = new Menus(this);
+        tables = new TableManager(this);
+        getServer().getPluginManager().registerEvents(menus, this);
+        getServer().getPluginManager().registerEvents(tables, this);
+        tables.load();
+
+        registerCommand("casino", "LuckyCasino のテーブル操作", new CasinoCommand(this));
+    }
+
+    @Override
+    public void onDisable() {
+        if (tables != null) {
+            tables.despawnAll();
+        }
+        if (bridge != null) {
+            bridge.stop();
+        }
+    }
+
+    private void startBridge() {
         String host = getConfig().getString("bridge.host", "127.0.0.1");
         int port = getConfig().getInt("bridge.port", BridgeProtocol.DEFAULT_PORT);
         String key = getConfig().getString("bridge.key", "");
-
         bridge = new BridgeClient(getLogger(), host, port, key, this::stateLines);
         if (!getConfig().getBoolean("bridge.enabled", true)) {
             getLogger().info("bridge.enabled が false のため Geyser 拡張とは通信しません");
@@ -35,7 +73,9 @@ public final class LuckyCasinoPaper extends JavaPlugin {
         } else {
             bridge.start();
         }
+    }
 
+    private void startResourcePack() {
         String packUrl = getConfig().getString("resource-pack.url", "");
         String packSha1 = getConfig().getString("resource-pack.sha1", "");
         if (!packUrl.isEmpty() && packSha1.matches("[0-9a-f]{40}")) {
@@ -43,25 +83,65 @@ public final class LuckyCasinoPaper extends JavaPlugin {
         } else if (!packUrl.isEmpty()) {
             getLogger().warning("resource-pack.sha1 が 40 文字の 16 進ではないため、リソースパックを送りません");
         }
-
-        registerCommand("lccard", "カード表示の試作", new CardCommand(this));
     }
 
-    @Override
-    public void onDisable() {
-        cards.values().forEach(PrototypeCard::remove);
-        cards.clear();
-        if (bridge != null) {
-            bridge.stop();
+    /** Vault の経済プラグインがあればそのお金で、無ければ練習用チップで遊ぶ。 */
+    private Bank createBank() {
+        String mode = getConfig().getString("economy.mode", "auto");
+        long practiceChips = Math.max(1, getConfig().getLong("economy.practice-chips", 1000));
+        if (!"practice".equals(mode) && getServer().getPluginManager().getPlugin("Vault") != null) {
+            RegisteredServiceProvider<Economy> provider = getServer().getServicesManager().getRegistration(Economy.class);
+            if (provider != null) {
+                double rate = getConfig().getDouble("economy.money-per-chip", 1.0);
+                getLogger().info("通貨: " + provider.getProvider().getName() + "（チップ 1 枚 = " + rate + "）");
+                return new Bank.Vault(provider.getProvider(), rate > 0 ? rate : 1.0);
+            }
         }
+        if ("vault".equals(mode)) {
+            getLogger().warning("economy.mode が vault ですが、Vault の経済プラグインが見つかりません。練習用で動かします");
+        }
+        getLogger().info("通貨: 練習用チップ（お金は使いません）");
+        return new Bank.Practice(practiceChips);
+    }
+
+    /** 前回、精算できないまま止まった分をお金に戻す。 */
+    private void refundLedger() {
+        if (bank.practice()) {
+            return;
+        }
+        Map<UUID, Long> owed = ledger.drain();
+        owed.forEach((uuid, chips) -> {
+            bank.deposit(getServer().getOfflinePlayer(uuid), chips);
+            getLogger().info("前回精算できなかったチップ " + chips + " 枚を " + uuid + " に戻しました");
+        });
     }
 
     BridgeClient bridge() {
         return bridge;
     }
 
-    Map<UUID, PrototypeCard> cards() {
-        return cards;
+    Bank bank() {
+        return bank;
+    }
+
+    ChipLedger ledger() {
+        return ledger;
+    }
+
+    TableSettings tableSettings() {
+        return tableSettings;
+    }
+
+    TableItem tableItem() {
+        return tableItem;
+    }
+
+    Menus menus() {
+        return menus;
+    }
+
+    TableManager tables() {
+        return tables;
     }
 
     /** 通信スレッドから呼ばれるので、メインスレッドで今のカード一覧を作って返す。 */
@@ -69,7 +149,9 @@ public final class LuckyCasinoPaper extends JavaPlugin {
         CompletableFuture<List<String>> future = new CompletableFuture<>();
         getServer().getScheduler().runTask(this, () -> {
             List<String> lines = new ArrayList<>();
-            cards.values().forEach(card -> lines.add(card.stateLine()));
+            if (tables != null) {
+                tables.tables().forEach(table -> table.stateLines(lines));
+            }
             future.complete(lines);
         });
         try {

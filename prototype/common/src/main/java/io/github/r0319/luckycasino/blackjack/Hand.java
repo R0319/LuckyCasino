@@ -60,24 +60,39 @@ public final class Hand {
 
     /** 21 を超えない範囲で A を 1 枚だけ 11 として数えた合計。 */
     public int total() {
-        int sum = 0;
-        boolean ace = false;
-        for (Card card : cards) {
-            sum += card.rank().points();
-            ace |= card.rank() == Rank.ACE;
-        }
-        return ace && sum + 10 <= 21 ? sum + 10 : sum;
+        return total(cards);
     }
 
     /** A を 11 として数えている（ソフト）か。 */
     public boolean soft() {
-        int hard = 0;
-        boolean ace = false;
+        return soft(cards);
+    }
+
+    /** カードの並びの合計（表示用にも使う）。 */
+    public static int total(List<Card> cards) {
+        int hard = hardTotal(cards);
+        return hasAce(cards) && hard + 10 <= 21 ? hard + 10 : hard;
+    }
+
+    public static boolean soft(List<Card> cards) {
+        return hasAce(cards) && hardTotal(cards) + 10 <= 21;
+    }
+
+    private static int hardTotal(List<Card> cards) {
+        int sum = 0;
         for (Card card : cards) {
-            hard += card.rank().points();
-            ace |= card.rank() == Rank.ACE;
+            sum += card.rank().points();
         }
-        return ace && hard + 10 <= 21;
+        return sum;
+    }
+
+    private static boolean hasAce(List<Card> cards) {
+        for (Card card : cards) {
+            if (card.rank() == Rank.ACE) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public boolean bust() {

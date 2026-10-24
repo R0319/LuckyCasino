@@ -1,8 +1,43 @@
-# Velocity 上の LuckyCasino Geyser 拡張との通信設定
+# 通貨
+economy:
+  # auto: Vault の経済プラグインがあればそのお金、無ければ練習用 / vault / practice
+  mode: auto
+  # チップ 1 枚がいくらか
+  money-per-chip: 1.0
+  # 練習用のとき、席に着くと配るチップの枚数
+  practice-chips: 1000
+
+# ブラックジャックのルール（全テーブル共通）
+blackjack:
+  decks: 6
+  dealer-hits-soft-17: false
+  double-after-split: true
+  min-bet: 10
+  max-bet: 1000
+  # 最初の人が賭けてから配り始めるまで（秒）
+  betting-seconds: 15
+  # 1 回の行動の制限時間（秒）
+  turn-seconds: 20
+  # 席に着くときに選べるチップの枚数（最大 5 つ）
+  buy-ins: [100, 500, 1000, 5000]
+
+# テーブルのクラフトレシピ。材料は素材名か、#planks のようなタグ名
+table-recipe:
+  enabled: true
+  shape:
+    - CCC
+    - PPP
+    - ' G '
+  ingredients:
+    C: green_carpet
+    P: '#planks'
+    G: gold_ingot
+
+# Geyser 拡張（統合版にカードを見せる）との通信
 bridge:
   # false にすると通信しない（統合版にはカードが見えなくなる）
   enabled: true
-  # Velocity が動いているマシンの LAN 内 IP アドレス
+  # Geyser が動いているマシンの IP アドレス（同じサーバーに入れたときは 127.0.0.1）
   host: 127.0.0.1
   port: 25590
   # Geyser 拡張の config.properties にある key と同じ値を入れる

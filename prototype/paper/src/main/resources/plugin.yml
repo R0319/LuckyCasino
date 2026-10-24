@@ -1,10 +1,14 @@
-name: LuckyCasinoPrototype
+name: LuckyCasino
 version: '${version}'
 main: io.github.r0319.luckycasino.paper.LuckyCasinoPaper
 api-version: '26.2'
-description: カード 1 枚の表示試作（Java 版 ItemDisplay + 統合版 Geyser 拡張）
+description: カジノ（ブラックジャック）。Java 版は ItemDisplay + リソースパック、統合版は Geyser 拡張で表示
 author: R0319
+softdepend: [Vault]
 permissions:
-  luckycasino.prototype:
-    description: 試作コマンド /lccard を使う
+  luckycasino.place:
+    description: ブラックジャックテーブルを置く
+    default: true
+  luckycasino.admin:
+    description: テーブルを配る・片付ける・どのテーブルも撤去できる
     default: op

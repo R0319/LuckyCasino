@@ -1,5 +1,13 @@
+repositories {
+    maven("https://jitpack.io") {
+        content { includeGroup("com.github.MilkBowl") }
+    }
+}
+
 dependencies {
     compileOnly("io.papermc.paper:paper-api:26.2.build.134-stable")
+    // VaultUnlocked も旧 Vault の API で使える
+    compileOnly("com.github.MilkBowl:VaultAPI:1.7.1") { isTransitive = false }
     implementation(project(":common"))
 }
 
