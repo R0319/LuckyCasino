@@ -17,13 +17,15 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-/** LuckyCasino（ブラックジャック）。 */
+/** LuckyCasino（ブラックジャック・ルーレット・ポーカー）。 */
 public final class LuckyCasinoPaper extends JavaPlugin {
 
     private BridgeClient bridge;
     private Bank bank;
     private ChipLedger ledger;
-    private TableSettings tableSettings;
+    private BlackjackSettings blackjackSettings;
+    private RouletteSettings rouletteSettings;
+    private PokerSettings pokerSettings;
     private TableItem tableItem;
     private Menus menus;
     private TableManager tables;
@@ -38,10 +40,11 @@ public final class LuckyCasinoPaper extends JavaPlugin {
         bank = createBank();
         refundLedger();
 
-        ConfigurationSection blackjack = getConfig().getConfigurationSection("blackjack");
-        tableSettings = TableSettings.load(blackjack == null ? new MemoryConfiguration() : blackjack);
+        blackjackSettings = BlackjackSettings.load(section("blackjack"));
+        rouletteSettings = RouletteSettings.load(section("roulette"));
+        pokerSettings = PokerSettings.load(section("poker"));
         tableItem = new TableItem(this);
-        tableItem.registerRecipe(this, getConfig().getConfigurationSection("table-recipe"), getLogger());
+        tableItem.registerRecipes(getConfig().getConfigurationSection("recipes"), getLogger());
         menus = new Menus(this);
         tables = new TableManager(this);
         getServer().getPluginManager().registerEvents(menus, this);
@@ -51,8 +54,14 @@ public final class LuckyCasinoPaper extends JavaPlugin {
         registerCommand("casino", "LuckyCasino のテーブル操作", new CasinoCommand(this));
     }
 
+    private ConfigurationSection section(String path) {
+        ConfigurationSection section = getConfig().getConfigurationSection(path);
+        return section == null ? new MemoryConfiguration() : section;
+    }
+
     @Override
     public void onDisable() {
+        SelfTest.stopAll();
         if (tables != null) {
             tables.despawnAll();
         }
@@ -128,8 +137,16 @@ public final class LuckyCasinoPaper extends JavaPlugin {
         return ledger;
     }
 
-    TableSettings tableSettings() {
-        return tableSettings;
+    BlackjackSettings blackjackSettings() {
+        return blackjackSettings;
+    }
+
+    RouletteSettings rouletteSettings() {
+        return rouletteSettings;
+    }
+
+    PokerSettings pokerSettings() {
+        return pokerSettings;
     }
 
     TableItem tableItem() {

@@ -22,12 +22,16 @@ final class ChipView {
     private static final int MAX_STACK = 10;
     private static final float SCALE = 0.3f;
     private static final double SPACING = 0.15;
+    /** 額の文字なしで小さく置くとき（ルーレットのマット）。柱は少し重ねる。 */
+    private static final float SMALL_SCALE = 0.22f;
+    private static final double SMALL_SPACING = 0.07;
     private static final int SLIDE_TICKS = 8;
 
     private final List<ItemDisplay> stacks = new ArrayList<>();
     private TextDisplay label;
     private Location base;
     private long amount;
+    private double spacing = SPACING;
 
     long amount() {
         return amount;
@@ -35,6 +39,11 @@ final class ChipView {
 
     /** base の位置に amount 分のチップを置き直す。0 なら片付ける。 */
     void show(Location base, long amount) {
+        show(base, amount, true);
+    }
+
+    /** withLabel が false なら額の文字を出さない（ルーレットのマットのように小さく並べるとき）。 */
+    void show(Location base, long amount, boolean withLabel) {
         if (amount == this.amount && base.equals(this.base)) {
             return;
         }
@@ -44,9 +53,11 @@ final class ChipView {
         if (amount <= 0) {
             return;
         }
+        float scale = withLabel ? SCALE : SMALL_SCALE;
+        spacing = withLabel ? SPACING : SMALL_SPACING;
         List<ItemStack> columns = columns(amount);
         for (int i = 0; i < columns.size(); i++) {
-            double offset = (i - (columns.size() - 1) / 2.0) * SPACING;
+            double offset = (i - (columns.size() - 1) / 2.0) * spacing;
             Location at = offset(base, offset);
             ItemStack item = columns.get(i);
             stacks.add(at.getWorld().spawn(at, ItemDisplay.class, entity -> {
@@ -54,9 +65,12 @@ final class ChipView {
                 entity.setItemStack(item);
                 entity.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.NONE);
                 entity.setTransformation(new Transformation(new Vector3f(), new AxisAngle4f(),
-                        new Vector3f(SCALE, SCALE, SCALE), new AxisAngle4f()));
+                        new Vector3f(scale, scale, scale), new AxisAngle4f()));
                 entity.setTeleportDuration(SLIDE_TICKS);
             }));
+        }
+        if (!withLabel) {
+            return;
         }
         Location labelAt = base.clone().add(0, 0.28, 0);
         label = labelAt.getWorld().spawn(labelAt, TextDisplay.class, entity -> {
@@ -72,7 +86,7 @@ final class ChipView {
     /** チップを target へ滑らせる（回収・払い出しの動き）。 */
     void slideTo(Location target) {
         for (int i = 0; i < stacks.size(); i++) {
-            double offset = (i - (stacks.size() - 1) / 2.0) * SPACING;
+            double offset = (i - (stacks.size() - 1) / 2.0) * spacing;
             stacks.get(i).teleport(offset(target, offset));
         }
         if (label != null) {

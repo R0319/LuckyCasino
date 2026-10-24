@@ -21,17 +21,60 @@ blackjack:
   # 席に着くときに選べるチップの枚数（最大 5 つ）
   buy-ins: [100, 500, 1000, 5000]
 
-# テーブルのクラフトレシピ。材料は素材名か、#planks のようなタグ名
-table-recipe:
-  enabled: true
-  shape:
-    - CCC
-    - PPP
-    - ' G '
-  ingredients:
-    C: green_carpet
-    P: '#planks'
-    G: gold_ingot
+# ルーレットのルール（ヨーロピアン、0 は 1 つ）
+roulette:
+  # 1 か所に置ける最低額・最高額
+  min-bet: 10
+  max-bet: 500
+  # 1 回に 1 人が賭けられる合計
+  max-total: 2000
+  # 最初の人が賭けてから締め切るまで（秒）
+  betting-seconds: 20
+  buy-ins: [100, 500, 1000, 5000]
+
+# ポーカーのルール（テキサスホールデム、ノーリミット。ディーラーは配るだけで手数料は取らない）
+poker:
+  small-blind: 5
+  big-blind: 10
+  # 1 回の行動の制限時間（秒）。過ぎるとチェックかフォールド
+  turn-seconds: 25
+  # 2 人そろってから（前の勝負が終わってから）配るまで（秒）
+  start-seconds: 5
+  buy-ins: [200, 500, 1000, 2000]
+
+# テーブルのクラフトレシピ。材料は素材名か、#planks のようなタグ名。使わないなら enabled: false
+recipes:
+  blackjack:
+    enabled: true
+    shape:
+      - CCC
+      - PPP
+      - ' G '
+    ingredients:
+      C: green_carpet
+      P: '#planks'
+      G: gold_ingot
+  roulette:
+    enabled: true
+    shape:
+      - RKR
+      - PGP
+      - 'P P'
+    ingredients:
+      R: red_carpet
+      K: black_carpet
+      P: '#planks'
+      G: gold_ingot
+  poker:
+    enabled: true
+    shape:
+      - CCC
+      - PEP
+      - 'P P'
+    ingredients:
+      C: green_carpet
+      P: '#planks'
+      E: emerald
 
 # Geyser 拡張（統合版にカードを見せる）との通信
 bridge:

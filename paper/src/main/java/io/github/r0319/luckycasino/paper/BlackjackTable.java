@@ -13,23 +13,12 @@ import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.title.Title;
-import org.bukkit.Bukkit;
 import org.bukkit.Location;
-import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
-import org.bukkit.entity.BlockDisplay;
-import org.bukkit.entity.Display;
 import org.bukkit.entity.Entity;
-import org.bukkit.entity.Interaction;
-import org.bukkit.entity.ItemDisplay;
-import org.bukkit.entity.Mannequin;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.TextDisplay;
-import org.bukkit.scheduler.BukkitTask;
-import org.bukkit.util.Transformation;
-import org.joml.AxisAngle4f;
-import org.joml.Vector3f;
 
 import java.security.SecureRandom;
 import java.time.Duration;
@@ -38,12 +27,10 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 
-/**
- * ブラックジャックのテーブル 1 卓。エンティティの表示、席とチップ、勝負の進行（BlackjackRound のイベント再生）を持つ。
- * メインスレッドからだけ触る。
- */
-final class BlackjackTable {
+/** ブラックジャックのテーブル。BlackjackRound のイベントを順に再生して見せる。 */
+final class BlackjackTable extends CasinoTable {
 
     enum State {
         /** 誰も賭けていない */
@@ -54,48 +41,18 @@ final class BlackjackTable {
         PLAYING
     }
 
-    /** 席に着いている人。chips は手元、atRisk は賭けている分。控え（ChipLedger）には合計を書く。 */
-    static final class Seat {
-        final UUID player;
-        final String name;
-        long chips;
-        long atRisk;
-        boolean confirmed;
-        /** 勝負中に席を立った。勝負が終わったら精算する */
-        boolean away;
+    private static final BlackjackLayout LAYOUT = new BlackjackLayout();
 
-        Seat(UUID player, String name, long chips) {
-            this.player = player;
-            this.name = name;
-            this.chips = chips;
-        }
-    }
-
-    private final LuckyCasinoPaper plugin;
-    private final String id;
-    private final TableLayout layout;
-    private final UUID owner;
-    private final Bank bank;
-    private final TableSettings settings;
+    private final BlackjackSettings settings;
     private final Shoe shoe;
-    private final Seat[] seats = new Seat[TableLayout.SEATS];
+    private final boolean[] confirmed = new boolean[BlackjackLayout.SEATS];
 
-    // エンティティ
-    private final List<Entity> fixtures = new ArrayList<>();
-    private final Interaction[] seatHits = new Interaction[TableLayout.SEATS];
-    private final ItemDisplay[] mounts = new ItemDisplay[TableLayout.SEATS];
-    private Mannequin dealer;
-    private TextDisplay status;
-
-    // 勝負
     private State state = State.IDLE;
     private BlackjackRound round;
     private final Deque<BlackjackEvent> queue = new ArrayDeque<>();
     private boolean waitingInput;
     private boolean pumping;
     private int countdown;
-    private BukkitTask ticker;
-    private final List<BukkitTask> pending = new ArrayList<>();
 
     // 勝負中の表示
     private final List<List<List<Card>>> handCards = new ArrayList<>();
@@ -106,17 +63,13 @@ final class BlackjackTable {
     private final List<Card> dealerCards = new ArrayList<>();
     private final List<CardView> dealerViews = new ArrayList<>();
     private TextDisplay dealerLabel;
-    private final ChipView[] pendingBetViews = new ChipView[TableLayout.SEATS];
+    private final ChipView[] pendingBetViews = new ChipView[BlackjackLayout.SEATS];
 
-    BlackjackTable(LuckyCasinoPaper plugin, String id, TableLayout layout, UUID owner, Bank bank, TableSettings settings) {
-        this.plugin = plugin;
-        this.id = id;
-        this.layout = layout;
-        this.owner = owner;
-        this.bank = bank;
+    BlackjackTable(LuckyCasinoPaper plugin, String id, Frame frame, UUID owner, Bank bank, BlackjackSettings settings) {
+        super(plugin, id, GameType.BLACKJACK, frame, owner, bank);
         this.settings = settings;
         this.shoe = new Shoe(settings.rules().decks(), settings.rules().penetration(), new SecureRandom());
-        for (int i = 0; i < TableLayout.SEATS; i++) {
+        for (int i = 0; i < BlackjackLayout.SEATS; i++) {
             handCards.add(new ArrayList<>());
             handViews.add(new ArrayList<>());
             betViews.add(new ArrayList<>());
@@ -126,23 +79,22 @@ final class BlackjackTable {
         newRound();
     }
 
-    String id() {
-        return id;
+    @Override
+    TableShape shape() {
+        return LAYOUT;
     }
 
-    TableLayout layout() {
-        return layout;
+    @Override
+    List<Long> buyIns() {
+        return settings.buyIns();
     }
 
-    UUID owner() {
-        return owner;
+    @Override
+    long minChips() {
+        return settings.rules().minBet();
     }
 
-    Bank bank() {
-        return bank;
-    }
-
-    TableSettings settings() {
+    BlackjackSettings settings() {
         return settings;
     }
 
@@ -150,252 +102,60 @@ final class BlackjackTable {
         return state;
     }
 
-    boolean spawned() {
-        return dealer != null;
+    @Override
+    protected void onSpawn() {
     }
 
-    Seat seat(int index) {
-        return seats[index];
-    }
-
-    int seatOf(UUID player) {
-        for (int i = 0; i < seats.length; i++) {
-            if (seats[i] != null && seats[i].player.equals(player)) {
-                return i;
-            }
-        }
-        return -1;
-    }
-
-    boolean empty() {
-        for (Seat seat : seats) {
-            if (seat != null) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    int seatOfHitbox(Entity entity) {
-        for (int i = 0; i < seatHits.length; i++) {
-            if (seatHits[i] != null && seatHits[i].equals(entity)) {
-                return i;
-            }
-        }
-        return -1;
-    }
-
-    boolean isMount(Entity entity) {
-        for (ItemDisplay mount : mounts) {
-            if (mount != null && mount.equals(entity)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    // ---- 表示の出し入れ ----
-
-    void spawn() {
-        if (spawned()) {
-            return;
-        }
-        Location origin = layout.origin();
-        float s = TableLayout.TABLE_SCALE;
-        fixtures.add(origin.getWorld().spawn(origin, ItemDisplay.class, entity -> {
-            entity.setPersistent(false);
-            entity.setItemStack(Items.model("table/blackjack"));
-            entity.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.NONE);
-            entity.setTransformation(new Transformation(new Vector3f(), new AxisAngle4f(), new Vector3f(s, s, s), new AxisAngle4f()));
-            entity.setViewRange(2f);
-        }));
-
-        Location dealerAt = layout.at(layout.dealer());
-        dealer = dealerAt.getWorld().spawn(dealerAt, Mannequin.class, entity -> {
-            entity.setPersistent(false);
-            entity.setInvulnerable(true);
-            entity.setImmovable(true);
-            entity.setSilent(true);
-            entity.setDescription(Component.text("ディーラー", NamedTextColor.GOLD));
-            entity.setRotation(layout.yaw(), 0f);
-        });
-        fixtures.add(dealer);
-
-        Location statusAt = layout.at(0, 2.45, layout.dealer()[2]);
-        status = statusAt.getWorld().spawn(statusAt, TextDisplay.class, entity -> {
-            entity.setPersistent(false);
-            entity.setBillboard(Display.Billboard.CENTER);
-            entity.text(Component.empty());
-        });
-        fixtures.add(status);
-
-        for (int i = 0; i < TableLayout.SEATS; i++) {
-            double[] p = layout.seat(i);
-            fixtures.add(stool(layout.at(p[0], 0, p[2]), Material.DARK_OAK_FENCE, new Vector3f(1f, 0.38f, 1f), 0));
-            fixtures.add(stool(layout.at(p[0], 0.38, p[2]), Material.RED_WOOL, new Vector3f(0.5f, 0.1f, 0.5f), 0));
-            Location mountAt = layout.at(p[0], 0.25, p[2]);
-            mounts[i] = mountAt.getWorld().spawn(mountAt, ItemDisplay.class, entity -> entity.setPersistent(false));
-            fixtures.add(mounts[i]);
-            Location hitAt = layout.at(p[0], 0, p[2]);
-            seatHits[i] = hitAt.getWorld().spawn(hitAt, Interaction.class, entity -> {
-                entity.setPersistent(false);
-                entity.setInteractionWidth(0.8f);
-                entity.setInteractionHeight(1.2f);
-                entity.setResponsive(true);
-            });
-            fixtures.add(seatHits[i]);
-        }
-        startTicker();
-        updateStatus();
-    }
-
-    private BlockDisplay stool(Location at, Material material, Vector3f scale, float y) {
-        return at.getWorld().spawn(at, BlockDisplay.class, entity -> {
-            entity.setPersistent(false);
-            entity.setBlock(material.createBlockData());
-            // BlockDisplay はブロックの角が原点なので、中心に合わせる
-            entity.setTransformation(new Transformation(new Vector3f(-scale.x / 2, y, -scale.z / 2), new AxisAngle4f(),
-                    scale, new AxisAngle4f()));
-        });
-    }
-
-    /**
-     * 表示を片付け、全員を精算する。勝負の途中なら賭け金はそのまま返す（サーバー停止やチャンクの読み込み解除のとき）。
-     */
-    void despawn() {
-        for (int i = 0; i < seats.length; i++) {
-            Seat seat = seats[i];
-            if (seat != null) {
-                seat.chips += seat.atRisk;
-                seat.atRisk = 0;
-                cashOut(i, "テーブルが片付けられたため、チップを精算しました");
-            }
-        }
-        cancelTasks();
+    @Override
+    protected void onDespawn() {
+        queue.clear();
+        waitingInput = false;
+        pumping = false;
         clearRoundViews();
         for (ChipView view : pendingBetViews) {
             view.remove();
         }
-        fixtures.forEach(Entity::remove);
-        fixtures.clear();
-        dealer = null;
-        status = null;
         newRound();
         state = State.IDLE;
+        java.util.Arrays.fill(confirmed, false);
     }
 
-    private void startTicker() {
-        ticker = plugin.getServer().getScheduler().runTaskTimer(plugin, this::tickSecond, 20L, 20L);
-    }
-
-    private void cancelTasks() {
-        if (ticker != null) {
-            ticker.cancel();
-            ticker = null;
-        }
-        pending.forEach(BukkitTask::cancel);
-        pending.clear();
-        queue.clear();
-        waitingInput = false;
-        pumping = false;
-    }
-
-    private void later(long ticks, Runnable task) {
-        pending.removeIf(BukkitTask::isCancelled);
-        BukkitTask[] holder = new BukkitTask[1];
-        holder[0] = plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
-            pending.remove(holder[0]);
-            task.run();
-        }, ticks);
-        pending.add(holder[0]);
-    }
-
-    // ---- 席 ----
-
-    /** 両替が済んだプレイヤーを席に着かせる。 */
-    boolean sit(Player player, int index, long chips) {
-        if (seats[index] != null || !spawned()) {
-            return false;
-        }
-        if (!bank.withdraw(player, chips)) {
-            player.sendMessage(Component.text("お金が足りません", NamedTextColor.RED));
-            return false;
-        }
-        Seat seat = new Seat(player.getUniqueId(), player.getName(), chips);
-        seats[index] = seat;
-        writeLedger(seat);
-        mounts[index].addPassenger(player);
-        player.sendMessage(Component.text(bank.practice()
-                ? "練習用のチップ " + chips + " 枚を受け取りました。お金は使いません。"
-                : "チップ " + chips + " 枚に両替しました。席を立つと（スニーク）お金に戻ります。", NamedTextColor.GREEN));
-        playSound(Sound.BLOCK_WOODEN_BUTTON_CLICK_ON, 1f);
-        if (state != State.PLAYING) {
+    @Override
+    protected void onSeated(int seat, Player player) {
+        if (player == null) {
+            if (state != State.PLAYING) {
+                later(10, () -> botBet(seat));
+            }
+        } else if (state != State.PLAYING) {
             plugin.menus().openBet(player, this);
         } else {
             player.sendMessage(Component.text("今の勝負が終わったら賭けられます", NamedTextColor.GRAY));
         }
-        updateStatus();
-        return true;
     }
 
-    /** 席を立つ（スニーク、ログアウト、テレポートなど）。 */
-    void leave(UUID player) {
-        int index = seatOf(player);
-        if (index < 0) {
-            return;
-        }
+    @Override
+    void openMenu(Player player) {
+        plugin.menus().openBet(player, this);
+    }
+
+    @Override
+    protected boolean prepareLeave(int index) {
         Seat seat = seats[index];
-        if (state != State.PLAYING && seat.confirmed) {
+        if (state != State.PLAYING && confirmed[index]) {
             round.clearBet(index);
             seat.chips += seat.atRisk;
             seat.atRisk = 0;
-            seat.confirmed = false;
+            confirmed[index] = false;
             pendingBetViews[index].remove();
+            later(1, this::checkAllConfirmed);
         }
-        if (state == State.PLAYING && seat.atRisk > 0) {
-            if (!seat.away) {
-                seat.away = true;
-                eject(index);
-                send(seat, Component.text("勝負が終わったら残りのチップを精算します。以降の行動はスタンドとして扱います。", NamedTextColor.YELLOW));
-                if (waitingInput && round.currentSeat() == index) {
-                    act(index, Action.STAND);
-                }
-            }
-            return;
-        }
-        cashOut(index, null);
-        checkAllConfirmed();
-        updateStatus();
+        return !(state == State.PLAYING && seat.atRisk > 0);
     }
 
-    private void cashOut(int index, String note) {
-        Seat seat = seats[index];
-        seats[index] = null;
-        if (!bank.practice()) {
-            // 先に控えを消してからお金を戻す（落ちても二重には戻らない）
-            plugin.ledger().remove(seat.player);
-        }
-        bank.deposit(Bukkit.getOfflinePlayer(seat.player), seat.chips);
-        eject(index);
-        Component message = bank.practice()
-                ? Component.text("席を立ちました（練習用チップ " + seat.chips + " 枚は回収しました）", NamedTextColor.GRAY)
-                : Component.text("席を立ちました。チップ " + seat.chips + " 枚をお金に戻しました。", NamedTextColor.GREEN);
-        if (note != null) {
-            message = Component.text(note + "：", NamedTextColor.YELLOW).append(message);
-        }
-        send(seat, message);
-        updateStatus();
-    }
-
-    private void eject(int index) {
-        if (mounts[index] != null) {
-            mounts[index].eject();
-        }
-    }
-
-    private void writeLedger(Seat seat) {
-        if (!bank.practice()) {
-            plugin.ledger().set(seat.player, seat.chips + seat.atRisk);
+    @Override
+    protected void onAway(int index) {
+        if (waitingInput && round.currentSeat() == index) {
+            act(index, Action.STAND);
         }
     }
 
@@ -403,7 +163,7 @@ final class BlackjackTable {
 
     boolean canBet(int index) {
         Seat seat = seats[index];
-        return seat != null && state != State.PLAYING && !seat.confirmed && !seat.away;
+        return seat != null && state != State.PLAYING && !confirmed[index] && !seat.away;
     }
 
     /** 賭け金を決める。 */
@@ -412,18 +172,23 @@ final class BlackjackTable {
         if (index < 0 || !canBet(index)) {
             return;
         }
-        Seat seat = seats[index];
-        if (amount < settings.rules().minBet() || amount > settings.rules().maxBet() || amount > seat.chips) {
+        if (!placeBet(index, amount)) {
             player.sendMessage(Component.text("賭け金は " + settings.rules().minBet() + "〜" + settings.rules().maxBet()
                     + " 枚、手元のチップ以内で決めてください", NamedTextColor.RED));
-            return;
+        }
+    }
+
+    private boolean placeBet(int index, long amount) {
+        Seat seat = seats[index];
+        if (amount < settings.rules().minBet() || amount > settings.rules().maxBet() || amount > seat.chips) {
+            return false;
         }
         round.bet(index, amount);
         seat.chips -= amount;
         seat.atRisk += amount;
-        seat.confirmed = true;
+        confirmed[index] = true;
         writeLedger(seat);
-        pendingBetViews[index].show(layout.at(layout.chips(index)), amount);
+        pendingBetViews[index].show(frame.at(LAYOUT.chips(index)), amount);
         playSound(Sound.BLOCK_CHAIN_PLACE, 1.4f);
         if (state == State.IDLE) {
             state = State.BETTING;
@@ -432,6 +197,21 @@ final class BlackjackTable {
         }
         checkAllConfirmed();
         updateStatus();
+        return true;
+    }
+
+    private void botBet(int index) {
+        Seat seat = seats[index];
+        if (seat == null || !seat.bot || !canBet(index)) {
+            return;
+        }
+        long min = settings.rules().minBet();
+        long max = Math.min(settings.rules().maxBet(), seat.chips);
+        if (max < min) {
+            return;
+        }
+        long amount = min * ThreadLocalRandom.current().nextLong(1, Math.max(2, max / min / 4 + 2));
+        placeBet(index, Math.min(amount, max));
     }
 
     /** 席にいる全員が賭け終えたら、すぐ配る。 */
@@ -440,18 +220,20 @@ final class BlackjackTable {
             return;
         }
         boolean anyBet = false;
-        for (Seat seat : seats) {
-            if (seat == null) {
+        for (int i = 0; i < seats.length; i++) {
+            Seat seat = seats[i];
+            if (seat == null || seat.away) {
                 continue;
             }
-            if (seat.confirmed) {
+            if (confirmed[i]) {
                 anyBet = true;
             } else if (seat.chips >= settings.rules().minBet()) {
                 return;
             }
         }
-        if (!anyBet) {
+        if (!anyBet && round.bets().isEmpty()) {
             state = State.IDLE;
+            updateStatus();
             return;
         }
         countdown = Math.min(countdown, 2);
@@ -460,10 +242,11 @@ final class BlackjackTable {
     // ---- 進行 ----
 
     private void newRound() {
-        round = new BlackjackRound(settings.rules(), shoe, TableLayout.SEATS);
+        round = new BlackjackRound(settings.rules(), shoe, BlackjackLayout.SEATS);
     }
 
-    private void tickSecond() {
+    @Override
+    protected void tickSecond() {
         if (state == State.BETTING) {
             countdown--;
             if (countdown <= 0) {
@@ -474,11 +257,9 @@ final class BlackjackTable {
             countdown--;
             int index = round.currentSeat();
             Seat seat = index >= 0 ? seats[index] : null;
-            if (seat != null) {
-                Player player = Bukkit.getPlayer(seat.player);
-                if (player != null) {
-                    player.sendActionBar(Component.text("あなたの番です（あと " + Math.max(countdown, 0) + " 秒）", NamedTextColor.YELLOW));
-                }
+            Player player = online(seat);
+            if (player != null) {
+                player.sendActionBar(Component.text("あなたの番です（あと " + Math.max(countdown, 0) + " 秒）", NamedTextColor.YELLOW));
             }
             if (countdown <= 0 && index >= 0) {
                 if (seat != null) {
@@ -502,17 +283,17 @@ final class BlackjackTable {
                 handCards.get(i).add(new ArrayList<>());
                 handViews.get(i).add(new ArrayList<>());
                 ChipView chips = new ChipView();
-                chips.show(layout.at(layout.chips(i)), bet);
+                chips.show(frame.at(LAYOUT.chips(i)), bet);
                 betViews.get(i).add(chips);
-                handLabels.get(i).add(label(layout.handLabel(i, 0, 1)));
+                handLabels.get(i).add(label(LAYOUT.handLabel(i, 0, 1), 0.6f));
             }
         }
-        dealerLabel = label(layout.dealerLabel());
+        dealerLabel = label(LAYOUT.dealerLabel(), 0.6f);
         broadcast(Component.text("ノーモアベット。配ります", NamedTextColor.AQUA));
         enqueue(round.deal());
     }
 
-    /** 席の行動（コマンドやメニューから）。 */
+    /** 席の行動（コマンドやチャットのボタンから）。 */
     void act(Player player, Action action) {
         int index = seatOf(player.getUniqueId());
         if (index < 0 || state != State.PLAYING || !waitingInput || round.currentSeat() != index) {
@@ -527,6 +308,9 @@ final class BlackjackTable {
     }
 
     private void act(int index, Action action) {
+        if (!waitingInput || round.phase() != BlackjackRound.Phase.PLAYING || round.currentSeat() != index) {
+            return;
+        }
         Seat seat = seats[index];
         long extra = round.extraStake(action);
         if (seat != null && extra > 0) {
@@ -584,19 +368,19 @@ final class BlackjackTable {
                     views.add(new ArrayList<>());
                 }
                 int index = cards.get(e.hand()).size();
-                double[] at = layout.playerCard(e.seat(), e.hand(), cards.size(), index);
-                views.get(e.hand()).add(CardView.deal(plugin, plugin.bridge(), layout.at(at),
-                        TableLayout.delta(layout.shoe(), at), e.card().code(), true));
+                double[] at = LAYOUT.playerCard(e.seat(), e.hand(), cards.size(), index);
+                views.get(e.hand()).add(CardView.deal(plugin, plugin.bridge(), frame.at(at),
+                        Frame.delta(LAYOUT.shoe(), at), e.card().code(), true));
                 cards.get(e.hand()).add(e.card());
                 updateHandLabel(e.seat(), e.hand(), null);
                 swing();
                 yield 8;
             }
             case BlackjackEvent.DealerCard e -> {
-                double[] at = layout.dealerCard(dealerViews.size());
+                double[] at = LAYOUT.dealerCard(dealerViews.size());
                 int code = e.hidden() ? CardCode.HIDDEN : e.card().code();
-                dealerViews.add(CardView.deal(plugin, plugin.bridge(), layout.at(at),
-                        TableLayout.delta(layout.shoe(), at), code, !e.hidden()));
+                dealerViews.add(CardView.deal(plugin, plugin.bridge(), frame.at(at),
+                        Frame.delta(LAYOUT.shoe(), at), code, !e.hidden()));
                 if (!e.hidden()) {
                     dealerCards.add(e.card());
                 }
@@ -653,9 +437,17 @@ final class BlackjackTable {
 
     private void startTurn(int index, int hand) {
         Seat seat = seats[index];
-        Player player = seat == null ? null : Bukkit.getPlayer(seat.player);
+        if (seat != null && seat.bot && !seat.away) {
+            waitingInput = true;
+            countdown = settings.turnSeconds();
+            updateStatus();
+            later(12, () -> botAct(index, hand));
+            return;
+        }
+        Player player = online(seat);
         if (seat == null || seat.away || player == null) {
             // 席を立った人は自動でスタンド
+            waitingInput = true;
             later(10, () -> act(index, Action.STAND));
             return;
         }
@@ -673,6 +465,27 @@ final class BlackjackTable {
         }
         player.sendMessage(Component.text("手札 " + (handCards.get(index).size() > 1 ? (hand + 1) + " つ目 " : "")
                 + "合計 " + total + "： ", NamedTextColor.WHITE).append(buttons));
+    }
+
+    /** ボットの行動。分岐をひととおり通るよう、簡単な基本戦略に少し乱数を混ぜる。 */
+    private void botAct(int index, int hand) {
+        if (!waitingInput || round.currentSeat() != index) {
+            return;
+        }
+        List<Action> actions = affordableActions(index);
+        int total = Hand.total(handCards.get(index).get(hand));
+        ThreadLocalRandom random = ThreadLocalRandom.current();
+        Action action;
+        if (actions.contains(Action.SPLIT) && random.nextInt(3) > 0) {
+            action = Action.SPLIT;
+        } else if (actions.contains(Action.DOUBLE) && total >= 9 && total <= 11) {
+            action = Action.DOUBLE;
+        } else if (total < 12 || (total < 17 && random.nextBoolean())) {
+            action = Action.HIT;
+        } else {
+            action = Action.STAND;
+        }
+        act(index, action);
     }
 
     private static Component button(Action action) {
@@ -712,29 +525,36 @@ final class BlackjackTable {
         for (int h = 0; h < hands; h++) {
             List<CardView> list = views.get(h);
             for (int i = 0; i < list.size(); i++) {
-                list.get(i).moveTo(layout.at(layout.playerCard(seat, h, hands, i)));
+                list.get(i).moveTo(frame.at(LAYOUT.playerCard(seat, h, hands, i)));
             }
         }
         List<ChipView> bets = betViews.get(seat);
         long amount = bets.getFirst().amount();
-        ChipView second = new ChipView();
-        bets.add(second);
+        bets.add(new ChipView());
         for (int h = 0; h < bets.size(); h++) {
             bets.get(h).show(chipSpot(seat, h), amount);
         }
         List<TextDisplay> labels = handLabels.get(seat);
-        labels.add(label(layout.handLabel(seat, newHand, hands)));
+        labels.add(label(LAYOUT.handLabel(seat, newHand, hands), 0.6f));
         for (int h = 0; h < labels.size(); h++) {
-            labels.get(h).teleport(layout.at(layout.handLabel(seat, h, hands)));
+            labels.get(h).teleport(frame.at(LAYOUT.handLabel(seat, h, hands)));
             updateHandLabel(seat, h, null);
         }
     }
 
     private Location chipSpot(int seat, int hand) {
         int hands = handCards.get(seat).size();
-        double[] spot = layout.chips(seat);
-        double[] card = layout.playerCard(seat, hand, hands, 0);
-        return layout.at(card[0], spot[1], spot[2]);
+        double[] spot = LAYOUT.chips(seat);
+        double[] card = LAYOUT.playerCard(seat, hand, hands, 0);
+        return frame.at(card[0], spot[1], spot[2]);
+    }
+
+    /** 払い出したチップを置く位置（賭けたチップの横）。 */
+    private Location payoutSpot(int seat, int hand) {
+        int hands = handCards.get(seat).size();
+        double[] spot = LAYOUT.chips(seat);
+        double[] card = LAYOUT.playerCard(seat, hand, hands, 0);
+        return frame.at(card[0] - 0.17, spot[1], spot[2] + 0.1);
     }
 
     private void settle(BlackjackEvent.Settled e) {
@@ -742,6 +562,9 @@ final class BlackjackTable {
         if (seat != null) {
             seat.atRisk -= e.bet();
             seat.chips += e.payout();
+        }
+        if (observer != null) {
+            observer.payout(e.seat(), e.bet(), e.payout());
         }
         ChipView bet = betViews.get(e.seat()).get(e.hand());
         String result = switch (e.outcome()) {
@@ -758,15 +581,16 @@ final class BlackjackTable {
         };
         updateHandLabel(e.seat(), e.hand(), Component.text(result, color));
         switch (e.outcome()) {
-            case LOSE, BUST -> bet.slideTo(layout.at(layout.dealerChips()));
+            case LOSE, BUST -> bet.slideTo(frame.at(LAYOUT.dealerChips()));
             case WIN, BLACKJACK -> {
                 ChipView win = new ChipView();
-                win.show(layout.at(layout.dealerChips()), e.payout() - e.bet());
+                win.show(frame.at(LAYOUT.dealerChips()), e.payout() - e.bet());
                 payoutViews.add(win);
-                later(2, () -> win.slideTo(payoutSpot(e.seat(), e.hand())));
+                Location spot = payoutSpot(e.seat(), e.hand());
+                later(2, () -> win.slideTo(spot));
                 playSound(e.outcome() == Outcome.BLACKJACK ? Sound.UI_TOAST_CHALLENGE_COMPLETE : Sound.ENTITY_PLAYER_LEVELUP, 1.2f);
                 if (e.outcome() == Outcome.BLACKJACK) {
-                    Location at = layout.at(layout.handLabel(e.seat(), e.hand(), handCards.get(e.seat()).size()));
+                    Location at = frame.at(LAYOUT.handLabel(e.seat(), e.hand(), handCards.get(e.seat()).size()));
                     at.getWorld().spawnParticle(Particle.FIREWORK, at, 30, 0.2, 0.2, 0.2, 0.05);
                 }
             }
@@ -780,35 +604,25 @@ final class BlackjackTable {
         }
     }
 
-    /** 払い出したチップを置く位置（賭けたチップの横）。 */
-    private Location payoutSpot(int seat, int hand) {
-        int hands = handCards.get(seat).size();
-        double[] spot = layout.chips(seat);
-        double[] card = layout.playerCard(seat, hand, hands, 0);
-        return layout.at(card[0] - 0.17, spot[1], spot[2] + 0.1);
-    }
-
     private void finishRound() {
         clearRoundViews();
         newRound();
         state = State.IDLE;
+        java.util.Arrays.fill(confirmed, false);
+        settleAwaySeats();
+        if (observer != null) {
+            observer.roundFinished();
+        }
         for (int i = 0; i < seats.length; i++) {
             Seat seat = seats[i];
             if (seat == null) {
                 continue;
             }
-            seat.confirmed = false;
-            if (seat.away) {
-                cashOut(i, null);
-                continue;
-            }
-            Player player = Bukkit.getPlayer(seat.player);
-            if (player == null) {
-                cashOut(i, null);
-            } else if (seat.chips < settings.rules().minBet()) {
-                player.sendMessage(Component.text("チップが最低額に足りないため、席を立ちます", NamedTextColor.YELLOW));
-                cashOut(i, null);
-            } else {
+            Player player = online(seat);
+            if (seat.bot) {
+                int index = i;
+                later(10 + i * 3L, () -> botBet(index));
+            } else if (player != null) {
                 plugin.menus().openBet(player, this);
             }
         }
@@ -816,7 +630,7 @@ final class BlackjackTable {
     }
 
     private void clearRoundViews() {
-        for (int i = 0; i < TableLayout.SEATS; i++) {
+        for (int i = 0; i < BlackjackLayout.SEATS; i++) {
             handViews.get(i).forEach(list -> list.forEach(CardView::remove));
             handViews.get(i).clear();
             handCards.get(i).clear();
@@ -837,18 +651,6 @@ final class BlackjackTable {
     }
 
     // ---- 表示の更新 ----
-
-    private TextDisplay label(double[] local) {
-        Location at = layout.at(local);
-        return at.getWorld().spawn(at, TextDisplay.class, entity -> {
-            entity.setPersistent(false);
-            entity.setBillboard(Display.Billboard.CENTER);
-            entity.setTransformation(new Transformation(new Vector3f(), new AxisAngle4f(),
-                    new Vector3f(0.6f, 0.6f, 0.6f), new AxisAngle4f()));
-            entity.setTeleportDuration(CardView.STEP_TICKS);
-            entity.text(Component.empty());
-        });
-    }
 
     private void updateHandLabel(int seat, int hand, Component result) {
         List<TextDisplay> labels = handLabels.get(seat);
@@ -884,14 +686,12 @@ final class BlackjackTable {
         return Component.text((Hand.soft(cards) && total < 21 ? "ソフト " : "") + total, NamedTextColor.WHITE);
     }
 
-    private void updateStatus() {
-        if (status == null) {
-            return;
-        }
+    @Override
+    protected Component statusText() {
         Component text = switch (state) {
             case IDLE -> empty()
                     ? Component.text("ブラックジャック", NamedTextColor.GOLD).append(Component.newline())
-                    .append(Component.text("席をクリックして座る", NamedTextColor.GRAY))
+                    .append(Component.text("椅子をクリックして座る", NamedTextColor.GRAY))
                     : Component.text("ベットを待っています", NamedTextColor.AQUA);
             case BETTING -> Component.text("ベット受付中（あと " + Math.max(countdown, 0) + " 秒）", NamedTextColor.AQUA);
             case PLAYING -> {
@@ -901,39 +701,10 @@ final class BlackjackTable {
                         : Component.text(seat.name + " の番", NamedTextColor.YELLOW);
             }
         };
-        text = text.append(Component.newline()).append(Component.text(
-                "賭け金 " + settings.rules().minBet() + "〜" + settings.rules().maxBet()
-                        + (bank.practice() ? "（練習用）" : ""), NamedTextColor.GRAY));
-        status.text(text);
+        return text.append(limitsLine("賭け金 " + settings.rules().minBet() + "〜" + settings.rules().maxBet()));
     }
 
-    private void swing() {
-        if (dealer != null) {
-            dealer.swingMainHand();
-        }
-    }
-
-    private void playSound(Sound sound, float pitch) {
-        Location at = layout.at(0, TableLayout.TOP, 0);
-        at.getWorld().playSound(at, sound, 1f, pitch);
-    }
-
-    private void broadcast(Component message) {
-        for (Seat seat : seats) {
-            if (seat != null && !seat.away) {
-                send(seat, message);
-            }
-        }
-    }
-
-    private static void send(Seat seat, Component message) {
-        Player player = Bukkit.getPlayer(seat.player);
-        if (player != null) {
-            player.sendMessage(message);
-        }
-    }
-
-    /** 再接続時に Geyser 拡張へ送り直すカードの一覧。 */
+    @Override
     void stateLines(List<String> out) {
         handViews.forEach(seat -> seat.forEach(hand -> hand.forEach(card -> out.add(card.stateLine()))));
         dealerViews.forEach(card -> out.add(card.stateLine()));

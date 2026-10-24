@@ -16,50 +16,65 @@ import org.bukkit.plugin.Plugin;
 import java.util.List;
 import java.util.logging.Logger;
 
-/** 設置用のテーブルアイテムとクラフトレシピ。 */
+/** 設置用のテーブルアイテム（種類ごと）とクラフトレシピ。 */
 final class TableItem {
 
+    private final Plugin plugin;
     private final NamespacedKey marker;
-    private final NamespacedKey recipeKey;
 
     TableItem(Plugin plugin) {
+        this.plugin = plugin;
         this.marker = new NamespacedKey(plugin, "table");
-        this.recipeKey = new NamespacedKey(plugin, "blackjack_table");
     }
 
-    ItemStack create() {
-        ItemStack item = Menus.named(Items.model("table/blackjack"), Component.text("ブラックジャックテーブル", NamedTextColor.GOLD),
-                List.of(Component.text("ブロックの上面に右クリックで置く", NamedTextColor.GRAY),
+    private NamespacedKey recipeKey(GameType type) {
+        return new NamespacedKey(plugin, type.id() + "_table");
+    }
+
+    ItemStack create(GameType type) {
+        ItemStack item = Menus.named(Items.model("table/" + type.id()), Component.text(type.displayName() + "テーブル", NamedTextColor.GOLD),
+                List.of(Component.text("ブロックの上面に右クリックで置く（4 x 2 ブロック）", NamedTextColor.GRAY),
                         Component.text("置いた人がスニーク + 右クリックで片付けられます", NamedTextColor.GRAY)));
-        item.editPersistentDataContainer(pdc -> pdc.set(marker, PersistentDataType.STRING, "blackjack"));
+        item.editPersistentDataContainer(pdc -> pdc.set(marker, PersistentDataType.STRING, type.id()));
         return item;
     }
 
-    boolean isTable(ItemStack item) {
-        return item != null && !item.isEmpty()
-                && "blackjack".equals(item.getPersistentDataContainer().get(marker, PersistentDataType.STRING));
+    /** テーブルアイテムならその種類、違えば null。 */
+    GameType typeOf(ItemStack item) {
+        if (item == null || item.isEmpty()) {
+            return null;
+        }
+        String id = item.getPersistentDataContainer().get(marker, PersistentDataType.STRING);
+        return id == null ? null : GameType.byId(id);
     }
 
     /**
-     * config.yml の table-recipe からレシピを登録する。材料は素材名か、#planks のようなタグ名。
+     * config.yml の recipes からレシピを登録する。材料は素材名か、#planks のようなタグ名。
      */
-    void registerRecipe(Plugin plugin, ConfigurationSection section, Logger logger) {
-        plugin.getServer().removeRecipe(recipeKey);
-        if (section == null || !section.getBoolean("enabled", true)) {
-            return;
+    void registerRecipes(ConfigurationSection recipes, Logger logger) {
+        for (GameType type : GameType.values()) {
+            plugin.getServer().removeRecipe(recipeKey(type));
+            ConfigurationSection section = recipes == null ? null : recipes.getConfigurationSection(type.id());
+            if (section != null && section.getBoolean("enabled", true)) {
+                register(type, section, logger);
+            }
         }
+    }
+
+    private void register(GameType type, ConfigurationSection section, Logger logger) {
+        String where = "recipes." + type.id();
         List<String> shape = section.getStringList("shape");
         ConfigurationSection ingredients = section.getConfigurationSection("ingredients");
         if (shape.isEmpty() || shape.size() > 3 || ingredients == null) {
-            logger.warning("table-recipe の shape か ingredients が不正なため、レシピを登録しません");
+            logger.warning(where + " の shape か ingredients が不正なため、レシピを登録しません");
             return;
         }
-        ShapedRecipe recipe = new ShapedRecipe(recipeKey, create());
+        ShapedRecipe recipe = new ShapedRecipe(recipeKey(type), create(type));
         recipe.shape(shape.toArray(String[]::new));
         for (String key : ingredients.getKeys(false)) {
             RecipeChoice choice = choice(ingredients.getString(key, ""));
             if (choice == null || key.length() != 1) {
-                logger.warning("table-recipe の材料 " + key + " を読めないため、レシピを登録しません");
+                logger.warning(where + " の材料 " + key + " を読めないため、レシピを登録しません");
                 return;
             }
             recipe.setIngredient(key.charAt(0), choice);

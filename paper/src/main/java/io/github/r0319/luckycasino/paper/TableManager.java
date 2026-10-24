@@ -47,14 +47,14 @@ final class TableManager implements Listener {
 
     private final LuckyCasinoPaper plugin;
     private final File file;
-    private final Map<String, BlackjackTable> tables = new LinkedHashMap<>();
+    private final Map<String, CasinoTable> tables = new LinkedHashMap<>();
 
     TableManager(LuckyCasinoPaper plugin) {
         this.plugin = plugin;
         this.file = new File(plugin.getDataFolder(), "tables.yml");
     }
 
-    Collection<BlackjackTable> tables() {
+    Collection<CasinoTable> tables() {
         return tables.values();
     }
 
@@ -70,13 +70,18 @@ final class TableManager implements Listener {
                 plugin.getLogger().warning("テーブル " + id + " のワールドが見つからないため読み込みません");
                 continue;
             }
-            TableLayout layout = new TableLayout(world, section.getDouble("x"), section.getDouble("y"), section.getDouble("z"),
+            Frame frame = new Frame(world, section.getDouble("x"), section.getDouble("y"), section.getDouble("z"),
                     (float) section.getDouble("yaw"));
+            GameType type = GameType.byId(section.getString("type", GameType.BLACKJACK.id()));
+            if (type == null) {
+                plugin.getLogger().warning("テーブル " + id + " の種類 " + section.getString("type") + " が分からないため読み込みません");
+                continue;
+            }
             UUID owner = parseUuid(section.getString("owner"));
-            tables.put(id, new BlackjackTable(plugin, id, layout, owner, plugin.bank(), plugin.tableSettings()));
+            tables.put(id, createTable(type, id, frame, owner, false));
         }
-        for (BlackjackTable table : tables.values()) {
-            Location origin = table.layout().origin();
+        for (CasinoTable table : tables.values()) {
+            Location origin = table.frame().origin();
             if (origin.getWorld().isChunkLoaded(origin.getBlockX() >> 4, origin.getBlockZ() >> 4)) {
                 table.spawn();
             }
@@ -85,14 +90,15 @@ final class TableManager implements Listener {
 
     private void save() {
         YamlConfiguration yaml = new YamlConfiguration();
-        for (BlackjackTable table : tables.values()) {
-            Location origin = table.layout().origin();
+        for (CasinoTable table : tables.values()) {
+            Location origin = table.frame().origin();
             ConfigurationSection section = yaml.createSection(table.id());
+            section.set("type", table.type().id());
             section.set("world", origin.getWorld().getName());
             section.set("x", origin.getX());
             section.set("y", origin.getY());
             section.set("z", origin.getZ());
-            section.set("yaw", table.layout().yaw());
+            section.set("yaw", table.frame().yaw());
             section.set("owner", table.owner() == null ? null : table.owner().toString());
         }
         try {
@@ -102,12 +108,36 @@ final class TableManager implements Listener {
         }
     }
 
-    void despawnAll() {
-        tables.values().forEach(BlackjackTable::despawn);
+    /**
+     * 種類に合わせてテーブルを作る（表示はまだ出さない）。selfTest なら練習用チップで、待ち時間を短くする。
+     */
+    CasinoTable createTable(GameType type, String id, Frame frame, UUID owner, boolean selfTest) {
+        Bank bank = selfTest ? new Bank.Practice(1000) : plugin.bank();
+        return switch (type) {
+            case BLACKJACK -> {
+                BlackjackSettings s = plugin.blackjackSettings();
+                yield new BlackjackTable(plugin, id, frame, owner, bank,
+                        selfTest ? new BlackjackSettings(s.rules(), 3, 5, s.buyIns()) : s);
+            }
+            case ROULETTE -> {
+                RouletteSettings s = plugin.rouletteSettings();
+                yield new RouletteTable(plugin, id, frame, owner, bank,
+                        selfTest ? new RouletteSettings(s.minBet(), s.maxBet(), s.maxTotal(), 5, s.buyIns()) : s);
+            }
+            case POKER -> {
+                PokerSettings s = plugin.pokerSettings();
+                yield new PokerTable(plugin, id, frame, owner, bank,
+                        selfTest ? new PokerSettings(s.smallBlind(), s.bigBlind(), 5, 2, s.buyIns()) : s);
+            }
+        };
     }
 
-    BlackjackTable tableOf(UUID player) {
-        for (BlackjackTable table : tables.values()) {
+    void despawnAll() {
+        tables.values().forEach(CasinoTable::despawn);
+    }
+
+    CasinoTable tableOf(UUID player) {
+        for (CasinoTable table : tables.values()) {
             if (table.seatOf(player) >= 0) {
                 return table;
             }
@@ -115,20 +145,20 @@ final class TableManager implements Listener {
         return null;
     }
 
-    private BlackjackTable tableAt(Block block) {
-        for (BlackjackTable table : tables.values()) {
-            if (table.layout().world().equals(block.getWorld()) && table.layout().contains(block)) {
+    private CasinoTable tableAt(Block block) {
+        for (CasinoTable table : tables.values()) {
+            if (table.frame().contains(block)) {
                 return table;
             }
         }
         return null;
     }
 
-    BlackjackTable nearest(Location location, double radius) {
-        BlackjackTable best = null;
+    CasinoTable nearest(Location location, double radius) {
+        CasinoTable best = null;
         double bestDistance = radius * radius;
-        for (BlackjackTable table : tables.values()) {
-            Location origin = table.layout().origin();
+        for (CasinoTable table : tables.values()) {
+            Location origin = table.frame().origin();
             if (origin.getWorld().equals(location.getWorld()) && origin.distanceSquared(location) <= bestDistance) {
                 best = table;
                 bestDistance = origin.distanceSquared(location);
@@ -138,7 +168,7 @@ final class TableManager implements Listener {
     }
 
     /** 両替メニューで選んだあと席に着かせる。ほかの卓に座っていたら断る。 */
-    void sit(Player player, BlackjackTable table, int seat, long chips) {
+    void sit(Player player, CasinoTable table, int seat, long chips) {
         if (tableOf(player.getUniqueId()) != null) {
             player.sendMessage(Component.text("先に今の席を立ってください", NamedTextColor.RED));
             return;
@@ -152,29 +182,33 @@ final class TableManager implements Listener {
 
     // ---- 設置と片付け ----
 
-    private void place(Player player, Block clicked, ItemStack item) {
+    private void place(Player player, Block clicked, ItemStack item, GameType type) {
         if (!player.hasPermission("luckycasino.place")) {
             player.sendMessage(Component.text("テーブルを置く権限がありません", NamedTextColor.RED));
             return;
         }
         float snapped = Math.round(player.getYaw() / 90f) * 90f;
         float yaw = ((snapped + 180f) % 360f + 360f) % 360f;
-        TableLayout layout = new TableLayout(clicked.getWorld(), clicked.getX(), clicked.getY() + 1, clicked.getZ(), yaw);
+        Frame frame = new Frame(clicked.getWorld(), clicked.getX(), clicked.getY() + 1, clicked.getZ(), yaw);
+        String id = UUID.randomUUID().toString().substring(0, 8);
+        CasinoTable table = createTable(type, id, frame, player.getUniqueId(), false);
+        TableShape shape = table.shape();
 
-        List<Block> footprint = layout.footprint();
+        List<Block> footprint = frame.footprint();
         for (Block block : footprint) {
             if (!block.isEmpty() || !block.getRelative(BlockFace.UP).isEmpty() || tableAt(block) != null) {
                 player.sendMessage(Component.text("4 x 2 ブロック、高さ 2 ブロックの空きが必要です", NamedTextColor.RED));
                 return;
             }
         }
-        for (int i = 0; i < TableLayout.SEATS; i++) {
-            if (!layout.at(layout.seat(i)).getBlock().isPassable()) {
-                player.sendMessage(Component.text("椅子を置く場所（手前）が塞がっています", NamedTextColor.RED));
+        for (int i = 0; i < shape.seats(); i++) {
+            Block seat = frame.at(shape.seat(i)).getBlock();
+            if (!seat.isPassable() || !seat.getRelative(BlockFace.UP).isPassable() || tableAt(seat) != null) {
+                player.sendMessage(Component.text("椅子を置く場所が塞がっています", NamedTextColor.RED));
                 return;
             }
         }
-        if (!layout.at(layout.dealer()).getBlock().isPassable()) {
+        if (!frame.at(shape.dealer()).getBlock().isPassable()) {
             player.sendMessage(Component.text("ディーラーが立つ場所（奥）が塞がっています", NamedTextColor.RED));
             return;
         }
@@ -198,21 +232,19 @@ final class TableManager implements Listener {
             return;
         }
 
-        String id = UUID.randomUUID().toString().substring(0, 8);
-        BlackjackTable table = new BlackjackTable(plugin, id, layout, player.getUniqueId(), plugin.bank(), plugin.tableSettings());
         tables.put(id, table);
         save();
         table.spawn();
         if (player.getGameMode() != GameMode.CREATIVE) {
             item.subtract();
         }
-        player.sendMessage(Component.text("ブラックジャックテーブルを置きました" + (plugin.bank().practice() ? "（このサーバーには経済プラグインが無いので練習用です）" : ""), NamedTextColor.GREEN));
+        player.sendMessage(Component.text(type.displayName() + "テーブルを置きました" + (plugin.bank().practice() ? "（このサーバーには経済プラグインが無いので練習用です）" : ""), NamedTextColor.GREEN));
     }
 
     /** 片付ける。座っている人がいれば精算してから。 */
-    void remove(BlackjackTable table, boolean dropItem) {
+    void remove(CasinoTable table, boolean dropItem) {
         table.despawn();
-        for (Block block : table.layout().footprint()) {
+        for (Block block : table.frame().footprint()) {
             if (block.getType() == Material.BARRIER) {
                 block.setType(Material.AIR, false);
             }
@@ -220,8 +252,8 @@ final class TableManager implements Listener {
         tables.remove(table.id());
         save();
         if (dropItem) {
-            Location at = table.layout().at(0, 1, 0);
-            at.getWorld().dropItemNaturally(at, plugin.tableItem().create());
+            Location at = table.frame().at(0, 1, 0);
+            at.getWorld().dropItemNaturally(at, plugin.tableItem().create(table.type()));
         }
     }
 
@@ -233,7 +265,7 @@ final class TableManager implements Listener {
         if (!(clicked instanceof Interaction) || event.getHand() != EquipmentSlot.HAND) {
             return;
         }
-        for (BlackjackTable table : tables.values()) {
+        for (CasinoTable table : tables.values()) {
             int seat = table.seatOfHitbox(clicked);
             if (seat < 0) {
                 continue;
@@ -241,7 +273,7 @@ final class TableManager implements Listener {
             event.setCancelled(true);
             Player player = event.getPlayer();
             if (table.seatOf(player.getUniqueId()) >= 0) {
-                plugin.menus().openBet(player, table);
+                table.openMenu(player);
             } else if (table.seat(seat) != null) {
                 player.sendMessage(Component.text("その席は " + table.seat(seat).name + " が使っています", NamedTextColor.GRAY));
             } else if (tableOf(player.getUniqueId()) != null) {
@@ -260,7 +292,7 @@ final class TableManager implements Listener {
         }
         Player player = event.getPlayer();
         Block block = event.getClickedBlock();
-        BlackjackTable table = block.getType() == Material.BARRIER ? tableAt(block) : null;
+        CasinoTable table = block.getType() == Material.BARRIER ? tableAt(block) : null;
         if (table != null) {
             event.setCancelled(true);
             if (player.isSneaking() && (player.getUniqueId().equals(table.owner()) || player.hasPermission(ADMIN))) {
@@ -271,15 +303,16 @@ final class TableManager implements Listener {
                     player.sendMessage(Component.text("テーブルを片付けました", NamedTextColor.GREEN));
                 }
             } else if (table.seatOf(player.getUniqueId()) >= 0) {
-                plugin.menus().openBet(player, table);
+                table.openMenu(player);
             }
             return;
         }
         ItemStack item = event.getItem();
-        if (plugin.tableItem().isTable(item)) {
+        GameType type = plugin.tableItem().typeOf(item);
+        if (type != null) {
             event.setCancelled(true);
             if (event.getBlockFace() == BlockFace.UP) {
-                place(player, block, item);
+                place(player, block, item, type);
             } else {
                 player.sendMessage(Component.text("ブロックの上面をクリックして置いてください", NamedTextColor.GRAY));
             }
@@ -298,7 +331,7 @@ final class TableManager implements Listener {
         if (!(event.getEntity() instanceof Player player)) {
             return;
         }
-        for (BlackjackTable table : tables.values()) {
+        for (CasinoTable table : tables.values()) {
             if (table.isMount(event.getDismounted())) {
                 table.leave(player.getUniqueId());
                 return;
@@ -308,7 +341,7 @@ final class TableManager implements Listener {
 
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
-        BlackjackTable table = tableOf(event.getPlayer().getUniqueId());
+        CasinoTable table = tableOf(event.getPlayer().getUniqueId());
         if (table != null) {
             table.leave(event.getPlayer().getUniqueId());
         }
@@ -316,7 +349,7 @@ final class TableManager implements Listener {
 
     @EventHandler
     public void onChunkLoad(ChunkLoadEvent event) {
-        for (BlackjackTable table : tables.values()) {
+        for (CasinoTable table : tables.values()) {
             if (!table.spawned() && inChunk(table, event.getChunk())) {
                 table.spawn();
             }
@@ -325,15 +358,15 @@ final class TableManager implements Listener {
 
     @EventHandler
     public void onChunkUnload(ChunkUnloadEvent event) {
-        for (BlackjackTable table : tables.values()) {
+        for (CasinoTable table : tables.values()) {
             if (table.spawned() && inChunk(table, event.getChunk())) {
                 table.despawn();
             }
         }
     }
 
-    private static boolean inChunk(BlackjackTable table, Chunk chunk) {
-        Location origin = table.layout().origin();
+    private static boolean inChunk(CasinoTable table, Chunk chunk) {
+        Location origin = table.frame().origin();
         return origin.getWorld().equals(chunk.getWorld())
                 && origin.getBlockX() >> 4 == chunk.getX() && origin.getBlockZ() >> 4 == chunk.getZ();
     }

@@ -157,9 +157,9 @@ final class CardView {
     }
 
     /** カードの長い辺（Z 軸）を軸に degrees 度回した姿勢。 */
-    private static Transformation transform(Vector3f translation, float degrees) {
+    static Transformation transform(Vector3f translation, float degrees) {
         AxisAngle4f rotation = new AxisAngle4f((float) Math.toRadians(degrees), 0f, 0f, 1f);
-        float s = TableLayout.CARD_SCALE;
+        float s = BlackjackLayout.CARD_SCALE;
         return new Transformation(new Vector3f(translation), rotation, new Vector3f(s, s, s), new AxisAngle4f());
     }
 }
