@@ -1,0 +1,10 @@
+name: LuckyCasinoPrototype
+version: '${version}'
+main: io.github.r0319.luckycasino.paper.LuckyCasinoPaper
+api-version: '26.2'
+description: カード 1 枚の表示試作（Java 版 ItemDisplay + 統合版 Geyser 拡張）
+author: R0319
+permissions:
+  luckycasino.prototype:
+    description: 試作コマンド /lccard を使う
+    default: op

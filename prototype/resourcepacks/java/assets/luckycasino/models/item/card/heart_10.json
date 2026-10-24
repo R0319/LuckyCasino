@@ -1,0 +1,7 @@
+{
+  "parent": "luckycasino:item/card_base",
+  "textures": {
+    "front": "luckycasino:item/card/front/heart_10",
+    "back": "luckycasino:item/card/back"
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "format_version": "1.12.0",
+  "minecraft:geometry": [
+    {
+      "description": {
+        "identifier": "geometry.luckycasino.card",
+        "texture_width": 256,
+        "texture_height": 128,
+        "visible_bounds_width": 2,
+        "visible_bounds_height": 1,
+        "visible_bounds_offset": [0, 0.25, 0]
+      },
+      "bones": [
+        {
+          "name": "root",
+          "pivot": [0, 0, 0]
+        },
+        {
+          "name": "card",
+          "parent": "root",
+          "pivot": [0, 0.05, 0],
+          "cubes": [
+            {
+              "origin": [-5, 0, -7],
+              "size": [10, 0.1, 14],
+              "uv": {
+                "up": {"uv": [128, 0], "uv_size": [90, 126]},
+                "down": {"uv": [0, 0], "uv_size": [90, 126]},
+                "north": {"uv": [100, 0], "uv_size": [1, 1]},
+                "south": {"uv": [100, 0], "uv_size": [1, 1]},
+                "east": {"uv": [100, 0], "uv_size": [1, 1]},
+                "west": {"uv": [100, 0], "uv_size": [1, 1]}
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

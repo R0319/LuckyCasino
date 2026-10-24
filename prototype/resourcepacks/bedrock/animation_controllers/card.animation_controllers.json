@@ -1,0 +1,46 @@
+{
+  "format_version": "1.10.0",
+  "animation_controllers": {
+    "controller.animation.luckycasino.card": {
+      "initial_state": "default",
+      "states": {
+        "default": {
+          "transitions": [
+            {"up": "q.property('luckycasino:settled') && q.property('luckycasino:face_up')"},
+            {"down": "q.property('luckycasino:settled')"},
+            {"dealing": "!q.property('luckycasino:settled')"}
+          ]
+        },
+        "dealing": {
+          "animations": ["deal"],
+          "transitions": [
+            {"down": "q.all_animations_finished"}
+          ]
+        },
+        "down": {
+          "transitions": [
+            {"flipping_up": "q.property('luckycasino:face_up')"}
+          ]
+        },
+        "flipping_up": {
+          "animations": ["flip_up"],
+          "transitions": [
+            {"flipping_down": "!q.property('luckycasino:face_up')"}
+          ]
+        },
+        "up": {
+          "animations": ["pose_up"],
+          "transitions": [
+            {"flipping_down": "!q.property('luckycasino:face_up')"}
+          ]
+        },
+        "flipping_down": {
+          "animations": ["flip_down"],
+          "transitions": [
+            {"flipping_up": "q.property('luckycasino:face_up')"}
+          ]
+        }
+      }
+    }
+  }
+}

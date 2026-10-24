@@ -1,0 +1,9 @@
+# Velocity 上の LuckyCasino Geyser 拡張との通信設定
+bridge:
+  # false にすると通信しない（統合版にはカードが見えなくなる）
+  enabled: true
+  # Velocity が動いているマシンの LAN 内 IP アドレス
+  host: 127.0.0.1
+  port: 25590
+  # Geyser 拡張の config.properties にある key と同じ値を入れる
+  key: ''
