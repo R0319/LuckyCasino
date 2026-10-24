@@ -141,6 +141,7 @@ final class SelfTest {
         finished++;
         idleSeconds = 0;
         check("勝負 " + finished);
+        plugin.getLogger().info("[自己テスト] " + finished + "/" + rounds + " 回目まで終了（問題 " + failures.size() + " 件）");
         if (finished >= rounds) {
             // 卓の処理の途中なので、片付けは次の tick で
             plugin.getServer().getScheduler().runTask(plugin, () -> finish(null));
