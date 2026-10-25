@@ -461,7 +461,7 @@ final class RouletteTable extends CasinoTable {
     }
 
     static Component numberText(int n) {
-        NamedTextColor color = n == 0 ? NamedTextColor.GREEN : Wheel.red(n) ? NamedTextColor.RED : NamedTextColor.DARK_GRAY;
+        NamedTextColor color = n == 0 ? NamedTextColor.GREEN : Wheel.red(n) ? NamedTextColor.RED : NamedTextColor.WHITE;
         String name = n == 0 ? "緑" : Wheel.red(n) ? "赤" : "黒";
         return Component.text(n + " " + name, color);
     }

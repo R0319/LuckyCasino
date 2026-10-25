@@ -353,20 +353,30 @@ def dealer_button_texture():
 BLACK_TEXT = (30, 30, 36, 255)
 
 
+def for_item_display(img, used_height=None):
+    """ItemDisplay はモデルを Y 軸まわりに 180 度回して描く（23w16a 以降）。
+    フェルトやホイールの絵はテーブルの局所座標（u → +X、v → +Z）で描いているので、
+    UV で使う範囲（上から used_height 行）を 180 度回しておくと、ゲーム内で局所座標どおりの位置・向きに見える。"""
+    h = used_height or img.height
+    out = img.copy()
+    out.paste(img.crop((0, 0, img.width, h)).rotate(180), (0, 0))
+    return out
+
+
 def main():
     tex = JAVA / "textures" / "block"
     tex.mkdir(parents=True, exist_ok=True)
-    felt().save(tex / "blackjack_felt.png")
+    for_item_display(felt(), 48).save(tex / "blackjack_felt.png")
     write_json(JAVA / "models" / "item" / "table" / "blackjack.json", table_model("blackjack_felt"))
     write_json(JAVA / "items" / "table" / "blackjack.json",
                {"model": {"type": "minecraft:model", "model": "luckycasino:item/table/blackjack"}})
 
-    roulette_felt().save(tex / "roulette_felt.png")
-    wheel_texture().save(tex / "roulette_wheel.png")
+    for_item_display(roulette_felt(), 96).save(tex / "roulette_felt.png")
+    for_item_display(wheel_texture()).save(tex / "roulette_wheel.png")
     write_json(JAVA / "models" / "item" / "table" / "roulette.json", table_model("roulette_felt"))
     write_json(JAVA / "models" / "item" / "roulette" / "wheel.json", wheel_model())
     write_json(JAVA / "models" / "item" / "roulette" / "ball.json", ball_model())
-    poker_felt().save(tex / "poker_felt.png")
+    for_item_display(poker_felt(), 48).save(tex / "poker_felt.png")
     write_json(JAVA / "models" / "item" / "table" / "poker.json", table_model("poker_felt"))
     for path in ("table/roulette", "table/poker", "roulette/wheel", "roulette/ball", "poker/button"):
         write_json(JAVA / "items" / f"{path}.json",
@@ -380,7 +390,7 @@ def main():
             model = f"luckycasino:item/chip/{name}_{n}"
             write_json(JAVA / "models" / "item" / "chip" / f"{name}_{n}.json", chip_stack_model(name, n))
             write_json(JAVA / "items" / "chip" / f"{name}_{n}.json", {"model": {"type": "minecraft:model", "model": model}})
-    dealer_button_texture().save(ctex / "dealer.png")
+    for_item_display(dealer_button_texture()).save(ctex / "dealer.png")
     write_json(JAVA / "models" / "item" / "poker" / "button.json", chip_stack_model("dealer", 1))
 
 

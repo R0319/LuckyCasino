@@ -1,0 +1,135 @@
+<title>LuckyCasino プレビュー</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DotGothic16&family=IBM+Plex+Sans+JP:wght@400;600&display=swap">
+<style>
+/* レイアウト: 夜のカジノの床。上に卓の映像、下に操作とチャット欄。暗い一色で固定 */
+:root {
+  --bg: #0d1412;
+  --panel: #15201c;
+  --line: #2a3a33;
+  --fg: #e8efe9;
+  --muted: #93a79c;
+  --brass: #d8b45a;
+  --felt: #1f6b45;
+  --chat: rgba(0, 0, 0, .45);
+  --font-display: "DotGothic16", "IBM Plex Sans JP", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans JP", system-ui, -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
+  color-scheme: dark;
+}
+html, body { background: var(--bg); color: var(--fg); }
+body {
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.6;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 40px;
+}
+.wrap { max-width: 1180px; margin: 0 auto; display: grid; gap: 16px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; }
+h1 { font-family: var(--font-display); font-weight: 400; font-size: 26px; margin: 0; color: var(--brass); letter-spacing: .02em; }
+header p { margin: 0; color: var(--muted); max-width: 62ch; }
+.tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+button, select {
+  font: inherit; color: var(--fg); background: var(--panel); border: 1px solid var(--line);
+  border-radius: 6px; padding: 6px 12px; cursor: pointer;
+}
+button:hover, select:hover { border-color: var(--brass); }
+button:focus-visible, select:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+.tabs button { font-family: var(--font-display); font-size: 17px; padding: 8px 16px; }
+.tabs button[aria-pressed="true"] { background: var(--felt); border-color: var(--brass); }
+.main { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 16px; }
+@media (max-width: 860px) { .main { grid-template-columns: minmax(0, 1fr); } }
+.stage { position: relative; background: #000; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; aspect-ratio: 16 / 10; max-width: 100%; }
+.stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.hud {
+  position: absolute; left: 10px; top: 8px; font-family: var(--font-display); font-size: 14px;
+  color: var(--fg); background: var(--chat); padding: 2px 8px; border-radius: 4px; pointer-events: none;
+}
+.actionbar {
+  position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); font-family: var(--font-display);
+  font-size: 15px; color: #ffff55; text-shadow: 2px 2px 0 #3f3f15; pointer-events: none; white-space: nowrap;
+}
+.title-overlay {
+  position: absolute; inset: 0; display: grid; place-content: center; text-align: center; pointer-events: none;
+  font-family: var(--font-display); text-shadow: 3px 3px 0 rgba(0,0,0,.6);
+}
+.title-overlay[hidden] { display: none; }
+.title-overlay .t { font-size: clamp(28px, 6vw, 56px); }
+.title-overlay .s { font-size: clamp(14px, 2.4vw, 22px); }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.controls label { color: var(--muted); font-size: 13px; display: flex; gap: 6px; align-items: center; }
+.progress { flex: 1 1 160px; height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; min-width: 120px; }
+.progress div { height: 100%; width: 0; background: var(--brass); }
+aside { display: grid; gap: 12px; align-content: start; min-width: 0; }
+.chat {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px;
+  font-family: var(--font-display); font-size: 13.5px; line-height: 1.55; height: 360px; overflow-y: auto;
+}
+.chat h2, .notes h2 { font-family: var(--font-body); font-size: 13px; font-weight: 600; color: var(--muted); margin: 0 0 6px; letter-spacing: .06em; }
+.chat .line { margin: 0; overflow-wrap: anywhere; }
+.notes { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font-size: 13px; color: var(--muted); }
+.notes ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+.loading { position: absolute; inset: 0; display: grid; place-content: center; color: var(--muted); font-family: var(--font-display); }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>LuckyCasino プレビュー</h1>
+    <p>プラグインと同じ位置・動きの長さ（1 秒 = 20 tick）で、リソースパックのモデルを使って 1 回分の勝負を再生します。ドラッグで視点を回せます。</p>
+  </header>
+  <div class="tabs" role="group" aria-label="ゲーム">
+    <button type="button" id="tab-blackjack" data-game="blackjack" aria-pressed="true">ブラックジャック</button>
+    <button type="button" id="tab-roulette" data-game="roulette" aria-pressed="false">ルーレット</button>
+    <button type="button" id="tab-poker" data-game="poker" aria-pressed="false">ポーカー</button>
+  </div>
+  <div class="main">
+    <div style="display:grid;gap:10px;min-width:0">
+      <div class="stage" id="stage">
+        <div class="loading" id="loading">読み込み中…</div>
+        <div class="hud" id="hud"></div>
+        <div class="actionbar" id="actionbar"></div>
+        <div class="title-overlay" id="titleOverlay" hidden><div class="t" id="titleMain"></div><div class="s" id="titleSub"></div></div>
+      </div>
+      <div class="controls">
+        <button type="button" id="play">一時停止</button>
+        <button type="button" id="restart">最初から</button>
+        <label for="speed">速さ
+          <select id="speed"><option value="0.5">0.5 倍</option><option value="1" selected>等倍</option><option value="2">2 倍</option></select>
+        </label>
+        <label for="camera">視点
+          <select id="camera">
+            <option value="seat" selected>席に座った目線</option>
+            <option value="high">斜め上から</option>
+            <option value="top">真上から</option>
+          </select>
+        </label>
+        <div class="progress" aria-hidden="true"><div id="bar"></div></div>
+      </div>
+    </div>
+    <aside>
+      <div class="chat" id="chat" aria-live="polite"><h2>チャット（座っている人に届く文）</h2></div>
+      <div class="notes">
+        <h2>実機との違い</h2>
+        <ul>
+          <li>板材・金ブロックなどバニラのテクスチャは近い色で代用しています。</li>
+          <li>ディーラーとボットは単純な人形です（実機はプレイヤーと同じ見た目の Mannequin）。</li>
+          <li>光の当たり方は面ごとの明るさだけ真似ています。音は鳴りません。</li>
+          <li>ルーレットのベット受付は 20 秒のところを 6 秒に縮めています。</li>
+        </ul>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+/*ASSETS*/
+</script>
+<script>
+/*PREVIEW_JS*/
+</script>

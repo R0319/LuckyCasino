@@ -114,3 +114,7 @@ Paper（hub / survival）                         Velocity
 3. ポートは LAN 内からだけ届くようにしてください。
 
 裏向きのカードは番号 0 で送るので、通信や統合版クライアントから伏せ札は読めません。Geyser は API 2.11.0 以上が必要です。
+
+## アニメーションのプレビュー
+
+`dist/preview.html` をブラウザで開くと、3 ゲームの 1 回分の勝負を、リソースパックのモデルとプラグインと同じ位置・tick で再生します（three.js を CDN から読み込みます）。モデルやテクスチャ、`tools/preview/preview.js` を変えたら `tools/preview` で `python3 build.py` を実行して作り直してください。動きのタイミングを Java 側で変えたときは、`preview.js` の同じ箇所も合わせて直します。

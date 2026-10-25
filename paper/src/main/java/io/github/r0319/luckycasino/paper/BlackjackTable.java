@@ -43,6 +43,9 @@ final class BlackjackTable extends CasinoTable {
 
     private static final BlackjackLayout LAYOUT = new BlackjackLayout();
 
+    /** 手札の合計の文字の大きさ。席の間隔（0.8 ブロック）に「ブラックジャック」が収まる大きさ。 */
+    private static final float HAND_LABEL_SCALE = 0.45f;
+
     private final BlackjackSettings settings;
     private final Shoe shoe;
     private final boolean[] confirmed = new boolean[BlackjackLayout.SEATS];
@@ -285,10 +288,10 @@ final class BlackjackTable extends CasinoTable {
                 ChipView chips = new ChipView();
                 chips.show(frame.at(LAYOUT.chips(i)), bet);
                 betViews.get(i).add(chips);
-                handLabels.get(i).add(label(LAYOUT.handLabel(i, 0, 1), 0.6f));
+                handLabels.get(i).add(label(LAYOUT.handLabel(i, 0, 1), HAND_LABEL_SCALE));
             }
         }
-        dealerLabel = label(LAYOUT.dealerLabel(), 0.6f);
+        dealerLabel = label(LAYOUT.dealerLabel(), HAND_LABEL_SCALE);
         broadcast(Component.text("ノーモアベット。配ります", NamedTextColor.AQUA));
         enqueue(round.deal());
     }
@@ -535,7 +538,7 @@ final class BlackjackTable extends CasinoTable {
             bets.get(h).show(chipSpot(seat, h), amount);
         }
         List<TextDisplay> labels = handLabels.get(seat);
-        labels.add(label(LAYOUT.handLabel(seat, newHand, hands), 0.6f));
+        labels.add(label(LAYOUT.handLabel(seat, newHand, hands), HAND_LABEL_SCALE));
         for (int h = 0; h < labels.size(); h++) {
             labels.get(h).teleport(frame.at(LAYOUT.handLabel(seat, h, hands)));
             updateHandLabel(seat, h, null);
@@ -579,7 +582,8 @@ final class BlackjackTable extends CasinoTable {
             case PUSH -> NamedTextColor.YELLOW;
             case LOSE, BUST -> NamedTextColor.RED;
         };
-        updateHandLabel(e.seat(), e.hand(), Component.text(result, color));
+        // 合計の行に「ブラックジャック」と出ているので、結果の行は短く
+        updateHandLabel(e.seat(), e.hand(), Component.text(e.outcome() == Outcome.BLACKJACK ? "3:2 で勝ち" : result, color));
         switch (e.outcome()) {
             case LOSE, BUST -> bet.slideTo(frame.at(LAYOUT.dealerChips()));
             case WIN, BLACKJACK -> {
