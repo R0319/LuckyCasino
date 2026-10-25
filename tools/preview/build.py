@@ -8,6 +8,7 @@
 import base64
 import io
 import json
+import sys
 from pathlib import Path
 
 from PIL import Image, ImageDraw
@@ -123,9 +124,16 @@ def main():
     html = (HERE / "template.html").read_text()
     html = html.replace("/*ASSETS*/", "const ASSETS = " + assets + ";")
     # games.js（賭け場所を選ぶ卓）は preview.js の後ろにつなげる（GAMES とタブに足す）
-    html = html.replace("/*PREVIEW_JS*/", (HERE / "preview.js").read_text() + "\n" + (HERE / "games.js").read_text())
-    OUT.write_text(html)
-    print(OUT, len(html) // 1024, "KB,", len(models), "models,", len(textures), "textures")
+    js = (HERE / "preview.js").read_text() + "\n" + (HERE / "games.js").read_text()
+    out = OUT
+    if "designs" in sys.argv[1:]:
+        # デザイン案のページ（designs.js がタブを差し替える）
+        js += "\n" + (HERE / "designs.js").read_text()
+        out = OUT.with_name("designs.html")
+        html = html.replace("<title>LuckyCasino プレビュー</title>", "<title>LuckyCasino デザイン案</title>")
+    html = html.replace("/*PREVIEW_JS*/", js)
+    out.write_text(html)
+    print(out, len(html) // 1024, "KB,", len(models), "models,", len(textures), "textures")
 
 
 if __name__ == "__main__":
