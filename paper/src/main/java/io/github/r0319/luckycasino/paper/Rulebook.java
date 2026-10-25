@@ -27,11 +27,12 @@ final class Rulebook {
             case ROULETTE -> roulette();
             case POKER -> poker(pictures);
             case SLOT -> slot(pictures);
+            case BACCARAT -> GameRules.baccarat();
         });
         player.openBook(Book.book(Component.text(type.displayName() + "のルール"), Component.text("LuckyCasino"), pages));
     }
 
-    private static Component page(String title, String... lines) {
+    static Component page(String title, String... lines) {
         Component page = Component.text(title, NamedTextColor.DARK_BLUE).decorate(TextDecoration.BOLD);
         for (String line : lines) {
             page = page.append(Component.newline()).append(Component.text(line, NamedTextColor.BLACK).decoration(TextDecoration.BOLD, false));

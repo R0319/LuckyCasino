@@ -62,6 +62,19 @@ slot:
     cherry2: 4
     cherry3: 20
 
+# バカラ（プント・バンコ、8 デッキ）。席ごとの枠にプレイヤー・バンカー・タイ・ペアを賭ける
+baccarat:
+  # 1 か所に置ける最低額・最高額
+  min-bet: 10
+  max-bet: 1000
+  # 1 回に 1 人が賭けられる合計
+  max-total: 2000
+  # 最初の人が賭けてから締め切るまで（秒）
+  betting-seconds: 15
+  buy-ins: [100, 500, 1000, 5000]
+  # 賭けたあと（と勝負の間）は、スニークで立っても精算せずに歩ける。卓からこの距離（ブロック）を超えたら精算
+  standing-range: 8
+
 # テーブルのクラフトレシピ。材料は素材名か、#planks のようなタグ名。使わないなら enabled: false
 recipes:
   blackjack:
@@ -106,6 +119,18 @@ recipes:
       G: glass_pane
       R: redstone
       D: gold_ingot
+  baccarat:
+    enabled: true
+    shape:
+      - BCR
+      - PGP
+      - 'P P'
+    ingredients:
+      B: blue_carpet
+      C: green_carpet
+      R: red_carpet
+      P: '#planks'
+      G: gold_ingot
 
 # Geyser 拡張（統合版にカードを見せる）との通信
 bridge:

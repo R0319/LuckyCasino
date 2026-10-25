@@ -41,7 +41,10 @@ final class Achievements implements Listener {
         ROYAL_FLUSH("poker/royal_flush", STRAIGHT_FLUSH, "achievement/royal_flush", "ロイヤルストレートフラッシュ", "ポーカーのショーダウンでロイヤルストレートフラッシュを見せる", Frame.CHALLENGE),
 
         SLOT_BARS("slot/bars", FIRST_PLAY, "achievement/slot_bars", "BAR そろい", "スロットで BAR を 3 つそろえる", Frame.GOAL),
-        SLOT_SEVENS("slot/sevens", SLOT_BARS, "achievement/slot_sevens", "ラッキー 777", "スロットで 7 を 3 つそろえる", Frame.CHALLENGE);
+        SLOT_SEVENS("slot/sevens", SLOT_BARS, "achievement/slot_sevens", "ラッキー 777", "スロットで 7 を 3 つそろえる", Frame.CHALLENGE),
+
+        BACCARAT_TIE("baccarat/tie", FIRST_PLAY, "achievement/baccarat_tie", "痛み分け", "バカラでタイ（引き分け）に賭けて当てる", Frame.GOAL),
+        BACCARAT_PAIR("baccarat/pair", BACCARAT_TIE, "achievement/baccarat_pair", "ペアの予感", "バカラでペアに賭けて当てる", Frame.GOAL);
 
         final String path;
         final Achievement parent;

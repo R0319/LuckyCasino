@@ -154,7 +154,13 @@ final class TableManager implements Listener {
                         selfTest ? new PokerSettings(s.smallBlind(), s.bigBlind(), 5, 2, s.buyIns()) : s);
             }
             case SLOT -> new SlotMachine(plugin, id, frame, owner, bank, plugin.slotSettings());
+            case BACCARAT -> new BaccaratTable(plugin, id, frame, owner, bank, spot(type, selfTest));
         };
+    }
+
+    private SpotSettings spot(GameType type, boolean selfTest) {
+        SpotSettings s = plugin.spotSettings(type);
+        return selfTest ? s.quick() : s;
     }
 
     void despawnAll() {

@@ -32,6 +32,8 @@ public final class LuckyCasinoPaper extends JavaPlugin {
     private TableManager tables;
     private Achievements achievements;
     private DealerMenu dealerMenu;
+    private SpotMenu spotMenu;
+    private final java.util.Map<GameType, SpotSettings> spotSettings = new java.util.EnumMap<>(GameType.class);
 
     @Override
     public void onEnable() {
@@ -47,6 +49,11 @@ public final class LuckyCasinoPaper extends JavaPlugin {
         rouletteSettings = RouletteSettings.load(section("roulette"));
         pokerSettings = PokerSettings.load(section("poker"));
         slotSettings = SlotSettings.load(section("slot"));
+        for (GameType type : GameType.values()) {
+            if (type.spotBets()) {
+                spotSettings.put(type, SpotSettings.load(section(type.id())));
+            }
+        }
         getLogger().info(String.format("スロットの還元率 %.1f%%、何か戻る確率 %.1f%%（5 ライン）",
                 slotSettings.paytable().returnRate() * 100, slotSettings.paytable().hitRate() * 100));
         tableItem = new TableItem(this);
@@ -57,6 +64,8 @@ public final class LuckyCasinoPaper extends JavaPlugin {
         menus = new Menus(this);
         tables = new TableManager(this);
         dealerMenu = new DealerMenu(this);
+        spotMenu = new SpotMenu(this);
+        getServer().getPluginManager().registerEvents(spotMenu, this);
         getServer().getPluginManager().registerEvents(menus, this);
         getServer().getPluginManager().registerEvents(dealerMenu, this);
         getServer().getPluginManager().registerEvents(tables, this);
@@ -158,6 +167,14 @@ public final class LuckyCasinoPaper extends JavaPlugin {
 
     SlotSettings slotSettings() {
         return slotSettings;
+    }
+
+    SpotSettings spotSettings(GameType type) {
+        return spotSettings.get(type);
+    }
+
+    SpotMenu spotMenu() {
+        return spotMenu;
     }
 
     PokerSettings pokerSettings() {

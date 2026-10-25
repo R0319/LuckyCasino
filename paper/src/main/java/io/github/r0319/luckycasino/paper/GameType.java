@@ -5,7 +5,8 @@ enum GameType {
     BLACKJACK("blackjack", "ブラックジャック", "ブラックジャックテーブル", false),
     ROULETTE("roulette", "ルーレット", "ルーレットテーブル", false),
     POKER("poker", "ポーカー", "ポーカーテーブル", false),
-    SLOT("slot", "スロット", "スロットマシン", true);
+    SLOT("slot", "スロット", "スロットマシン", true),
+    BACCARAT("baccarat", "バカラ", "バカラテーブル", false);
 
     private final String id;
     private final String displayName;
@@ -22,6 +23,11 @@ enum GameType {
     /** 設置アイテムの名前。 */
     String itemName() {
         return itemName;
+    }
+
+    /** 賭け場所を選んで賭ける卓（SpotTable）か。設定は config.yml の同じ名前の節（SpotSettings）。 */
+    boolean spotBets() {
+        return this == BACCARAT;
     }
 
     /** 1 ブロックの台（ブロックの中心に置く）か。 */

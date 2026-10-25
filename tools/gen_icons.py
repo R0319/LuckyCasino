@@ -214,6 +214,29 @@ def slot_sevens():
     return img
 
 
+def baccarat_tie():
+    """痛み分け: 青（プレイヤー）と赤（バンカー）の枠に、同じ 7 点。"""
+    img = Image.new("RGBA", (SIZE, SIZE), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    d.rounded_rectangle([2, 8, 35, 64], 4, fill=(40, 70, 150, 255), outline=(24, 40, 100, 255), width=2)
+    d.rounded_rectangle([36, 8, 69, 64], 4, fill=RED, outline=RED_DARK, width=2)
+    paste(img, card("spade_7"), 8, 22)
+    paste(img, card("heart_7"), 42, 22)
+    # 真ん中の「=」
+    d.rectangle([30, 30, 41, 33], fill=GOLD, outline=OUTLINE)
+    d.rectangle([30, 38, 41, 41], fill=GOLD, outline=OUTLINE)
+    return img
+
+
+def baccarat_pair():
+    img = fan(["heart_q", "spade_q"], spread=16, tilt=10)
+    d = ImageDraw.Draw(img)
+    chip(d, 52, 54, 10, (40, 70, 170, 255), (24, 40, 110, 255))
+    sparkle(img, 10, 12)
+    sparkle(img, 62, 10, 2)
+    return img
+
+
 ICONS = {
     "first_play": first_play,
     "blackjack": blackjack,
@@ -226,6 +249,8 @@ ICONS = {
     "royal_flush": royal_flush,
     "slot_bars": slot_bars,
     "slot_sevens": slot_sevens,
+    "baccarat_tie": baccarat_tie,
+    "baccarat_pair": baccarat_pair,
 }
 
 

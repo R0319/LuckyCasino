@@ -122,7 +122,8 @@ def main():
     assets = json.dumps({"models": models, "textures": textures}, separators=(",", ":"))
     html = (HERE / "template.html").read_text()
     html = html.replace("/*ASSETS*/", "const ASSETS = " + assets + ";")
-    html = html.replace("/*PREVIEW_JS*/", (HERE / "preview.js").read_text())
+    # games.js（賭け場所を選ぶ卓）は preview.js の後ろにつなげる（GAMES とタブに足す）
+    html = html.replace("/*PREVIEW_JS*/", (HERE / "preview.js").read_text() + "\n" + (HERE / "games.js").read_text())
     OUT.write_text(html)
     print(OUT, len(html) // 1024, "KB,", len(models), "models,", len(textures), "textures")
 
