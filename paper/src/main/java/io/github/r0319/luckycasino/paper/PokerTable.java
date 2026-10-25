@@ -2,6 +2,7 @@ package io.github.r0319.luckycasino.paper;
 
 import io.github.r0319.luckycasino.card.Card;
 import io.github.r0319.luckycasino.card.Shoe;
+import io.github.r0319.luckycasino.poker.HandValue;
 import io.github.r0319.luckycasino.poker.Legal;
 import io.github.r0319.luckycasino.poker.PokerAction;
 import io.github.r0319.luckycasino.poker.PokerEvent;
@@ -464,6 +465,7 @@ final class PokerTable extends CasinoTable {
                 lastAction[e.seat()] = e.value().displayName();
                 updateSeatLabel(e.seat());
                 Seat seat = seats[e.seat()];
+                unlock(seat, e.value());
                 broadcast(Component.text((seat == null ? "席 " + (e.seat() + 1) : seat.name) + ": ", NamedTextColor.WHITE)
                         .append(cardText(e.first())).append(Component.space()).append(cardText(e.second()))
                         .append(Component.text(" " + e.value().displayName(), NamedTextColor.GOLD)));
@@ -478,6 +480,7 @@ final class PokerTable extends CasinoTable {
                 for (int i = 0; i < SEATS; i++) {
                     Seat seat = seats[i];
                     if (inHand[i] && seat != null) {
+                        achieve(seat, Achievements.Achievement.FIRST_PLAY);
                         seat.chips = stacks.get(i);
                         seat.atRisk = 0;
                         writeLedger(seat);
@@ -487,6 +490,16 @@ final class PokerTable extends CasinoTable {
                 yield 0;
             }
         };
+    }
+
+    private void unlock(Seat seat, HandValue value) {
+        switch (value.category()) {
+            case FOUR_OF_A_KIND -> achieve(seat, Achievements.Achievement.FOUR_OF_A_KIND);
+            case STRAIGHT_FLUSH -> achieve(seat, value.royal()
+                    ? Achievements.Achievement.ROYAL_FLUSH : Achievements.Achievement.STRAIGHT_FLUSH);
+            default -> {
+            }
+        }
     }
 
     private void dealHole(int index, int k, Card card) {

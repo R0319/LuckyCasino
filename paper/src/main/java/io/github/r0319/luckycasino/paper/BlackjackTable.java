@@ -7,6 +7,7 @@ import io.github.r0319.luckycasino.blackjack.Hand;
 import io.github.r0319.luckycasino.blackjack.Outcome;
 import io.github.r0319.luckycasino.bridge.CardCode;
 import io.github.r0319.luckycasino.card.Card;
+import io.github.r0319.luckycasino.card.Rank;
 import io.github.r0319.luckycasino.card.Shoe;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
@@ -602,9 +603,28 @@ final class BlackjackTable extends CasinoTable {
             }
         }
         if (seat != null) {
+            unlock(seat, e);
             long net = e.payout() - e.bet();
             String sign = net > 0 ? "+" + net : String.valueOf(net);
             send(seat, Component.text(result + "（" + sign + " 枚、手元 " + seat.chips + " 枚）", color));
+        }
+    }
+
+    private void unlock(Seat seat, BlackjackEvent.Settled e) {
+        achieve(seat, Achievements.Achievement.FIRST_PLAY);
+        List<Card> cards = handCards.get(e.seat()).get(e.hand());
+        boolean won = e.outcome() == Outcome.WIN || e.outcome() == Outcome.BLACKJACK;
+        if (e.outcome() == Outcome.BLACKJACK) {
+            achieve(seat, Achievements.Achievement.BLACKJACK);
+        }
+        if (cards.contains(null) || Hand.total(cards) != 21) {
+            return;
+        }
+        if (cards.size() == 3 && cards.stream().allMatch(card -> card.rank() == Rank.SEVEN)) {
+            achieve(seat, Achievements.Achievement.TRIPLE_SEVEN_21);
+        }
+        if (cards.size() >= 5 && won) {
+            achieve(seat, Achievements.Achievement.FIVE_CARD_21);
         }
     }
 

@@ -373,6 +373,10 @@ final class RouletteTable extends CasinoTable {
             if (observer != null) {
                 observer.payout(payout.seat(), bet, payout.payout());
             }
+            if (seat != null && payout.payout() > 0 && payout.bet().type() == BetType.STRAIGHT) {
+                achieve(seat, payout.bet().numbers().contains(0) ? Achievements.Achievement.GREEN_ZERO
+                        : Achievements.Achievement.STRAIGHT_UP);
+            }
             totals.computeIfAbsent(payout.seat(), k -> new long[2]);
             totals.get(payout.seat())[0] += bet;
             totals.get(payout.seat())[1] += payout.payout();
@@ -396,6 +400,7 @@ final class RouletteTable extends CasinoTable {
                 return;
             }
             writeLedger(seat);
+            achieve(seat, Achievements.Achievement.FIRST_PLAY);
             long net = sums[1] - sums[0];
             Player player = online(seat);
             if (player != null) {

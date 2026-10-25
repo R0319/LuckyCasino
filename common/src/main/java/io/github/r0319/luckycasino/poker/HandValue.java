@@ -37,9 +37,14 @@ public record HandValue(Category category, long score, List<Card> best) implemen
         best = List.copyOf(best);
     }
 
+    /** A が一番上のストレートフラッシュ（ロイヤルフラッシュ）か。 */
+    public boolean royal() {
+        return category == Category.STRAIGHT_FLUSH && ((score >> 16) & 0xF) == 14;
+    }
+
     /** 表示名。A が一番上のストレートフラッシュはロイヤルフラッシュ。 */
     public String displayName() {
-        if (category == Category.STRAIGHT_FLUSH && ((score >> 16) & 0xF) == 14) {
+        if (royal()) {
             return "ロイヤルフラッシュ";
         }
         return category.displayName();

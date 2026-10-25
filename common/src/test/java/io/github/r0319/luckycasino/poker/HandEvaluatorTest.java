@@ -10,6 +10,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class HandEvaluatorTest {
@@ -46,6 +47,9 @@ class HandEvaluatorTest {
         assertEquals(Category.STRAIGHT_FLUSH, best("As Ks Qs Js Ts 2d 3c").category());
         assertEquals("ロイヤルフラッシュ", best("As Ks Qs Js Ts 2d 3c").displayName());
         assertEquals("ストレートフラッシュ", best("9h 8h 7h 6h 5h Ad Ac").displayName());
+        assertTrue(best("As Ks Qs Js Ts 2d 3c").royal());
+        assertFalse(best("9h 8h 7h 6h 5h Ad Ac").royal());
+        assertFalse(best("5d 4d 3d 2d Ad Kc Kh").royal());
         assertEquals(Category.FOUR_OF_A_KIND, best("7s 7h 7d 7c Kd 2c 3c").category());
         assertEquals(Category.FULL_HOUSE, best("Qs Qh Qd 4c 4d 2c 9s").category());
         assertEquals(Category.FLUSH, best("Kd 9d 6d 4d 2d As Ac").category());
