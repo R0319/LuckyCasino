@@ -30,6 +30,8 @@ REEL_W = 3.4
 # 筐体の中でのリールの軸の高さ（モデル単位、床 = 0）と、3 本の中心の x
 AXIS_Y = 21
 REEL_X = [3.9, 8, 12.1]
+# 窓に見える上下の段の中心と中央の段の高さの差（当たりの帯をずらす量。paper の SlotLayout.ROW と同じ）
+ROW = 2.4
 
 # 絵柄のテクスチャ: 96 x 96、1 コマ 24 x 16 px。左の列が止まっているとき、2 列目が回っているとき（ぶれ）
 CELL_W, CELL_H = 24, 16
@@ -281,10 +283,9 @@ def cabinet_model():
         box([w0 - 0.4, win_hi, 15.4], [w1 + 0.4, win_hi + 0.4, 15.7], "#gold"),
         box([w0 - 0.4, win_lo, 15.4], [w0, win_hi, 15.7], "#gold"),
         box([w1, win_lo, 15.4], [w1 + 0.4, win_hi, 15.7], "#gold"),
-        # 中央のライン（赤い線と左右の三角の代わりの小さな印）
-        plane([w0, AXIS_Y - 0.06, 14.5], [w1, AXIS_Y + 0.06, 14.5], "#line", ("south",)),
-        box([w0 - 0.4, AXIS_Y - 0.5, 15.7], [w0 + 0.3, AXIS_Y + 0.5, 15.9], "#line"),
-        box([w1 - 0.3, AXIS_Y - 0.5, 15.7], [w1 + 0.4, AXIS_Y + 0.5, 15.9], "#line"),
+        # 5 ラインの印（窓の左右の縁に、上・中・下の段の高さで小さな赤い印）
+        *[box([x0, AXIS_Y + dy - 0.4, 15.7], [x0 + 0.7, AXIS_Y + dy + 0.4, 15.9], "#line")
+          for dy in (-ROW, 0, ROW) for x0 in (w0 - 0.4, w1 - 0.3)],
         # 天板と看板
         box([0.5, 27, 1.5], [15.5, 28, 15.5], "#gold"),
         {"from": [1, 28, 4], "to": [15, 32, 13], "faces": {
@@ -331,7 +332,8 @@ def lamps_model(phase):
 
 
 def winline_model():
-    """当たったときに中央のラインに重ねて点滅させる光る帯。"""
+    """当たったときにラインに重ねて点滅させる光る帯（中央の段の横線）。上下の段と斜めは、
+    paper の SlotMachine.lineTransform で Display の transformation で動かして使う。"""
     return {
         "textures": {"glow": "minecraft:block/shroomlight", "particle": "minecraft:block/shroomlight"},
         "elements": [

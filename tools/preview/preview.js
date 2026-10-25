@@ -1669,6 +1669,15 @@ const SLOT = {
   ],
   NAMES: { SEVEN: "7", BAR: "BAR", BELL: "ベル", MELON: "スイカ", LEMON: "レモン", CHERRY: "チェリー" },
   PAY: { SEVEN: 300, BAR: 50, BELL: 20, MELON: 15, LEMON: 10, C1: 1, C2: 4, C3: 20 },
+  /** Line と同じ（リールごとの段: 上 +1、中央 0、下 −1）。 */
+  LINES: [
+    { name: "上の段", rows: [1, 1, 1] },
+    { name: "中央の段", rows: [0, 0, 0] },
+    { name: "下の段", rows: [-1, -1, -1] },
+    { name: "右下がりの斜め", rows: [1, 0, -1] },
+    { name: "右上がりの斜め", rows: [-1, 0, 1] },
+  ],
+  ROW: 2.4 / 16, LINE_Z: (14.55 - 8) / 16, DIAGONAL_DEGREES: Math.atan2(2.4, 12.1 - 8) / DEG,
   STEP: 2, SPEED: 67.5, FACE: 360 / 16, STOP_AT: [32, 44, 56], REACH_EXTRA: 26, OVERSHOOT: 6, BLUR_SPEED: 25,
   shape: { model: "table/slot", seats: [[0, 0, 1.0]], dealer: null, status: [0, 2.45, 0], modelAt: [0, 0.5, 0], modelScale: 1, modelYaw: 180 },
 };
@@ -1682,6 +1691,46 @@ function slotEvaluate(line) {
   }
   if (a === b && b === c) return { times: SLOT.PAY[a], name: SLOT.NAMES[a] + " が 3 つ", big: a === "SEVEN" || a === "BAR" };
   return { times: 0, name: "", big: false };
+}
+
+function slotSymbols(line, stops) {
+  return stops.map((s, i) => SLOT.STRIPS[i][(((s + line.rows[i]) % 16) + 16) % 16]);
+}
+
+/** Spin.of と同じ（賭け金を 5 ラインに等分し、当たったラインの分を足す）。 */
+function slotSpin(stops, bet) {
+  const lineBet = bet / SLOT.LINES.length;
+  const wins = [];
+  let payout = 0;
+  SLOT.LINES.forEach((line, i) => {
+    const win = slotEvaluate(slotSymbols(line, stops));
+    if (win.times > 0) { wins.push({ line: i, win }); payout += lineBet * win.times; }
+  });
+  let best = null;
+  for (const w of wins) if (!best || w.win.times > best.win.times) best = w;
+  return { wins, payout, best, big: wins.some((w) => w.win.big) };
+}
+
+/** Spin.reachLines と同じ。 */
+function slotReachLines(stops) {
+  const out = [];
+  SLOT.LINES.forEach((line, i) => {
+    const [a, b] = slotSymbols(line, stops);
+    if (a === b && (a === "SEVEN" || a === "BAR")) out.push(i);
+  });
+  return out;
+}
+
+/** SlotMachine.lineTransform と同じ。 */
+function slotLineTransform(index, shown) {
+  const line = SLOT.LINES[index];
+  const s = shown ? 1 : 0;
+  const slope = line.rows[0] - line.rows[2];
+  if (slope === 0) return transformation([0, line.rows[0] * SLOT.ROW, 0], null, 0, s);
+  const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), SLOT.DIAGONAL_DEGREES * Math.sign(slope) * DEG);
+  const pivot = new THREE.Vector3(0, SLOT.AXIS_Y - 0.5, -SLOT.LINE_Z);
+  const t = pivot.clone().sub(pivot.clone().applyQuaternion(q));
+  return { t: [t.x, t.y, t.z], q, s: [s, s, s] };
 }
 
 /** SlotMachine.reelPath と同じ。 */
@@ -1734,8 +1783,13 @@ function slotScenario() {
   const leverTr = (deg) => transformation([0, 0, 0], [1, 0, 0], -deg, 1);
   const lever = new ItemDisplay(at([0.56, 1.0, 0.05], 180), "slot/lever");
   const lamps = new ItemDisplay(at([0, 0.5, 0], 180), "slot/lamps_a");
-  const winline = new ItemDisplay(at([0, 0.5, 0], 180), "slot/winline");
-  winline.tr = { from: scaled(0), to: scaled(0), start: 0, dur: 0 };
+  const winlines = SLOT.LINES.map((_, i) => {
+    const band = new ItemDisplay(at([0, 0.5, 0], 180), "slot/winline");
+    band.tr = { from: slotLineTransform(i, false), to: slotLineTransform(i, false), start: 0, dur: 0 };
+    return band;
+  });
+  const showLines = (lines, on) => lines.forEach((i) => { winlines[i].interpolationDuration = 0; winlines[i].setTransformation(slotLineTransform(i, on)); });
+  const hideLines = () => showLines([0, 1, 2, 3, 4], false);
   const resultLabel = t.label([0, 2.1, 0.25], 0.8);
   let state = "IDLE", bet = 10, celebrating = false, lampPhase = false;
   const shower = [];
@@ -1750,7 +1804,6 @@ function slotScenario() {
     sim.later(celebrating ? 2 : state === "SPINNING" ? 5 : 16, lampTick);
   }
   lampTick();
-  chat([["レバーをクリックすると回ります。台をクリックすると賭け金を変えられます", C.GRAY]]);
 
   function pullLever() {
     lever.interpolationDuration = 3;
@@ -1762,13 +1815,12 @@ function slotScenario() {
     seat.chips -= bet;
     state = "SPINNING";
     resultLabel.text([]);
-    winline.interpolationDuration = 0;
-    winline.setTransformation(scaled(0));
+    hideLines();
     status();
     chat([["（あなたはレバーを引いた）", C.DARK_GRAY]]);
     pullLever();
-    const line = stops.map((s, i) => SLOT.STRIPS[i][s]);
-    const reach = line[0] === line[1] && (line[0] === "SEVEN" || line[0] === "BAR");
+    const reachLines = slotReachLines(stops);
+    const reach = reachLines.length > 0;
     const ends = SLOT.STOP_AT.slice();
     if (reach) ends[2] += SLOT.REACH_EXTRA;
     const paths = [0, 1, 2].map((i) => slotReelPath(reelAngle[i], stops[i], ends[i]));
@@ -1788,14 +1840,21 @@ function slotScenario() {
         }
       });
     }
-    if (reach) sim.later(ends[1], () => { celebrating = true; actionbar("リーチ！"); });
-    sim.later(lastTick + 4, () => reveal(stops, line));
+    if (reach) {
+      sim.later(ends[1], () => { celebrating = true; actionbar("リーチ！"); });
+      for (let tk = ends[1]; tk < ends[2] - 2; tk += 6) {
+        const on = ((tk - ends[1]) / 6) % 2 === 0;
+        sim.later(tk, () => showLines(reachLines, on));
+      }
+      sim.later(ends[2] - 2, hideLines);
+    }
+    sim.later(lastTick + 4, () => reveal(stops));
   }
 
-  function blinkWinline(ticks) {
+  function blinkLines(lines, ticks) {
     for (let tk = 0; tk < ticks; tk += 4) {
       const on = (tk / 4) % 2 === 0;
-      sim.later(Math.max(1, tk), () => { winline.interpolationDuration = 0; winline.setTransformation(scaled(on ? 1 : 0)); });
+      sim.later(Math.max(1, tk), () => showLines(lines, on));
     }
   }
 
@@ -1826,46 +1885,46 @@ function slotScenario() {
     }
   }
 
-  function reveal(stops, line) {
+  function reveal(stops) {
     state = "SHOWING";
-    const win = slotEvaluate(line);
-    const payout = bet * win.times;
+    const result = slotSpin(stops, bet);
+    const payout = result.payout;
+    const lines = result.wins.map((w) => w.line);
     seat.chips += payout;
     let wait;
-    if (win.times === 0) {
+    if (!result.best) {
       celebrating = false;
       resultLabel.text([[["はずれ", C.GRAY]]]);
       wait = 12;
-    } else if (!win.big) {
+    } else if (!result.big) {
       celebrating = true;
       resultLabel.text([[["+" + payout + " 枚", C.GOLD]]]);
-      blinkWinline(32);
+      blinkLines(lines, 32);
       wait = 36;
     } else {
       celebrating = true;
       resultLabel.text([[["大当たり！ +" + payout + " 枚", C.GOLD]]]);
-      blinkWinline(70);
-      chipShower(win.times >= 100 ? 18 : 10);
-      showTitle(["大当たり！", C.GOLD], [win.name + "  +" + payout + " 枚", C.YELLOW], 36);
+      blinkLines(lines, 70);
+      chipShower(result.best.win.times >= 100 ? 18 : 10);
+      showTitle(["大当たり！", C.GOLD], [result.best.win.name + (lines.length > 1 ? "（" + lines.length + " ライン）" : "") + "  +" + payout + " 枚", C.YELLOW], 36);
       wait = 76;
     }
-    const head = win.times === 0 ? [["はずれ（手元 " + seat.chips + " 枚）", C.GRAY]] : [[win.name + "：" + payout + " 枚（手元 " + seat.chips + " 枚）", C.GOLD]];
+    const head = !result.best ? [["はずれ", C.GRAY]] : [[result.big ? "大当たり" : "当たり", C.GOLD]];
     chat([...head, ["  "], button("もう一度回す", C.GREEN), [" "], button("賭け金を変える", C.AQUA)]);
     sim.later(wait, () => {
       shower.forEach((c) => c.remove());
       celebrating = false;
-      winline.interpolationDuration = 0;
-      winline.setTransformation(scaled(0));
+      hideLines();
       state = "IDLE";
       status();
     });
   }
 
-  // 台本: はずれ → チェリー 2 つ → 賭け金を 50 にして 7 7 7（リーチから大当たり）
-  sim.later(20, () => spin([3, 5, 1]));
-  sim.later(112, () => spin([1, 3, 2]));
+  // 台本: はずれ → 右下がりの斜めでベル 3 つ（ほかにチェリーの 2 ライン）→ 賭け金を 50 にして右上がりの斜めで 7 7 7（リーチから大当たり）
+  sim.later(20, () => spin([3, 0, 0]));
+  sim.later(112, () => spin([2, 4, 2]));
   sim.later(214, () => { bet = 50; status(); chat([["（あなたは賭け金を 1 回 50 枚にした）", C.DARK_GRAY]]); });
-  sim.later(236, () => spin([0, 0, 0]));
+  sim.later(236, () => spin([1, 0, 15]));
   return { you: YOU, table: t, camera: slotCamera };
 }
 

@@ -10,6 +10,12 @@ final class SlotLayout implements TableShape {
     /** リールの軸の高さ（モデルの y = 21）と、3 本の中心（モデルの x = 3.9, 8, 12.1）。 */
     static final double AXIS_Y = 0.5 + (21 - 8) / 16.0;
     private static final double[] REEL_X = {(3.9 - 8) / 16, 0, (12.1 - 8) / 16};
+    /** 窓に見える上下の段の中心と中央の段の高さの差（モデルの 2.4 単位）。当たりの帯をこの分ずらす。 */
+    static final double ROW = 2.4 / 16;
+    /** 当たりの帯の奥行き（モデルの z = 14.55）。斜めの帯は窓の中央 (8, 21, 14.55) を中心に回す。 */
+    static final double LINE_Z = (14.55 - 8) / 16;
+    /** 斜めの帯の傾き（左右のリールの間 4.1 単位で 1 段ぶん上下する）。 */
+    static final double DIAGONAL_DEGREES = Math.toDegrees(Math.atan2(2.4, 12.1 - 8));
 
     private static final double[][] CELLS = {{0, 0.5, 0}, {0, 1.5, 0}};
 

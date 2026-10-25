@@ -1,6 +1,7 @@
 package io.github.r0319.luckycasino.paper;
 
 import io.github.r0319.luckycasino.slot.Paytable;
+import io.github.r0319.luckycasino.slot.Spin;
 import org.bukkit.configuration.ConfigurationSection;
 
 import java.util.List;
@@ -8,14 +9,14 @@ import java.util.List;
 /**
  * config.yml の slot 節。
  *
- * @param bets     1 回に賭けられる額の選択肢（小さい順、最大 5 つ）
+ * @param bets     1 回に賭けられる額の選択肢（小さい順、最大 5 つ。5 ラインに等分するので 5 の倍数だけ）
  * @param buyIns   席に着くときに選べるチップの枚数
  * @param paytable 配当表
  */
 record SlotSettings(List<Long> bets, List<Long> buyIns, Paytable paytable) {
 
     static SlotSettings load(ConfigurationSection section) {
-        List<Long> bets = section.getLongList("bets").stream().filter(n -> n > 0).distinct().sorted().limit(5).toList();
+        List<Long> bets = section.getLongList("bets").stream().filter(Spin::validBet).distinct().sorted().limit(5).toList();
         List<Long> buyIns = section.getLongList("buy-ins").stream().filter(n -> n > 0).sorted().toList();
         Paytable d = Paytable.DEFAULT;
         ConfigurationSection p = section.getConfigurationSection("paytable");

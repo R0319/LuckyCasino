@@ -1,9 +1,8 @@
 package io.github.r0319.luckycasino.paper;
 
-import io.github.r0319.luckycasino.slot.Paytable;
+import io.github.r0319.luckycasino.slot.Line;
 import io.github.r0319.luckycasino.slot.Reels;
 import io.github.r0319.luckycasino.slot.Spin;
-import io.github.r0319.luckycasino.slot.Symbol;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -19,18 +18,20 @@ import org.bukkit.entity.Player;
 import org.bukkit.entity.TextDisplay;
 import org.bukkit.util.Transformation;
 import org.joml.AxisAngle4f;
+import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
 import java.security.SecureRandom;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 import java.util.UUID;
 
 /**
- * スロットマシン（1 人用、リール 3 本・中央の 1 ライン）。止まる位置を先に乱数で決め、
- * リールがそこに止まるよう動きを逆算して見せる。
+ * スロットマシン（1 人用、リール 3 本・5 ライン固定）。止まる位置を先に乱数で決め、
+ * リールがそこに止まるよう動きを逆算して見せる。賭け金は 5 本のラインに等分する。
  */
 final class SlotMachine extends CasinoTable {
 
@@ -60,7 +61,8 @@ final class SlotMachine extends CasinoTable {
     private final boolean[] blurred = new boolean[Reels.REELS];
     private ItemDisplay lever;
     private ItemDisplay lamps;
-    private ItemDisplay winline;
+    /** 当たりの光る帯（Line の順に 1 本ずつ）。見せないときは大きさ 0。 */
+    private final ItemDisplay[] winlines = new ItemDisplay[Line.COUNT];
     private Interaction leverHit;
     private TextDisplay resultLabel;
     private final List<ItemDisplay> shower = new ArrayList<>();
@@ -119,9 +121,12 @@ final class SlotMachine extends CasinoTable {
         lamps = display(LAYOUT.modelAt(), "slot/lamps_a", scaled(1f));
         lamps.setBrightness(new Display.Brightness(15, 15));
         fixtures().add(lamps);
-        winline = display(LAYOUT.modelAt(), "slot/winline", scaled(0f));
-        winline.setBrightness(new Display.Brightness(15, 15));
-        fixtures().add(winline);
+        for (Line line : Line.values()) {
+            ItemDisplay band = display(LAYOUT.modelAt(), "slot/winline", lineTransform(line, false));
+            band.setBrightness(new Display.Brightness(15, 15));
+            winlines[line.ordinal()] = band;
+            fixtures().add(band);
+        }
         Location hitAt = frame.at(LAYOUT.leverHit());
         leverHit = hitAt.getWorld().spawn(hitAt, Interaction.class, entity -> {
             entity.setPersistent(false);
@@ -168,6 +173,38 @@ final class SlotMachine extends CasinoTable {
         return new Transformation(new Vector3f(), new AxisAngle4f(), new Vector3f(s, s, s), new AxisAngle4f());
     }
 
+    /**
+     * 当たりの帯（モデルは中央の段の横線）を、そのラインの位置に動かしたところ。上下の段は平行にずらし、
+     * 斜めは窓の中央を中心に回す。Display の座標はモデルの座標と x・z の向きが逆なので、z 軸まわりの回転も逆になる。
+     */
+    static Transformation lineTransform(Line line, boolean shown) {
+        float s = shown ? 1f : 0f;
+        Vector3f scale = new Vector3f(s, s, s);
+        int slope = line.row(0) - line.row(2);
+        if (slope == 0) {
+            return new Transformation(new Vector3f(0f, (float) (line.row(0) * SlotLayout.ROW), 0f), new Quaternionf(), scale, new Quaternionf());
+        }
+        // 右下がり（左が上の段）はモデルで z 軸まわりに負の向き、Display では正の向き
+        float angle = (float) Math.toRadians(SlotLayout.DIAGONAL_DEGREES * Math.signum(slope));
+        Quaternionf rotation = new Quaternionf().rotateZ(angle);
+        Vector3f pivot = new Vector3f(0f, (float) (SlotLayout.AXIS_Y - 0.5), (float) -SlotLayout.LINE_Z);
+        Vector3f translation = new Vector3f(pivot).sub(rotation.transform(new Vector3f(pivot)));
+        return new Transformation(translation, rotation, scale, new Quaternionf());
+    }
+
+    private void showLines(List<Line> lines, boolean shown) {
+        for (Line line : lines) {
+            ItemDisplay band = winlines[line.ordinal()];
+            if (band != null) {
+                band.setTransformation(lineTransform(line, shown));
+            }
+        }
+    }
+
+    private void hideLines() {
+        showLines(List.of(Line.values()), false);
+    }
+
     @Override
     protected void onDespawn() {
         clearShower();
@@ -178,7 +215,7 @@ final class SlotMachine extends CasinoTable {
         }
         lever = null;
         lamps = null;
-        winline = null;
+        Arrays.fill(winlines, null);
         leverHit = null;
         resultLabel = null;
     }
@@ -292,7 +329,7 @@ final class SlotMachine extends CasinoTable {
         state = State.SPINNING;
         Spin spin = Spin.random(random, bet, settings.paytable());
         resultLabel.text(Component.empty());
-        winline.setTransformation(scaled(0f));
+        hideLines();
         updateStatus();
         pullLever();
         int end = animateReels(spin);
@@ -316,8 +353,8 @@ final class SlotMachine extends CasinoTable {
 
     /** リールを回して止める。最後のリールが止まり終わる tick を返す。 */
     private int animateReels(Spin spin) {
-        Symbol[] line = spin.line();
-        boolean reach = line[0] == line[1] && (line[0] == Symbol.SEVEN || line[0] == Symbol.BAR);
+        List<Line> reachLines = spin.reachLines();
+        boolean reach = !reachLines.isEmpty();
         int[] ends = STOP_AT.clone();
         if (reach) {
             ends[2] += REACH_EXTRA;
@@ -360,6 +397,12 @@ final class SlotMachine extends CasinoTable {
                 float pitch = 1.2f + 0.15f * k;
                 later(ends[1] + k * 6L, () -> playSound(Sound.BLOCK_NOTE_BLOCK_PLING, pitch));
             }
+            // リーチのラインの帯を、右のリールが止まるまでゆっくり点滅させる
+            for (int t = ends[1]; t < ends[2] - 2; t += 6) {
+                boolean on = ((t - ends[1]) / 6) % 2 == 0;
+                later(t, () -> showLines(reachLines, on));
+            }
+            later(ends[2] - 2, this::hideLines);
         }
         return last;
     }
@@ -435,40 +478,42 @@ final class SlotMachine extends CasinoTable {
                 observer.payout(index, spin.bet(), spin.payout());
             }
         }
-        Paytable.Win win = spin.win();
+        Spin.LineWin best = spin.best();
+        List<Line> lines = spin.wins().stream().map(Spin.LineWin::line).toList();
         int wait;
-        if (win.times() == 0) {
+        if (best == null) {
             celebrating = false;
             resultLabel.text(Component.text("はずれ", NamedTextColor.GRAY));
             wait = 12;
-        } else if (!win.big()) {
+        } else if (!spin.big()) {
             celebrating = true;
             resultLabel.text(Component.text("+" + spin.payout() + " 枚", NamedTextColor.GOLD));
             playSound(Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.2f);
             later(4, () -> playSound(Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.5f));
-            blinkWinline(32);
+            blinkLines(lines, 32);
             wait = 36;
         } else {
             celebrating = true;
             resultLabel.text(Component.text("大当たり！ +" + spin.payout() + " 枚", NamedTextColor.GOLD));
             playSound(Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f);
-            blinkWinline(70);
-            chipShower(win.times() >= 100 ? 18 : 10);
+            blinkLines(lines, 70);
+            chipShower(best.win().times() >= 100 ? 18 : 10);
             Location top = frame.at(0, 2.1, 0);
             top.getWorld().spawnParticle(Particle.FIREWORK, top, 40, 0.3, 0.2, 0.3, 0.08);
             Player player = online(seat);
             if (player != null) {
                 player.showTitle(Title.title(Component.text("大当たり！", NamedTextColor.GOLD),
-                        Component.text(win.name() + "  +" + spin.payout() + " 枚", NamedTextColor.YELLOW),
+                        Component.text(best.win().name() + (lines.size() > 1 ? "（" + lines.size() + " ライン）" : "") + "  +" + spin.payout() + " 枚",
+                                NamedTextColor.YELLOW),
                         Title.Times.times(Duration.ofMillis(150), Duration.ofMillis(1800), Duration.ofMillis(400))));
             }
             wait = 76;
         }
         Player player = online(seat);
         if (player != null) {
-            Component result = win.times() == 0
+            Component result = best == null
                     ? Component.text("はずれ", NamedTextColor.GRAY)
-                    : Component.text(win.big() ? "大当たり" : "当たり", NamedTextColor.GOLD);
+                    : Component.text(spin.big() ? "大当たり" : "当たり", NamedTextColor.GOLD);
             player.sendMessage(result.append(Component.text("  "))
                     .append(Component.text("[もう一度回す]", NamedTextColor.GREEN).clickEvent(ClickEvent.runCommand("/casino spin")))
                     .append(Component.text(" "))
@@ -477,14 +522,11 @@ final class SlotMachine extends CasinoTable {
         later(wait, this::finishRound);
     }
 
-    private void blinkWinline(int ticks) {
+    /** 当たったラインの帯をそろって点滅させる。 */
+    private void blinkLines(List<Line> lines, int ticks) {
         for (int t = 0; t < ticks; t += 4) {
             boolean on = (t / 4) % 2 == 0;
-            later(Math.max(1, t), () -> {
-                if (winline != null) {
-                    winline.setTransformation(scaled(on ? 1f : 0f));
-                }
-            });
+            later(Math.max(1, t), () -> showLines(lines, on));
         }
     }
 
@@ -541,9 +583,7 @@ final class SlotMachine extends CasinoTable {
     private void finishRound() {
         clearShower();
         celebrating = false;
-        if (winline != null) {
-            winline.setTransformation(scaled(0f));
-        }
+        hideLines();
         state = State.IDLE;
         settleAwaySeats();
         updateStatus();

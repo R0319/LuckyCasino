@@ -45,7 +45,7 @@ public final class LuckyCasinoPaper extends JavaPlugin {
         rouletteSettings = RouletteSettings.load(section("roulette"));
         pokerSettings = PokerSettings.load(section("poker"));
         slotSettings = SlotSettings.load(section("slot"));
-        getLogger().info(String.format("スロットの還元率 %.1f%%、当たる確率 %.1f%%",
+        getLogger().info(String.format("スロットの還元率 %.1f%%、何か戻る確率 %.1f%%（5 ライン）",
                 slotSettings.paytable().returnRate() * 100, slotSettings.paytable().hitRate() * 100));
         tableItem = new TableItem(this);
         tableItem.registerRecipes(getConfig().getConfigurationSection("recipes"), getLogger());

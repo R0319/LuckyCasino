@@ -1,7 +1,7 @@
 package io.github.r0319.luckycasino.slot;
 
 /**
- * 配当表。どれも賭け金の何倍が戻るか（賭け金を含む）。中央の 1 ラインだけを見る。
+ * 配当表。どれも 1 ラインの賭け金の何倍が戻るか（賭け金を含む）。5 本のラインをそれぞれこの表で見る。
  *
  * @param sevens  7 が 3 つ
  * @param bars    BAR が 3 つ
@@ -14,7 +14,7 @@ package io.github.r0319.luckycasino.slot;
  */
 public record Paytable(long sevens, long bars, long bells, long melons, long lemons, long cherry1, long cherry2, long cherry3) {
 
-    /** 還元率 96% 前後、当たる確率 22% 前後。 */
+    /** 還元率 96% 前後、何か戻る確率 65% 前後（5 ライン）。 */
     public static final Paytable DEFAULT = new Paytable(300, 50, 20, 15, 10, 1, 4, 20);
 
     public Paytable {
@@ -25,7 +25,7 @@ public record Paytable(long sevens, long bars, long bells, long melons, long lem
         }
     }
 
-    /** 中央のラインの絵柄から、何倍戻るかと役の名前。外れは倍率 0。 */
+    /** 1 本のラインの絵柄（左から）から、何倍戻るかと役の名前。外れは倍率 0。 */
     public Win evaluate(Symbol[] line) {
         Symbol a = line[0];
         Symbol b = line[1];
@@ -53,17 +53,11 @@ public record Paytable(long sevens, long bars, long bells, long melons, long lem
         return Win.NONE;
     }
 
-    /** 全部の止まり方を数えた還元率（戻る額の期待値 ÷ 賭け金）。 */
+    /**
+     * 全部の止まり方を数えた還元率（戻る額の期待値 ÷ 賭け金）。どのラインも絵柄の出方は同じなので、
+     * 1 ラインの還元率がそのまま 5 ライン全体の還元率になる。
+     */
     public double returnRate() {
-        return expected(true);
-    }
-
-    /** 何か戻ってくる確率。 */
-    public double hitRate() {
-        return expected(false);
-    }
-
-    private double expected(boolean weighted) {
         double sum = 0;
         Symbol[] line = new Symbol[Reels.REELS];
         for (int i = 0; i < Reels.STOPS; i++) {
@@ -72,18 +66,36 @@ public record Paytable(long sevens, long bars, long bells, long melons, long lem
                     line[0] = Reels.at(0, i);
                     line[1] = Reels.at(1, j);
                     line[2] = Reels.at(2, k);
-                    long times = evaluate(line).times();
-                    sum += weighted ? times : (times > 0 ? 1 : 0);
+                    sum += evaluate(line).times();
                 }
             }
         }
         return sum / (Reels.STOPS * Reels.STOPS * Reels.STOPS);
     }
 
+    /** 5 本のどれかで何か戻ってくる確率（賭け金より少ない戻りも含む）。 */
+    public double hitRate() {
+        int hits = 0;
+        int[] stops = new int[Reels.REELS];
+        for (stops[0] = 0; stops[0] < Reels.STOPS; stops[0]++) {
+            for (stops[1] = 0; stops[1] < Reels.STOPS; stops[1]++) {
+                for (stops[2] = 0; stops[2] < Reels.STOPS; stops[2]++) {
+                    for (Line l : Line.values()) {
+                        if (evaluate(l.symbols(stops)).times() > 0) {
+                            hits++;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        return (double) hits / (Reels.STOPS * Reels.STOPS * Reels.STOPS);
+    }
+
     /**
      * 役。
      *
-     * @param times 賭け金の何倍が戻るか（0 なら外れ）
+     * @param times 1 ラインの賭け金の何倍が戻るか（0 なら外れ）
      * @param name  役の名前
      * @param big   大当たり（演出を大きくする）
      */

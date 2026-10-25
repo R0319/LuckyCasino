@@ -4,6 +4,7 @@ import io.github.r0319.luckycasino.poker.Legal;
 import io.github.r0319.luckycasino.roulette.BetType;
 import io.github.r0319.luckycasino.roulette.RouletteBet;
 import io.github.r0319.luckycasino.roulette.Wheel;
+import io.github.r0319.luckycasino.slot.Line;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -636,7 +637,7 @@ final class Menus implements Listener {
             long value = bets.get(i);
             boolean selected = value == table.bet();
             ItemStack item = named(Items.model("chip/" + chipIcon(value, selected ? 3 : 1)),
-                    Component.text("1 回 " + value + " 枚", selected ? NamedTextColor.GREEN : NamedTextColor.GOLD),
+                    Component.text("1 回 " + value + " 枚（1 ライン " + value / Line.COUNT + " 枚）", selected ? NamedTextColor.GREEN : NamedTextColor.GOLD),
                     List.of(Component.text(selected ? "選択中" : "クリックで切り替え", selected ? NamedTextColor.GREEN : NamedTextColor.YELLOW)));
             if (selected) {
                 item.editMeta(meta -> meta.setEnchantmentGlintOverride(true));
@@ -645,12 +646,16 @@ final class Menus implements Listener {
         }
         io.github.r0319.luckycasino.slot.Paytable p = table.settings().paytable();
         long bet = table.bet();
-        inv.setItem(SLOT_INFO, named(ItemStack.of(Material.PAPER), Component.text("配当表（1 回 " + bet + " 枚のとき）", NamedTextColor.YELLOW),
-                List.of(payLine("7 7 7", p.sevens(), bet), payLine("BAR BAR BAR", p.bars(), bet), payLine("ベル 3 つ", p.bells(), bet),
-                        payLine("スイカ 3 つ", p.melons(), bet), payLine("レモン 3 つ", p.lemons(), bet),
-                        payLine("チェリー 3 つ", p.cherry3(), bet), payLine("チェリー 左から 2 つ", p.cherry2(), bet),
-                        payLine("チェリー 左に 1 つ", p.cherry1(), bet),
-                        Component.text("中央のラインだけを見ます。還元率 " + String.format("%.1f", p.returnRate() * 100) + "%", NamedTextColor.GRAY))));
+        long lineBet = bet / Line.COUNT;
+        inv.setItem(SLOT_INFO, named(ItemStack.of(Material.PAPER), Component.text("配当表（1 ライン " + lineBet + " 枚あたり）", NamedTextColor.YELLOW),
+                List.of(payLine("7 7 7", p.sevens(), lineBet), payLine("BAR BAR BAR", p.bars(), lineBet), payLine("ベル 3 つ", p.bells(), lineBet),
+                        payLine("スイカ 3 つ", p.melons(), lineBet), payLine("レモン 3 つ", p.lemons(), lineBet),
+                        payLine("チェリー 3 つ", p.cherry3(), lineBet), payLine("チェリー 左から 2 つ", p.cherry2(), lineBet),
+                        payLine("チェリー 左に 1 つ", p.cherry1(), lineBet),
+                        Component.text("横 3 本と斜め 2 本、5 ラインを全部見ます。", NamedTextColor.GRAY),
+                        Component.text("1 回 " + bet + " 枚を 5 ラインに分けて賭け、", NamedTextColor.GRAY),
+                        Component.text("当たったラインの分を合計して戻します。", NamedTextColor.GRAY),
+                        Component.text("還元率 " + String.format("%.1f", p.returnRate() * 100) + "%", NamedTextColor.GRAY))));
         inv.setItem(SLOT_SPIN, named(ItemStack.of(Material.LEVER), Component.text("回す（" + bet + " 枚）", NamedTextColor.GREEN),
                 List.of(Component.text("台の右のレバーをクリックしても回せます", NamedTextColor.GRAY))));
         inv.setItem(SLOT_RULES, rulesItem());
