@@ -191,7 +191,8 @@ def chip_stack_model(name, count):
         "textures": {"chip": f"luckycasino:item/chip/{name}", "particle": f"luckycasino:item/chip/{name}"},
         "elements": elements,
         "display": {
-            "gui": {"rotation": [30, 45, 0], "translation": [0, 3, 0], "scale": [1.4, 1.4, 1.4]},
+            # 円盤は y=8 から上に積むので、積んだ高さの半分だけ下げてマスの中央に合わせる（1.4 倍・30° 傾け）
+            "gui": {"rotation": [30, 45, 0], "translation": [0, round(-count / 2 * 1.4 * 0.866, 2), 0], "scale": [1.4, 1.4, 1.4]},
             "ground": {"scale": [0.8, 0.8, 0.8]},
         },
     }

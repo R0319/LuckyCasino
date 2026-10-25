@@ -238,7 +238,9 @@ final class Menus implements Listener {
     private static final class RouletteMenu extends Menu {
         RouletteMode mode = RouletteMode.STRAIGHT;
         long chip;
-        boolean outside;
+        /** 外側の賭け（赤黒・ダズンなど）のページか。よく使うので最初はこちら */
+        boolean outside = true;
+        String title;
 
         RouletteMenu(RouletteTable table) {
             super(table);
@@ -255,12 +257,21 @@ final class Menus implements Listener {
         }
         RouletteMenu holder = new RouletteMenu(table);
         holder.chip = table.settings().minBet();
-        holder.inventory = Bukkit.createInventory(holder, 54, Component.text("ルーレット：賭ける場所を選ぶ"));
+        holder.title = rouletteTitle(table, player);
+        holder.inventory = Bukkit.createInventory(holder, 54, Component.text(holder.title));
         renderRoulette(holder, player);
         player.openInventory(holder.inventory);
         player.sendMessage(Component.text("閉じてしまったら ", NamedTextColor.GRAY)
                 .append(Component.text("[賭ける]", NamedTextColor.AQUA).clickEvent(ClickEvent.runCommand("/casino bet")))
                 .append(Component.text(" で開き直せます", NamedTextColor.GRAY)));
+    }
+
+    /** 盤のタイトル。手元と賭けた合計がいつも見えるように出す。 */
+    private static String rouletteTitle(RouletteTable table, Player player) {
+        int seat = table.seatOf(player.getUniqueId());
+        long chips = seat < 0 ? 0 : table.seat(seat).chips;
+        long total = seat < 0 ? 0 : table.round().total(seat);
+        return "手元 " + chips + " 枚・賭け " + total + " 枚";
     }
 
     /** 回し始めたら、この卓のルーレットの盤を閉じる。 */
@@ -317,7 +328,7 @@ final class Menus implements Listener {
             }
         }
         inv.setItem(R_PAGE, named(ItemStack.of(menu.outside ? Material.MAP : Material.BOOK),
-                Component.text(menu.outside ? "数字の盤に戻る" : "外側の賭け（赤黒・偶奇・ダズンなど）", NamedTextColor.AQUA), List.of()));
+                Component.text(menu.outside ? "数字に賭ける（1 つ・スプリットなど）" : "外側の賭け（赤黒・偶奇・ダズンなど）に戻る", NamedTextColor.AQUA), List.of()));
         long maxBet = table.settings().maxBet();
         int slot = R_CHIP_FIRST;
         for (long value : CHIP_VALUES) {
@@ -464,6 +475,11 @@ final class Menus implements Listener {
             return;
         }
         renderRoulette(menu, player);
+        String title = rouletteTitle(table, player);
+        if (!title.equals(menu.title) && player.getOpenInventory().getTopInventory() == menu.inventory) {
+            menu.title = title;
+            player.getOpenInventory().setTitle(title);
+        }
     }
 
     // ---- ポーカーのレイズ ----
