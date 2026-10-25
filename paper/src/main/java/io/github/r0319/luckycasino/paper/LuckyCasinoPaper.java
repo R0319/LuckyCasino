@@ -31,6 +31,7 @@ public final class LuckyCasinoPaper extends JavaPlugin {
     private Menus menus;
     private TableManager tables;
     private Achievements achievements;
+    private DealerMenu dealerMenu;
 
     @Override
     public void onEnable() {
@@ -55,7 +56,9 @@ public final class LuckyCasinoPaper extends JavaPlugin {
         getServer().getPluginManager().registerEvents(achievements, this);
         menus = new Menus(this);
         tables = new TableManager(this);
+        dealerMenu = new DealerMenu(this);
         getServer().getPluginManager().registerEvents(menus, this);
+        getServer().getPluginManager().registerEvents(dealerMenu, this);
         getServer().getPluginManager().registerEvents(tables, this);
         tables.load();
 
@@ -167,6 +170,10 @@ public final class LuckyCasinoPaper extends JavaPlugin {
 
     Achievements achievements() {
         return achievements;
+    }
+
+    DealerMenu dealerMenu() {
+        return dealerMenu;
     }
 
     Menus menus() {

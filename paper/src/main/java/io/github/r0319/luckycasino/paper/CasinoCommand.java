@@ -14,6 +14,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
+import java.util.stream.Stream;
 
 /**
  * /casino hit|stand|double|split … ブラックジャックの行動（チャットのボタンから呼ばれる）
@@ -22,6 +23,7 @@ import java.util.Locale;
  * /casino bet … 賭けのメニューを開き直す
  * /casino leave … 席を立つ
  * /casino rules [種類] … ルールブック
+ * /casino dealer skin &lt;プレイヤー名&gt;|name &lt;名前&gt;|reset … 近くのテーブルのディーラーの見た目（置いた人と管理者）
  * /casino give &lt;種類&gt; [プレイヤー] … テーブルアイテムを渡す（管理者）
  * /casino remove [force] … 近くのテーブルを片付ける（管理者。座っている人がいるときは force を付けたときだけ、精算してから）
  * /casino status … 通貨と Geyser 拡張との通信状態（管理者）
@@ -30,7 +32,7 @@ import java.util.Locale;
 final class CasinoCommand implements BasicCommand {
 
     private static final List<String> PLAYER = List.of("hit", "stand", "double", "split", "fold", "check", "call", "raise", "allin",
-            "spin", "bet", "leave", "rules");
+            "spin", "bet", "leave", "rules", "dealer");
     private static final List<String> ADMIN = List.of("give", "remove", "status", "selftest");
 
     private final LuckyCasinoPaper plugin;
@@ -55,6 +57,10 @@ final class CasinoCommand implements BasicCommand {
             sender.sendMessage(Component.text("プレイヤーとして実行してください", NamedTextColor.RED));
             return;
         }
+        if (sub.equals("dealer")) {
+            dealer(player, args);
+            return;
+        }
         CasinoTable table = plugin.tables().tableOf(player.getUniqueId());
         if (sub.equals("rules")) {
             GameType type = args.length > 1 ? GameType.byId(args[1].toLowerCase(Locale.ROOT)) : null;
@@ -76,6 +82,44 @@ final class CasinoCommand implements BasicCommand {
                     default -> usage(player, table);
                 }
             }
+        }
+    }
+
+    private void dealer(Player player, String[] args) {
+        CasinoTable table = plugin.tables().nearestWithDealer(player.getLocation(), 6);
+        if (table == null) {
+            player.sendMessage(Component.text("6 ブロック以内にディーラーのいるテーブルがありません", NamedTextColor.RED));
+            return;
+        }
+        if (!table.canEdit(player)) {
+            player.sendMessage(Component.text("ディーラーの見た目を変えられるのは、テーブルを置いた人と管理者だけです", NamedTextColor.RED));
+            return;
+        }
+        String what = args.length > 1 ? args[1].toLowerCase(Locale.ROOT) : "";
+        String value = args.length > 2 ? String.join(" ", Arrays.copyOfRange(args, 2, args.length)).strip() : "";
+        DealerLook look = table.dealerLook();
+        switch (what) {
+            case "skin" -> {
+                if (!DealerLook.validSkin(value)) {
+                    player.sendMessage(Component.text("プレイヤー名は英数字と _ の 3〜16 文字です", NamedTextColor.RED));
+                    return;
+                }
+                plugin.tables().changeDealer(table, look.withSkin(value));
+                player.sendMessage(Component.text("ディーラーのスキンを " + value + " にしました", NamedTextColor.GREEN));
+            }
+            case "name" -> {
+                if (value.isEmpty() || value.codePointCount(0, value.length()) > DealerLook.MAX_NAME) {
+                    player.sendMessage(Component.text("名前は 1〜" + DealerLook.MAX_NAME + " 文字です", NamedTextColor.RED));
+                    return;
+                }
+                plugin.tables().changeDealer(table, look.withName(value));
+                player.sendMessage(Component.text("ディーラーの名前を「" + value + "」にしました", NamedTextColor.GREEN));
+            }
+            case "reset" -> {
+                plugin.tables().changeDealer(table, DealerLook.DEFAULT);
+                player.sendMessage(Component.text("ディーラーの見た目を元に戻しました", NamedTextColor.GREEN));
+            }
+            default -> plugin.dealerMenu().open(player, table);
         }
     }
 
@@ -191,6 +235,9 @@ final class CasinoCommand implements BasicCommand {
         if (args.length == 2 && (sub.equals("give") || sub.equals("selftest") || sub.equals("rules"))) {
             String prefix = args[1].toLowerCase(Locale.ROOT);
             return Arrays.stream(GameType.values()).map(GameType::id).filter(id -> id.startsWith(prefix)).toList();
+        }
+        if (args.length == 2 && sub.equals("dealer")) {
+            return Stream.of("skin", "name", "reset").filter(option -> option.startsWith(args[1].toLowerCase(Locale.ROOT))).toList();
         }
         if (args.length > 1) {
             return List.of();

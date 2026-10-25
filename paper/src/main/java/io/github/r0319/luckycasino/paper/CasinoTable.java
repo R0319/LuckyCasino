@@ -62,6 +62,7 @@ abstract class CasinoTable {
     private final Interaction[] seatHits;
     private final ItemDisplay[] mounts;
     protected Mannequin dealer;
+    private DealerLook dealerLook = DealerLook.DEFAULT;
     private boolean spawned;
     private TextDisplay status;
     private BukkitTask ticker;
@@ -146,6 +147,23 @@ abstract class CasinoTable {
 
     UUID owner() {
         return owner;
+    }
+
+    /** テーブルを置いた人か管理者なら true（片付け・ディーラーの見た目の変更）。 */
+    boolean canEdit(Player player) {
+        return player.getUniqueId().equals(owner) || player.hasPermission(TableManager.ADMIN);
+    }
+
+    DealerLook dealerLook() {
+        return dealerLook;
+    }
+
+    /** ディーラーの見た目を変え、出ていればすぐ反映する（保存は TableManager）。 */
+    void dealerLook(DealerLook look) {
+        dealerLook = look;
+        if (dealer != null && dealer.isValid()) {
+            look.apply(dealer);
+        }
     }
 
     Bank bank() {
@@ -281,7 +299,7 @@ abstract class CasinoTable {
             entity.setInvulnerable(true);
             entity.setImmovable(true);
             entity.setSilent(true);
-            entity.setDescription(Component.text("ディーラー", NamedTextColor.GOLD));
+            dealerLook.apply(entity);
             entity.setRotation(frame.yaw(), 0f);
         });
     }
