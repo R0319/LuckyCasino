@@ -237,6 +237,23 @@ def baccarat_pair():
     return img
 
 
+def bigwheel_star():
+    """1/54 の奇跡: ビッグホイールの針がジョーカーのマスを指したところ。"""
+    from gen_games import bigwheel_texture
+    img = Image.new("RGBA", (SIZE, SIZE), (0, 0, 0, 0))
+    wheel = bigwheel_texture().resize((60, 60), Image.LANCZOS)
+    paste(img, wheel, 6, 9)
+    d = ImageDraw.Draw(img)
+    # ジョーカーのマスを太く見せる（小さくすると 1 マスは細すぎて見えない）
+    d.polygon([(36, 39), (30, 13), (42, 13)], fill=(30, 30, 38, 255), outline=GOLD)
+    d.ellipse([33, 18, 39, 24], fill=RED)
+    d.ellipse([29, 32, 43, 46], fill=(222, 176, 72, 255), outline=OUTLINE)
+    d.polygon([(30, 2), (42, 2), (36, 14)], fill=GOLD, outline=OUTLINE)
+    for x, y, r in ((6, 8, 3), (66, 10, 3), (64, 64, 2)):
+        sparkle(img, x, y, r, GOLD)
+    return img
+
+
 ICONS = {
     "first_play": first_play,
     "blackjack": blackjack,
@@ -251,6 +268,7 @@ ICONS = {
     "slot_sevens": slot_sevens,
     "baccarat_tie": baccarat_tie,
     "baccarat_pair": baccarat_pair,
+    "bigwheel_star": bigwheel_star,
 }
 
 

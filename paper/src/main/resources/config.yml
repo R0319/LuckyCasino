@@ -75,6 +75,15 @@ baccarat:
   # 賭けたあと（と勝負の間）は、スニークで立っても精算せずに歩ける。卓からこの距離（ブロック）を超えたら精算
   standing-range: 8
 
+# ビッグホイール（54 マス）。1・2・5・10・20・ジョーカー・ロゴに賭ける
+bigwheel:
+  min-bet: 10
+  max-bet: 500
+  max-total: 2000
+  betting-seconds: 15
+  buy-ins: [100, 500, 1000, 5000]
+  standing-range: 8
+
 # テーブルのクラフトレシピ。材料は素材名か、#planks のようなタグ名。使わないなら enabled: false
 recipes:
   blackjack:
@@ -131,6 +140,18 @@ recipes:
       R: red_carpet
       P: '#planks'
       G: gold_ingot
+  bigwheel:
+    enabled: true
+    shape:
+      - YBO
+      - PCP
+      - 'P P'
+    ingredients:
+      Y: yellow_carpet
+      B: blue_carpet
+      O: orange_carpet
+      P: '#planks'
+      C: clock
 
 # Geyser 拡張（統合版にカードを見せる）との通信
 bridge:

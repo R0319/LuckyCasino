@@ -235,3 +235,103 @@ function baccaratScenario() {
 }
 
 addGame("baccarat", "バカラ", { make: baccaratScenario, length: 480 });
+
+// ================================================================ ビッグホイール
+
+const BW_ORDER = ("J A B A E B A T A B A E A B W A B A A E T B A B A A B " +
+  "L E A A B A B T E A A B A W B E A A B A T A B E A B A").split(" ");
+const BW_SEG = {
+  A: ["1", "#FFFF55", 1], B: ["2", "#5555FF", 2], E: ["5", "#FF55FF", 5], T: ["10", "#55FF55", 10],
+  W: ["20", "#FFAA00", 20], J: ["ジョーカー", "#555555", 40], L: ["ロゴ", "#FF5555", 40],
+};
+const BW_SPOTS = { one: "A", two: "B", five: "E", ten: "T", twenty: "W", joker: "J", logo: "L" };
+const BW = {
+  shape: { model: "table/bigwheel", seatRise: RAISED_SEAT, dealer: [-0.9, 0, -1.55], seats: [0, 1, 2, 3, 4].map((i) => [1.6 - 0.8 * i, 0, 1.55]) },
+  SCALE: 1.7,
+  wheel: [0.75, 1.95, -1.5],
+  stand: [0.75, 1.45, -1.5],
+  pointerLabel: [0.75, 1.95 + 1.7 / 2 + 0.2, -1.5],
+  box: (i) => [-1.71 + 0.57 * i, TOP + 0.001, 0.3],
+  croupier: [-0.9, TOP + 0.001, -0.6],
+};
+
+function bigWheelScenario() {
+  const t = new Table(BW.shape);
+  t.spawn();
+  const YOU = 2;
+  t.sit(1, "Bot2", 1000);
+  t.sit(YOU, "あなた", 1000, true);
+  t.sit(3, "Bot4", 1000);
+  const SEG = 360 / 54;
+  const SPIN_TICKS = 150, STEP = 2;
+  const RESULT = 20; // マス 20 は 10
+  const random = seeded(20261025);
+  new ItemDisplay(at(BW.stand), "bigwheel/stand");
+  const wheel = new ItemDisplay(at(BW.wheel), "bigwheel/wheel");
+  const wt = (deg) => transformation([0, 0, 0], [0, 0, 1], deg, BW.SCALE);
+  wheel.tr = { from: wt(0), to: wt(0), start: 0, dur: 0 };
+  const label = t.label(BW.pointerLabel, 0.8);
+  const under = (deg) => ((Math.round(deg / SEG) % 54) + 54) % 54;
+  let shown = null;
+  const show = (seg) => { shown = seg; label.text([[[BW_SEG[seg][0], BW_SEG[seg][1]]]]); };
+  show(BW_ORDER[0]);
+  let wheelAngle = 0;
+
+  // BigWheelTable.play と同じ計算
+  function play() {
+    const start = wheelAngle;
+    const jitter = ((random.nextInt(1000) / 1000) - 0.5) * SEG * 0.7;
+    const target = RESULT * SEG + jitter;
+    const base = start + 2 * 360 + random.nextInt(360);
+    const end = base + ((((target - base) % 360) + 360) % 360);
+    const total = end - start;
+    t.swing();
+    for (let tt = STEP; tt <= SPIN_TICKS; tt += STEP) {
+      const p = tt / SPIN_TICKS;
+      const angle = start + total * (1 - Math.pow(1 - p, 3));
+      const seg = BW_ORDER[under(angle)];
+      sim.later(tt, () => {
+        wheel.interpolationDuration = STEP;
+        wheel.setTransformation(wt(angle));
+        if (seg !== shown) show(seg);
+      });
+    }
+    wheelAngle = end % 360;
+    sim.later(SPIN_TICKS + 2, () => { show(BW_ORDER[RESULT]); sparkle(at(BW.pointerLabel), 0xffffff); });
+    return SPIN_TICKS + 2;
+  }
+  const seg = BW_ORDER[RESULT];
+  const flow = spotFlow({
+    table: t, you: YOU, bettingSeconds: 6, minBet: 10, maxBet: 500, maxTotal: 2000,
+    chipSpot: (spot, seat) => {
+      const c = BW.box(Object.keys(BW_SPOTS).indexOf(spot));
+      const d = (seat - 2) * 0.014;
+      return [c[0] + d, c[1] + seat * 0.0005, c[2] + d * 0.5];
+    },
+    croupier: BW.croupier, spotName: (s) => BW_SEG[BW_SPOTS[s]][0],
+    play,
+    payout: (spot, amount) => (BW_SPOTS[spot] === seg ? amount * (BW_SEG[seg][2] + 1) : 0),
+    resultText: () => [BW_SEG[seg][0] + "（" + BW_SEG[seg][2] + ":1）", BW_SEG[seg][1]],
+  });
+  sim.later(14, () => flow.place(1, "one", 50));
+  sim.later(18, () => flow.place(3, "two", 30));
+  sim.later(30, () => flow.place(YOU, "ten", 20));
+  sim.later(42, () => flow.place(YOU, "one", 50));
+  return {
+    you: YOU, table: t,
+    camera(kind) {
+      if (kind === "seat") {
+        camera.position.set(t.shape.seats[YOU][0], 1.48 + RAISED_SEAT, 1.5);
+        controls.target.set(0.5, 1.6, -1.2);
+      } else if (kind === "high") {
+        camera.position.set(0.6, 3.3, 4.4);
+        controls.target.set(0.3, 1.4, -0.5);
+      } else {
+        camera.position.set(0.75, 1.95, 0.6);
+        controls.target.set(0.75, 1.95, -1.5);
+      }
+    },
+  };
+}
+
+addGame("bigwheel", "ビッグホイール", { make: bigWheelScenario, length: 400 });

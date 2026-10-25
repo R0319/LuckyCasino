@@ -44,7 +44,9 @@ final class Achievements implements Listener {
         SLOT_SEVENS("slot/sevens", SLOT_BARS, "achievement/slot_sevens", "ラッキー 777", "スロットで 7 を 3 つそろえる", Frame.CHALLENGE),
 
         BACCARAT_TIE("baccarat/tie", FIRST_PLAY, "achievement/baccarat_tie", "痛み分け", "バカラでタイ（引き分け）に賭けて当てる", Frame.GOAL),
-        BACCARAT_PAIR("baccarat/pair", BACCARAT_TIE, "achievement/baccarat_pair", "ペアの予感", "バカラでペアに賭けて当てる", Frame.GOAL);
+        BACCARAT_PAIR("baccarat/pair", BACCARAT_TIE, "achievement/baccarat_pair", "ペアの予感", "バカラでペアに賭けて当てる", Frame.GOAL),
+
+        BIGWHEEL_STAR("bigwheel/star", FIRST_PLAY, "achievement/bigwheel_star", "1/54 の奇跡", "ビッグホイールでジョーカーかロゴに賭けて当てる", Frame.CHALLENGE);
 
         final String path;
         final Achievement parent;

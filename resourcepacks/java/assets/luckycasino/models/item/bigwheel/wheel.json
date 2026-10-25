@@ -1,0 +1,40 @@
+{
+  "textures": {
+    "wheel": "luckycasino:block/bigwheel_wheel",
+    "particle": "luckycasino:block/bigwheel_wheel"
+  },
+  "elements": [
+    {
+      "from": [
+        0,
+        0,
+        7.75
+      ],
+      "to": [
+        16,
+        16,
+        8.25
+      ],
+      "faces": {
+        "north": {
+          "texture": "#wheel",
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ]
+        },
+        "south": {
+          "texture": "#wheel",
+          "uv": [
+            16,
+            0,
+            0,
+            16
+          ]
+        }
+      }
+    }
+  ]
+}
