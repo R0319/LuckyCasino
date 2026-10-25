@@ -22,3 +22,6 @@ run
 
 # Python
 __pycache__/
+
+# Preview screenshots (local only)
+tools/preview/shots/
