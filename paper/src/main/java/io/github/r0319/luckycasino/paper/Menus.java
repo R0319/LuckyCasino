@@ -204,12 +204,12 @@ final class Menus implements Listener {
 
     /** 数字のマスをクリックしたときの賭け方。 */
     enum RouletteMode {
-        STRAIGHT("ストレートアップ（1 つ）", "その数字だけ。35 倍", Material.WHITE_BANNER),
-        SPLIT_NEXT("スプリット（右隣と）", "その数字と +3 の 2 つ。17 倍", Material.LIGHT_BLUE_BANNER),
-        SPLIT_UP("スプリット（上隣と）", "その数字と +1 の 2 つ（同じ列）。17 倍", Material.CYAN_BANNER),
-        STREET("ストリート（横 3 つ）", "その数字の列の 3 つ。11 倍", Material.YELLOW_BANNER),
-        CORNER("コーナー（4 つ）", "その数字・+1・+3・+4 の 4 つ。8 倍（0 なら 0〜3）", Material.ORANGE_BANNER),
-        LINE("ライン（6 つ）", "その数字の列と次の列の 6 つ。5 倍", Material.MAGENTA_BANNER);
+        STRAIGHT("ストレートアップ（1 つ）", "その数字だけ。配当 35:1（当たると 36 倍が戻る）", Material.WHITE_BANNER),
+        SPLIT_NEXT("スプリット（右隣と）", "その数字と +3 の 2 つ。配当 17:1（18 倍が戻る）", Material.LIGHT_BLUE_BANNER),
+        SPLIT_UP("スプリット（上隣と）", "その数字と +1 の 2 つ（同じ列）。配当 17:1（18 倍が戻る）", Material.CYAN_BANNER),
+        STREET("ストリート（横 3 つ）", "その数字の列の 3 つ。配当 11:1（12 倍が戻る）", Material.YELLOW_BANNER),
+        CORNER("コーナー（4 つ）", "その数字・+1・+3・+4 の 4 つ（0 なら 0〜3）。配当 8:1（9 倍が戻る）", Material.ORANGE_BANNER),
+        LINE("ライン（6 つ）", "その数字の列と次の列の 6 つ。配当 5:1（6 倍が戻る）", Material.MAGENTA_BANNER);
 
         final String label;
         final String help;
@@ -293,12 +293,12 @@ final class Menus implements Listener {
             for (int d = 1; d <= 3; d++) {
                 RouletteBet bet = RouletteBet.dozen(d, menu.chip);
                 inv.setItem(DOZEN_SLOTS[d - 1], betItem(Material.PURPLE_CONCRETE, (d - 1) * 12 + 1 + "〜" + d * 12 + "（ダズン）",
-                        "12 個。2 倍", bet, mine, 1));
+                        "12 個。配当 2:1（当たると 3 倍が戻る）", bet, mine, 1));
             }
             for (int c = 1; c <= 3; c++) {
                 RouletteBet bet = RouletteBet.column(c, menu.chip);
                 inv.setItem(COLUMN_SLOTS[c - 1], betItem(Material.BLUE_CONCRETE, "縦の段 " + c + "（" + c + ", " + (c + 3) + ", " + (c + 6) + " …）",
-                        "12 個。2 倍", bet, mine, 1));
+                        "12 個。配当 2:1（当たると 3 倍が戻る）", bet, mine, 1));
             }
             for (int i = 0; i < RouletteLayout.OUTSIDE.length; i++) {
                 BetType type = RouletteLayout.OUTSIDE[i];
@@ -307,7 +307,7 @@ final class Menus implements Listener {
                     case BLACK -> Material.BLACK_CONCRETE;
                     default -> Material.LIGHT_GRAY_CONCRETE;
                 };
-                inv.setItem(OUTSIDE_SLOTS[i], betItem(icon, type.displayName(), "18 個。2 倍（0 は負け）",
+                inv.setItem(OUTSIDE_SLOTS[i], betItem(icon, type.displayName(), "18 個。配当 1:1（当たると 2 倍が戻る。0 は負け）",
                         RouletteBet.outside(type, menu.chip), mine, 1));
             }
         } else {
