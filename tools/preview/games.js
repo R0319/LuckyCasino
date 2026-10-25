@@ -150,11 +150,12 @@ function bacTotal(cards) { return cards.reduce((s, c) => s + bacValue(c), 0) % 1
 function baccaratScenario() {
   const t = new Table(BC.shape);
   t.spawn();
-  const YOU = 2;
+  const YOU = 1;
   t.sit(0, "Bot1", 1000);
-  t.sit(1, "Bot2", 1000);
+  t.sit(2, "Bot3", 1000);
   t.sit(YOU, "あなた", 1000, true);
-  t.sit(4, "Bot5", 1000);
+  t.sit(3, "Bot4", 1000);
+  t.sit(5, "Bot6", 1000);
   // 配る順（P, B, P, B, P3, B3）。P: 4+K=4 → 3 枚目の 3 で 7。B: 2+3=5 は、P の 3 枚目が 4〜7 のときだけ引くので止まる
   const deals = [["P", "H4"], ["B", "S2"], ["P", "CK"], ["B", "D3"], ["P", "S3"]];
   const player = [], banker = [];
@@ -412,7 +413,7 @@ function sbName(id) {
 function sicBoScenario() {
   const t = new Table(SB.shape);
   t.spawn();
-  const YOU = 2;
+  const YOU = 1;
   t.sit(0, "Bot1", 1000);
   t.sit(YOU, "あなた", 1000, true);
   t.sit(3, "Bot4", 1000);
@@ -522,7 +523,7 @@ const hlPercentText = (p) => Math.floor(p / 100) + "." + String(p % 100).padStar
 function highLowScenario() {
   const t = new Table(HL.shape);
   t.spawn();
-  const YOU = 2;
+  const YOU = 1;
   t.sit(0, "Bot1", 1000);
   t.sit(YOU, "あなた", 1000, true);
   t.sit(4, "Bot5", 1000);
@@ -619,15 +620,30 @@ addGame("highlow", "ハイ＆ロー", { make: highLowScenario, length: 540 });
 
 // ================================================================ 競馬
 
+// HorseRaceLayout と同じ数字（コース・観客席・ゲートの扉はモデル）
+const HR_SEAT_X = [-2.4, 0, 2.4];
 const HR = {
-  shape: { model: "table/horserace", seatRise: RAISED_SEAT, dealer: [0, 0, -1.55], seats: [0, 1, 2, 3, 4].map((i) => [1.6 - 0.8 * i, 0, 1.55]) },
-  START_X: -1.62, FINISH_X: 1.55, SCALE: 0.32,
-  laneZ: (h) => -0.88 + 0.14 * h,
-  start: (h) => [-1.62, TOP + 0.16, -0.88 + 0.14 * h],
-  box: (h) => [-1.6 + 0.64 * h, TOP + 0.001, 0.5],
-  oddsLabel: (h) => [-1.6 + 0.64 * h, TOP + 0.08, 0.2],
-  board: [0, TOP + 0.75, -0.5],
-  croupier: [1.6, TOP + 0.001, 0.05],
+  shape: {
+    model: "horserace/course", modelAt: [0, 1, 0], modelScale: 3.5, seatRise: RAISED_SEAT,
+    dealer: [4.4, 0, 1.0], status: [-4.3, 1.9, 0.7],
+    // 席 0〜2 が下の段（右から）、3〜5 が上の段
+    seats: [0, 1, 2, 3, 4, 5].map((i) => [HR_SEAT_X[2 - (i % 3)], i >= 3 ? 0.7 : 0, i >= 3 ? 1.8 : 0.9]),
+  },
+  START_X: -4.1, FINISH_X: 4.2, GATE_X: -3.8, SCALE: 0.6, DIRT: 0.06,
+  laneZ: (h) => -1.75 + 0.3 * h,
+  start: (h) => [-4.1, 0.06 + 0.3, -1.75 + 0.3 * h],
+  gate: (h) => [-3.8, 0.06, -1.75 + 0.3 * h + 0.14],
+  stand(seat) {
+    const s = HR.shape.seats[seat];
+    return [s[0], s[1] + 0.951, s[2] - 0.6];
+  },
+  chip(seat, h) {
+    const s = HR.stand(seat);
+    return [s[0] + ((h % 3) - 1) * 0.13, s[1] + seat * 0.0005, s[2] - 0.06 + Math.floor(h / 3) * 0.12];
+  },
+  odds: [-0.7, 0.65, -1.9],
+  board: [1.05, 1.35, -1.9],
+  croupier: [4.4, 0.951, 0.4],
 };
 const HR_COLORS = ["白", "黒", "赤", "青", "黄", "緑"];
 const HR_INKS = [C.WHITE, C.DARK_GRAY, C.RED, C.BLUE, C.YELLOW, C.GREEN];
@@ -638,11 +654,12 @@ const hrProgress = (u, pace, wave, phase) => u + pace * u * (1 - u) + wave * Mat
 function horseRaceScenario() {
   const t = new Table(HR.shape);
   t.spawn();
-  const YOU = 2;
+  const YOU = 1;
   t.sit(0, "Bot1", 1000);
-  t.sit(1, "Bot2", 1000);
+  t.sit(2, "Bot3", 1000);
   t.sit(YOU, "あなた", 1000, true);
-  t.sit(4, "Bot5", 1000);
+  t.sit(3, "Bot4", 1000);
+  t.sit(5, "Bot6", 1000);
   const random = seeded(777);
   const rnd = () => random.nextInt(100000) / 100000;
   // 出走表（勝つ確率）と着順。あなたは 4 番（青）を買い、3 番と競り合って差し切る
@@ -657,16 +674,23 @@ function horseRaceScenario() {
     return d;
   });
   const hrPct = (p) => Math.floor(p / 100) + "." + String(p % 100).padStart(2, "0") + " 倍";
-  for (let h = 0; h < 6; h++) t.label(HR.oddsLabel(h), 0.45).text([[[hrPct(percent[h]), C.GOLD]]]);
-  const board = t.label(HR.board, 0.6);
-  board.text([[["次のレースの単勝を受付中", C.AQUA]]]);
+  t.label(HR.odds, 0.75).fixed().text([[["単勝オッズ", C.GOLD]], ...[0, 1, 2, 3, 4, 5].map((h) => [hrName(h), ["  " + hrPct(percent[h]), C.WHITE]])]);
+  const board = t.label(HR.board, 0.7).fixed();
+  board.text([[["次のレースの", C.AQUA]], [["単勝を受付中", C.AQUA]]]);
+  // ゲートの扉（HorseRaceTable.gate と同じ: 蝶番を軸にコースの方へ 100 度）
+  const gateTr = (open) => transformation([0, 0, 0], [0, 1, 0], open ? -100 : 0, 1);
+  const gates = [0, 1, 2, 3, 4, 5].map((h) => {
+    const d = new ItemDisplay(at(HR.gate(h)), "horserace/gate");
+    d.tr = { from: gateTr(false), to: gateTr(false), start: 0, dur: 0 };
+    return d;
+  });
   const move = (e, to, ticks) => { e.interpolationDuration = ticks; e.setTransformation(to); };
 
   // HorseRaceTable.play と同じ計算
   function play() {
     const length = HR.FINISH_X - HR.START_X;
     const finish = [];
-    let tt = 160 + random.nextInt(12);
+    let tt = 180 + random.nextInt(12);
     order.forEach((h, place) => { finish[h] = tt; tt += 2 + random.nextInt(place === 0 ? 3 : 8); });
     const last = tt;
     const pace = [], phase = [];
@@ -674,13 +698,14 @@ function horseRaceScenario() {
     // 見せ場のため、勝つ 4 番は追い込み（前半は遅め）、3 番は逃げ（前半は速め）
     pace[3] = -0.3; pace[2] = 0.3;
     t.swing();
+    gates.forEach((g) => move(g, gateTr(true), 5));
     t.broadcast([["スタートしました！", C.GOLD]]);
     for (let tick = STEP; tick <= last + 10; tick += STEP) {
       const x = [], p = [];
       for (let h = 0; h < 6; h++) {
         const u = tick / finish[h];
-        x[h] = u <= 1 ? length * hrProgress(u, pace[h], 0.05, phase[h]) : length + 0.15 * (1 - Math.exp(-(tick - finish[h]) / 8));
-        const bob = u <= 1.1 && (tick / STEP + h) % 2 === 0 ? 0.025 : 0;
+        x[h] = u <= 1 ? length * hrProgress(u, pace[h], 0.05, phase[h]) : length + 0.4 * (1 - Math.exp(-(tick - finish[h]) / 8));
+        const bob = u <= 1.1 && (tick / STEP + h) % 2 === 0 ? 0.05 : 0;
         p[h] = pose(x[h], bob);
       }
       let lead = 0;
@@ -695,41 +720,42 @@ function horseRaceScenario() {
     sim.later(winnerAt - 30, () => t.broadcast([["最後の直線！", C.YELLOW]]));
     sim.later(winnerAt, () => {
       board.text([[["1 着 ", C.GOLD], hrName(order[0])]]);
-      sparkle(at([HR.FINISH_X, TOP + 0.2, HR.laneZ(order[0])]), 0xffffff);
+      sparkle(at([HR.FINISH_X, HR.DIRT + 0.6, HR.laneZ(order[0])]), 0xffffff);
     });
-    sim.later(last + 6, () => board.text([[["1 着 ", C.GOLD], hrName(order[0])], [["2 着 ", C.GRAY], hrName(order[1]), ["　3 着 ", C.GRAY], hrName(order[2])]]));
+    sim.later(last + 6, () => board.text([[["1 着 ", C.GOLD], hrName(order[0])], [["2 着 ", C.GRAY], hrName(order[1])], [["3 着 ", C.GRAY], hrName(order[2])]]));
     return last + 8;
   }
   const flow = spotFlow({
     table: t, you: YOU, bettingSeconds: 6, minBet: 10, maxBet: 500, maxTotal: 1500,
-    chipSpot: (spot, seat) => {
-      const c = HR.box(Number(spot.slice(6)) - 1);
-      const d = (seat - 2) * 0.014;
-      return [c[0] + d, c[1] + seat * 0.0005, c[2] + d * 0.5];
-    },
+    chipSpot: (spot, seat) => HR.chip(seat, Number(spot.slice(6)) - 1),
     croupier: HR.croupier,
     spotName: (s) => hrName(Number(s.slice(6)) - 1)[0],
     play,
     payout: (spot, amount) => (Number(spot.slice(6)) - 1 === order[0] ? Math.floor(amount * percent[order[0]] / 100) : 0),
     resultText: () => ["1 着 " + hrName(order[0])[0] + "（" + hrPct(percent[order[0]]) + "）", HR_INKS[order[0]]],
-    clearRound() { horses.forEach((d) => move(d, pose(0, 0), 20)); },
+    clearRound() {
+      horses.forEach((d) => move(d, pose(0, 0), 40));
+      sim.later(42, () => gates.forEach((g) => move(g, gateTr(false), 5)));
+    },
   });
   sim.later(14, () => flow.place(0, "horse_1", 50));
-  sim.later(20, () => flow.place(1, "horse_3", 30));
-  sim.later(26, () => flow.place(4, "horse_5", 20));
+  sim.later(20, () => flow.place(2, "horse_3", 30));
+  sim.later(24, () => flow.place(3, "horse_5", 20));
+  sim.later(28, () => flow.place(5, "horse_3", 40));
   sim.later(36, () => flow.place(YOU, "horse_4", 50));
   return {
     you: YOU, table: t,
     camera(kind) {
       if (kind === "seat") {
-        camera.position.set(t.shape.seats[YOU][0], 1.48 + RAISED_SEAT, 1.5);
-        controls.target.set(0, 0.95, -0.5);
+        const p = t.shape.seats[YOU];
+        camera.position.set(p[0], p[1] + 1.48 + RAISED_SEAT, p[2]);
+        controls.target.set(0, 0.5, -1.0);
       } else if (kind === "high") {
-        camera.position.set(0, 3.4, 3.2);
-        controls.target.set(0, 0.9, -0.2);
+        camera.position.set(9, 5, 4.5);
+        controls.target.set(0, 0, -0.5);
       } else {
-        camera.position.set(0, 2.6, 0.4);
-        controls.target.set(0, TOP, -0.55);
+        camera.position.set(4.2, 1.2, 1.6);
+        controls.target.set(2.5, 0.3, -1.0);
       }
     },
   };

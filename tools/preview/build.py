@@ -67,6 +67,9 @@ def vanilla(name):
         d.rectangle([0, 0, 15, 15], fill=(84, 109, 27, 255))
         for x, y in ((3, 2), (10, 5), (6, 12), (13, 10)):
             d.point([x, y], fill=(64, 86, 20, 255))
+    elif name == "block/smooth_stone":
+        d.rectangle([0, 0, 15, 15], fill=(158, 158, 158, 255))
+        d.rectangle([0, 0, 15, 15], outline=(120, 120, 120, 255))
     elif name == "block/redstone_lamp":
         d.rectangle([0, 0, 15, 15], fill=(95, 54, 30, 255))
         d.rectangle([3, 3, 12, 12], fill=(140, 80, 45, 255))

@@ -445,18 +445,14 @@ def highlow_felt():
 # ---- 競馬（paper の HorseRaceLayout と合わせる） ----
 # 枠の色（JRA の枠色: 1 白、2 黒、3 赤、4 青、5 黄、6 緑）
 SILKS = [(240, 240, 236, 255), (36, 36, 40, 255), (210, 40, 40, 255), (40, 90, 210, 255), (240, 210, 40, 255), (40, 160, 70, 255)]
-HR_LANE_Z = [-0.88 + 0.14 * i for i in range(6)]
-HR_START_X, HR_FINISH_X, HR_BOX_Z = -1.7, 1.55, 0.5
+HR_LANE_Z = [-1.75 + 0.3 * i for i in range(6)]
+HR_START_X, HR_FINISH_X, HR_GATE_X = -4.1, 4.2, -3.8
+HR_CENTER, HR_SCALE = (0.0, 1.0, 0.0), 3.5   # コースのモデルを置く位置と倍率（HorseRaceLayout.modelAt・COURSE_SCALE）
+HR_UPPER = 0.7                               # 観客席の上の段の床
+HR_SEAT_X = (-2.4, 0.0, 2.4)
+HR_ROWS = ((0.0, 0.9), (HR_UPPER, 1.8))      # （床の高さ, 席の z）
 DIRT = (150, 110, 70, 255)
 DIRT_DARK = (128, 92, 58, 255)
-
-
-def hr_box_x(i):
-    return -1.6 + 0.64 * i
-
-
-def silk_ink(i):
-    return (30, 30, 36, 255) if i in (0, 4) else WHITE
 
 
 def horse_coat():
@@ -503,38 +499,81 @@ def horse_model(i):
     }
 
 
-def horserace_felt():
-    img = felt_base(192, 96)
-    d = ImageDraw.Draw(img)
-    d.rectangle([2, 2, 189, 93], outline=GOLD)
-    # ダートのコース
-    top, bottom = v(HR_LANE_Z[0] - 0.07), v(HR_LANE_Z[-1] + 0.07)
-    for y in range(top, bottom + 1):
-        for x in range(u(-1.92), u(1.92) + 1):
-            img.putpixel((x, y), DIRT_DARK if (x * 3 + y * 7) % 9 == 0 else DIRT)
-    d.line([u(-1.92), top - 1, u(1.92), top - 1], fill=WHITE)
-    d.line([u(-1.92), bottom + 1, u(1.92), bottom + 1], fill=WHITE)
-    for z in HR_LANE_Z[1:]:
-        y = v(z - 0.07)
-        for x in range(u(HR_START_X), u(HR_FINISH_X), 4):
-            img.putpixel((x, y), DIRT_DARK)
-    # スタートとゴール（市松模様）
-    d.line([u(HR_START_X), top, u(HR_START_X), bottom], fill=WHITE)
-    for y in range(top, bottom + 1):
-        for k in range(2):
-            x = u(HR_FINISH_X) + k
-            img.putpixel((x, y), WHITE if ((y - top) // 2 + k) % 2 == 0 else (30, 30, 36, 255))
-    for i, z in enumerate(HR_LANE_Z):
-        gt.text(img, str(i + 1), u(-1.84) + 1, v(z) - 2, SILKS[i] if i != 1 else WHITE)
-    text(img, "GOAL", HR_FINISH_X, HR_LANE_Z[-1] + 0.2, GOLD)
-    text(img, "HORSE RACE", -0.6, 0.08, GOLD)
-    text(img, "WIN", 0.75, 0.08, WHITE)
-    # 単勝の枠
-    for i in range(6):
-        x = hr_box_x(i)
-        box(d, x, HR_BOX_Z, 0.58, 0.5, GOLD, SILKS[i])
-        gt.text(img, str(i + 1), u(x) + 1, v(HR_BOX_Z) - 2, silk_ink(i))
+def dirt_texture():
+    img = gt.Image.new("RGBA", (16, 16), DIRT)
+    for y in range(16):
+        for x in range(16):
+            if (x * 3 + y * 7) % 9 == 0:
+                img.putpixel((x, y), DIRT_DARK)
+            elif (x * 5 + y * 11) % 13 == 0:
+                img.putpixel((x, y), (166, 126, 84, 255))
     return img
+
+
+def hr_box(lo, hi, tex, faces=("north", "south", "east", "west", "up", "down")):
+    return world_box(lo, hi, tex, HR_CENTER, HR_SCALE, faces)
+
+
+def horserace_course_model():
+    """直線のダートコース・ゲート・ゴール板・オッズ板・2 段の観客席・ベット台・払い戻し所。"""
+    dirt, white, iron, green, black, gold, stone, wood, red = (
+        "#dirt", "#white", "#iron", "#green", "#black", "#gold", "#stone", "#wood", "#red")
+    els = []
+    els += hr_box((-4.95, 0, -1.95), (4.95, 0.06, -0.05), dirt, ("up", "north", "south", "east", "west"))
+    for z in (-1.98, -0.02):                                            # 内と外の白い柵
+        els += hr_box((-4.95, 0.3, z - 0.03), (4.95, 0.36, z + 0.03), white)
+        for k in range(11):
+            x = -4.9 + k * 0.98
+            els += hr_box((x - 0.03, 0, z - 0.03), (x + 0.03, 0.3, z + 0.03), white)
+    # ゴールの線と柱・板
+    els += hr_box((HR_FINISH_X - 0.03, 0.06, -1.95), (HR_FINISH_X + 0.03, 0.065, -0.05), white, ("up",))
+    els += hr_box((HR_FINISH_X - 0.04, 0, 0.03), (HR_FINISH_X + 0.04, 1.5, 0.11), white)
+    els += hr_box((HR_FINISH_X - 0.3, 1.15, 0.05), (HR_FINISH_X + 0.3, 1.5, 0.09), red)
+    # スタートゲート（レーンの仕切り・屋根・後ろの枠。扉は horserace/gate で別に動かす）
+    gx = HR_GATE_X
+    els += hr_box((gx - 0.55, 0, -1.97), (gx - 0.45, 1.0, -0.03), iron)        # 後ろの枠
+    els += hr_box((gx - 0.6, 0.9, -2.0), (gx + 0.05, 1.02, 0.0), green)        # 屋根
+    for k in range(7):
+        z = HR_LANE_Z[0] - 0.15 + k * 0.3
+        els += hr_box((gx - 0.5, 0.06, z - 0.015), (gx, 0.9, z + 0.015), iron)  # 仕切り
+    # オッズ板（コースの奥）。モデルは z が逆なので、手前（観客席側）を向く面は "north"
+    els += hr_box((-1.95, 0.45, -2.0), (1.95, 2.45, -1.96), gold)
+    els += hr_box((-1.85, 0.53, -1.97), (1.85, 2.37, -1.95), black, ("north",))
+    for x in (-1.8, 1.8):
+        els += hr_box((x - 0.05, 0, -2.0), (x + 0.05, 0.45, -1.96), iron)
+    # 観客席（下の段は床、上の段は台の上）とベット台
+    els += hr_box((-3.9, 0, 1.35), (3.9, HR_UPPER, 2.25), stone)
+    for floor, z in HR_ROWS:
+        for x in HR_SEAT_X:
+            sz = z - 0.6
+            els += hr_box((x - 0.3, floor, sz - 0.18), (x + 0.3, floor + 0.9, sz + 0.18), wood)
+            els += hr_box((x - 0.33, floor + 0.9, sz - 0.21), (x + 0.33, floor + 0.95, sz + 0.21), green)
+    # 払い戻し所
+    els += hr_box((4.1, 0, 0.25), (4.7, 0.9, 0.55), wood)
+    els += hr_box((4.08, 0.9, 0.23), (4.72, 0.95, 0.57), green)
+    return {
+        "textures": {"dirt": "luckycasino:block/horserace_dirt", "white": "minecraft:block/white_concrete",
+                     "iron": "minecraft:block/iron_block", "green": "minecraft:block/green_wool",
+                     "black": "minecraft:block/black_concrete", "gold": "minecraft:block/gold_block",
+                     "stone": "minecraft:block/smooth_stone", "wood": "minecraft:block/dark_oak_planks",
+                     "red": "minecraft:block/red_concrete", "particle": "luckycasino:block/horserace_dirt"},
+        "elements": els,
+    }
+
+
+def horserace_gate_model():
+    """ゲートの扉 1 枚。蝶番（手前の端）をモデルの原点に置き、そこから奥（-Z）へ 0.28 ブロック。"""
+    els = world_box((-0.02, 0.0, -0.28), (0.02, 0.6, 0.0), "#green", (0, 0, 0), 1.0)
+    return {"textures": {"green": "minecraft:block/green_wool", "particle": "minecraft:block/green_wool"}, "elements": els}
+
+
+def horserace_icon_model():
+    """手に持つ・メニューのアイコン（1 番の馬）。"""
+    return {"parent": "luckycasino:item/horserace/horse_1",
+            "display": {"gui": {"rotation": [0, 90, 0], "scale": [1.0, 1.0, 1.0]},
+                        "ground": {"scale": [0.5, 0.5, 0.5]}, "fixed": {"rotation": [0, 90, 0], "scale": [1.0, 1.0, 1.0]},
+                        "thirdperson_righthand": {"rotation": [0, 90, 0], "scale": [0.5, 0.5, 0.5]},
+                        "firstperson_righthand": {"rotation": [0, 90, 0], "scale": [0.5, 0.5, 0.5]}}}
 
 
 def item(path):
@@ -577,9 +616,12 @@ def main():
         silk_texture(i).save(tex / f"silk_{i + 1}.png")
         write_json(JAVA / "models" / "item" / "horserace" / f"horse_{i + 1}.json", horse_model(i))
         item(f"horserace/horse_{i + 1}")
-    for_item_display(horserace_felt(), 96).save(tex / "horserace_felt.png")
-    write_json(JAVA / "models" / "item" / "table" / "horserace.json", table_model("horserace_felt"))
-    item("table/horserace")
+    dirt_texture().save(tex / "horserace_dirt.png")
+    write_json(JAVA / "models" / "item" / "horserace" / "course.json", horserace_course_model())
+    write_json(JAVA / "models" / "item" / "horserace" / "gate.json", horserace_gate_model())
+    write_json(JAVA / "models" / "item" / "table" / "horserace.json", horserace_icon_model())
+    for path in ("horserace/course", "horserace/gate", "table/horserace"):
+        item(path)
 
 
 if __name__ == "__main__":

@@ -8,6 +8,7 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
+import org.bukkit.entity.Display;
 import org.bukkit.entity.ItemDisplay;
 import org.bukkit.entity.TextDisplay;
 import org.bukkit.util.Transformation;
@@ -20,8 +21,8 @@ import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
- * 競馬（単勝）。毎回の出走表で馬ごとの配当が変わる。着順を先に決め、決めた順にゴールするよう、
- * 途中は抜きつ抜かれつの走り方をさせる。
+ * 競馬（単勝）。直線コースを 6 頭が走り、客は手前の観客席から見る。毎回の出走表で馬ごとの配当が変わり、
+ * コースの奥のオッズ板に出す。着順を先に決め、決めた順にゴールするよう、途中は抜きつ抜かれつの走り方をさせる。
  */
 final class HorseRaceTable extends SpotTable {
 
@@ -38,7 +39,8 @@ final class HorseRaceTable extends SpotTable {
     private HorseRace race;
     private int[] order;
     private final ItemDisplay[] horses = new ItemDisplay[HorseRace.HORSES];
-    private final TextDisplay[] oddsLabels = new TextDisplay[HorseRace.HORSES];
+    private final ItemDisplay[] gates = new ItemDisplay[HorseRace.HORSES];
+    private TextDisplay odds;
     private TextDisplay board;
 
     HorseRaceTable(LuckyCasinoPaper plugin, String id, Frame frame, UUID owner, Bank bank, SpotSettings settings) {
@@ -71,7 +73,12 @@ final class HorseRaceTable extends SpotTable {
 
     @Override
     protected double[] spotCenter(Spot spot) {
-        return LAYOUT.box(horse(spot.id()));
+        return LAYOUT.chip(0, horse(spot.id()));
+    }
+
+    @Override
+    protected double[] chipSpot(Spot spot, int seat) {
+        return LAYOUT.chip(seat, horse(spot.id()));
     }
 
     @Override
@@ -97,25 +104,52 @@ final class HorseRaceTable extends SpotTable {
                 entity.setTransformation(at(0, 0));
             });
             fixtures().add(horses[h]);
-            oddsLabels[h] = label(LAYOUT.oddsLabel(h), 0.45f);
-            fixtures().add(oddsLabels[h]);
+            Location gateAt = frame.at(LAYOUT.gate(h));
+            gates[h] = gateAt.getWorld().spawn(gateAt, ItemDisplay.class, entity -> {
+                entity.setPersistent(false);
+                entity.setItemStack(Items.model("horserace/gate"));
+                entity.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.NONE);
+                entity.setTransformation(gate(false));
+            });
+            fixtures().add(gates[h]);
         }
-        board = label(LAYOUT.board(), 0.6f);
+        // オッズ板の文字は板に貼った形（観客席を向いたまま。カメラの方へ傾くと板にめり込む）
+        odds = label(LAYOUT.odds(), 0.75f);
+        odds.setBillboard(Display.Billboard.FIXED);
+        fixtures().add(odds);
+        board = label(LAYOUT.board(), 0.7f);
+        board.setBillboard(Display.Billboard.FIXED);
         fixtures().add(board);
         newRace();
     }
 
-    /** 出走表を決め直し、枠の上の倍率を出す。 */
+    /** 出走表を決め直し、オッズ板に倍率を出す。 */
     private void newRace() {
         race = HorseRace.card(random);
         order = null;
-        for (int h = 0; h < HorseRace.HORSES; h++) {
-            if (oddsLabels[h] != null) {
-                oddsLabels[h].text(Component.text(HorseRace.percentText(race.percent(h)), NamedTextColor.GOLD));
+        if (odds != null) {
+            Component text = Component.text("単勝オッズ", NamedTextColor.GOLD);
+            for (int h = 0; h < HorseRace.HORSES; h++) {
+                text = text.append(Component.newline()).append(horseName(h))
+                        .append(Component.text("  " + HorseRace.percentText(race.percent(h)), NamedTextColor.WHITE));
             }
+            odds.text(text);
         }
         if (board != null) {
-            board.text(Component.text("次のレースの単勝を受付中", NamedTextColor.AQUA));
+            board.text(Component.text("次のレースの", NamedTextColor.AQUA).append(Component.newline())
+                    .append(Component.text("単勝を受付中", NamedTextColor.AQUA)));
+        }
+    }
+
+    /** ゲートの扉。開くときは蝶番を軸にコースの方へ回す。 */
+    private static Transformation gate(boolean open) {
+        Quaternionf turn = new Quaternionf().rotateY(open ? (float) Math.toRadians(-100) : 0f);
+        return new Transformation(new Vector3f(), turn, new Vector3f(1f, 1f, 1f), new Quaternionf());
+    }
+
+    private void moveGates(boolean open) {
+        for (ItemDisplay g : gates) {
+            move(g, gate(open), 5);
         }
     }
 
@@ -147,7 +181,7 @@ final class HorseRaceTable extends SpotTable {
         double length = HorseRaceLayout.FINISH_X - HorseRaceLayout.START_X;
         // 着順どおりのゴールの時刻（tick）
         int[] finish = new int[HorseRace.HORSES];
-        int t = 160 + random.nextInt(12);
+        int t = 180 + random.nextInt(12);
         for (int place = 0; place < order.length; place++) {
             finish[order[place]] = t;
             t += 2 + random.nextInt(place == 0 ? 3 : 8);
@@ -160,6 +194,8 @@ final class HorseRaceTable extends SpotTable {
             phase[h] = random.nextDouble() * 2 * Math.PI;
         }
         swing();
+        moveGates(true);
+        playSound(Sound.BLOCK_IRON_DOOR_OPEN, 1.2f);
         broadcast(Component.text("スタートしました！", NamedTextColor.GOLD));
         playSound(Sound.BLOCK_NOTE_BLOCK_BELL, 1.6f);
         for (int tick = STEP; tick <= last + 10; tick += STEP) {
@@ -168,9 +204,9 @@ final class HorseRaceTable extends SpotTable {
             for (int h = 0; h < HorseRace.HORSES; h++) {
                 double u = (double) tick / finish[h];
                 x[h] = u <= 1 ? length * progress(u, pace[h], 0.05, phase[h])
-                        : length + 0.15 * (1 - Math.exp(-(tick - finish[h]) / 8.0));
+                        : length + 0.4 * (1 - Math.exp(-(tick - finish[h]) / 8.0));
                 boolean running = u <= 1.1;
-                double bob = running && (tick / STEP + h) % 2 == 0 ? 0.025 : 0;
+                double bob = running && (tick / STEP + h) % 2 == 0 ? 0.05 : 0;
                 pose[h] = at(x[h], bob);
             }
             int leader = 0;
@@ -200,15 +236,15 @@ final class HorseRaceTable extends SpotTable {
             if (board != null) {
                 board.text(Component.text("1 着 ", NamedTextColor.GOLD).append(horseName(order[0])));
             }
-            Location at = frame.at(HorseRaceLayout.FINISH_X, TableShape.TOP + 0.2, HorseRaceLayout.laneZ(order[0]));
+            Location at = frame.at(HorseRaceLayout.FINISH_X, HorseRaceLayout.DIRT + 0.6, HorseRaceLayout.laneZ(order[0]));
             at.getWorld().spawnParticle(Particle.END_ROD, at, 15, 0.1, 0.15, 0.1, 0.03);
             playSound(Sound.ENTITY_FIREWORK_ROCKET_BLAST, 1.0f);
         });
         later(last + 6, () -> {
             if (board != null) {
                 board.text(Component.text("1 着 ", NamedTextColor.GOLD).append(horseName(order[0])).append(Component.newline())
-                        .append(Component.text("2 着 ", NamedTextColor.GRAY)).append(horseName(order[1]))
-                        .append(Component.text("　3 着 ", NamedTextColor.GRAY)).append(horseName(order[2])));
+                        .append(Component.text("2 着 ", NamedTextColor.GRAY)).append(horseName(order[1])).append(Component.newline())
+                        .append(Component.text("3 着 ", NamedTextColor.GRAY)).append(horseName(order[2])));
             }
         });
         return last + 8;
@@ -245,12 +281,13 @@ final class HorseRaceTable extends SpotTable {
         }
     }
 
-    /** 馬をスタートへ歩いて戻し、次のレースの出走表を出す。 */
+    /** 馬をスタートへ歩いて戻してゲートを閉め、次のレースの出走表を出す。 */
     @Override
     protected void clearRound() {
         for (ItemDisplay horse : horses) {
-            move(horse, at(0, 0), 20);
+            move(horse, at(0, 0), 40);
         }
+        later(42, () -> moveGates(false));
         if (order != null) {
             newRace();
         }
@@ -260,7 +297,8 @@ final class HorseRaceTable extends SpotTable {
     protected void onDespawn() {
         super.onDespawn();
         java.util.Arrays.fill(horses, null);
-        java.util.Arrays.fill(oddsLabels, null);
+        java.util.Arrays.fill(gates, null);
+        odds = null;
         board = null;
     }
 }

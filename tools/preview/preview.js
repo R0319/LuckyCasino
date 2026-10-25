@@ -280,6 +280,10 @@ class TextDisplay extends Display {
     tex.encoding = THREE.sRGBEncoding;
     const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
     sprite.center.set(0.5, 0);
+    // 大きさを inner の行列で変えるので、three.js の視野外の判定（古い行列で計算される）では消さない
+    sprite.frustumCulled = false;
+    // 半透明のモデル（大きなコースなど）より後に描く。先に描くと、原点が手前のモデルに上から塗られて消える
+    sprite.renderOrder = 10;
     super(at, sprite);
     this.canvas = canvas;
     this.tex = tex;
@@ -320,6 +324,20 @@ class TextDisplay extends Display {
     const h = (empty ? 0.0001 : lines.length * 0.25) * this.scale;
     this.sprite.scale.set(h * this.canvas.width / this.canvas.height, h, 1);
     this.sprite.visible = !empty;
+  }
+
+  /** Billboard.FIXED: カメラの方を向かず、台の手前（+Z）を向いた板のまま。 */
+  fixed() {
+    const geo = new THREE.PlaneGeometry(1, 1);
+    geo.translate(0, 0.5, 0);
+    const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: this.tex, transparent: true, depthWrite: false }));
+    mesh.frustumCulled = false;
+    mesh.renderOrder = 10;
+    this.inner.remove(this.sprite);
+    this.inner.add(mesh);
+    this.sprite = mesh;
+    this.text(this.lines);
+    return this;
   }
 }
 
@@ -493,8 +511,9 @@ class Table {
     for (let i = 0; i < this.shape.seats.length; i++) {
       const p = this.shape.seats[i];
       const rise = this.shape.seatRise || 0;
-      new BlockDisplay(at([p[0], 0, p[2]]), 0x42291a, [1, 0.38 + rise, 1], "post");
-      new BlockDisplay(at([p[0], 0.38 + rise, p[2]]), 0xa12722, [0.5, 0.1, 0.5]);
+      const y = p[1] || 0; // 椅子を置く床の高さ（観客席の上の段など）
+      new BlockDisplay(at([p[0], y, p[2]]), 0x42291a, [1, 0.38 + rise, 1], "post");
+      new BlockDisplay(at([p[0], y + 0.38 + rise, p[2]]), 0xa12722, [0.5, 0.1, 0.5]);
     }
   }
 
@@ -503,7 +522,7 @@ class Table {
     const p = this.shape.seats[index];
     const yaw = this.shape.seatYaw ? this.shape.seatYaw(index) : 180;
     const colors = [0x3b6fb6, 0x7b3fa0, 0xb5553a, 0x2f8f6a, 0x9a8a2a, 0x4a4a8a];
-    const rise = this.shape.seatRise || 0;
+    const rise = (this.shape.seatRise || 0) + (p[1] || 0);
     const fig = new Figure({ x: p[0], y: rise, z: p[2], yaw }, { sitting: true, shirt: you ? 0x2e9e9e : colors[index % 6], pants: 0x2a2f55 });
     const tag = new TextDisplay(at([p[0], 1.62 + rise, p[2]]), 0.45);
     tag.text([[[name, C.WHITE]]]);
