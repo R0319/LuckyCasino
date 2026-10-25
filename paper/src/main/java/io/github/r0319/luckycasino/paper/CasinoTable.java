@@ -39,10 +39,8 @@ abstract class CasinoTable {
         long atRisk;
         /** 勝負中に席を立った。勝負が終わったら精算する */
         boolean away;
-        /** 回転を見に立っている（席とチップはそのまま。座り直すか、時間切れ・離れすぎで精算） */
+        /** 席を残したまま立って歩いている（座り直すか、卓から離れすぎると精算） */
         boolean standing;
-        /** 立って見てよい時間が過ぎてからの秒数。 */
-        int standingSeconds;
 
         Seat(UUID player, String name, long chips, boolean bot) {
             this.player = player;
@@ -114,9 +112,14 @@ abstract class CasinoTable {
     /** 1 秒ごと。 */
     protected abstract void tickSecond();
 
-    /** 今スニークしても精算せず、立って見ていてよいか（ルーレットの回転中など）。 */
-    protected boolean canStandAndWatch() {
+    /** 今スニークしても精算せず、席を残したまま立って歩いてよいか（ルーレットで賭けたあとなど）。 */
+    protected boolean canStand(int seat) {
         return false;
+    }
+
+    /** 立って歩いている人がこれより卓から離れたら精算する（ブロック）。 */
+    protected double standingRange() {
+        return 8;
     }
 
     /** テーブルの上に出す状況の文字。 */
@@ -352,12 +355,7 @@ abstract class CasinoTable {
         updateStatus();
     }
 
-    /** 立って見ていてよい時間が過ぎてから、精算するまでの秒数。 */
-    static final int STANDING_GRACE_SECONDS = 30;
-    /** 立って見ている人がこれより離れたら精算する（ブロック）。 */
-    static final double STANDING_RANGE = 16;
-
-    /** 椅子から降りた（スニーク、テレポートなど）。立って見てよいときは席を残す。 */
+    /** 椅子から降りた（スニーク、テレポートなど）。立って歩いてよいときは席を残す。 */
     void dismounted(UUID player) {
         int index = seatOf(player);
         if (index < 0) {
@@ -367,25 +365,27 @@ abstract class CasinoTable {
         if (seat.away || seat.standing) {
             return;
         }
-        if (!canStandAndWatch()) {
+        if (!canStand(index)) {
             leave(player);
             return;
         }
         seat.standing = true;
-        seat.standingSeconds = 0;
-        send(seat, Component.text("席とチップはそのままです。自分の椅子かテーブルをクリックすると座り直せます（払い戻しのあと "
-                + STANDING_GRACE_SECONDS + " 秒戻らないと精算します）", NamedTextColor.YELLOW));
+        send(seat, Component.text("席とチップはそのままです。卓から " + (int) standingRange()
+                + " ブロック以内なら自由に歩けます。テーブルのクリックで賭けのメニュー、自分の椅子のクリックで座り直し。離れすぎると精算します", NamedTextColor.YELLOW));
         updateStatus();
     }
 
-    /** 席に着いている人が椅子やテーブルをクリックした。立っていれば座り直させ、座っていればメニューを開く。 */
-    void interact(Player player) {
+    /**
+     * 席に着いている人が椅子（chair）かテーブルをクリックした。立っている人が自分の椅子をクリックしたら座り直させ、
+     * それ以外はメニューを開く。
+     */
+    void interact(Player player, boolean chair) {
         int index = seatOf(player.getUniqueId());
         if (index < 0) {
             return;
         }
         Seat seat = seats[index];
-        if (seat.standing) {
+        if (seat.standing && chair) {
             seat.standing = false;
             mounts[index].addPassenger(player);
             playSound(Sound.BLOCK_WOODEN_BUTTON_CLICK_ON, 1f);
@@ -395,28 +395,20 @@ abstract class CasinoTable {
         openMenu(player);
     }
 
-    /** 立って見ている人の時間切れと離れすぎを確かめる。 */
+    /** 立って歩いている人が卓から離れすぎていないか確かめる。 */
     private void checkStanding() {
-        boolean watching = canStandAndWatch();
         Location center = frame.origin();
+        double range = standingRange();
         for (Seat seat : seats) {
             if (seat == null || !seat.standing) {
                 continue;
             }
             Player player = Bukkit.getPlayer(seat.player);
             boolean far = player == null || !player.getWorld().equals(center.getWorld())
-                    || player.getLocation().distanceSquared(center) > STANDING_RANGE * STANDING_RANGE;
-            if (!watching) {
-                seat.standingSeconds++;
-            }
+                    || player.getLocation().distanceSquared(center) > range * range;
             if (far) {
-                send(seat, Component.text("テーブルから離れたので席を立ちます", NamedTextColor.YELLOW));
+                send(seat, Component.text("卓から離れたので席を立ちます", NamedTextColor.YELLOW));
                 leave(seat.player);
-            } else if (seat.standingSeconds >= STANDING_GRACE_SECONDS) {
-                send(seat, Component.text("席に戻らなかったので精算します", NamedTextColor.YELLOW));
-                leave(seat.player);
-            } else if (seat.standingSeconds == STANDING_GRACE_SECONDS - 10) {
-                send(seat, Component.text("あと 10 秒で精算します。椅子をクリックすると座り直せます", NamedTextColor.YELLOW));
             }
         }
     }

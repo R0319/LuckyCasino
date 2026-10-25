@@ -122,7 +122,7 @@ final class TableManager implements Listener {
             case ROULETTE -> {
                 RouletteSettings s = plugin.rouletteSettings();
                 yield new RouletteTable(plugin, id, frame, owner, bank,
-                        selfTest ? new RouletteSettings(s.minBet(), s.maxBet(), s.maxTotal(), 5, s.buyIns()) : s);
+                        selfTest ? new RouletteSettings(s.minBet(), s.maxBet(), s.maxTotal(), 5, s.buyIns(), s.standingRange()) : s);
             }
             case POKER -> {
                 PokerSettings s = plugin.pokerSettings();
@@ -273,7 +273,7 @@ final class TableManager implements Listener {
             event.setCancelled(true);
             Player player = event.getPlayer();
             if (table.seatOf(player.getUniqueId()) >= 0) {
-                table.interact(player);
+                table.interact(player, true);
             } else if (table.seat(seat) != null) {
                 player.sendMessage(Component.text("その席は " + table.seat(seat).name + " が使っています", NamedTextColor.GRAY));
             } else if (tableOf(player.getUniqueId()) != null) {
@@ -303,7 +303,7 @@ final class TableManager implements Listener {
                     player.sendMessage(Component.text("テーブルを片付けました", NamedTextColor.GREEN));
                 }
             } else if (table.seatOf(player.getUniqueId()) >= 0) {
-                table.interact(player);
+                table.interact(player, false);
             }
             return;
         }
