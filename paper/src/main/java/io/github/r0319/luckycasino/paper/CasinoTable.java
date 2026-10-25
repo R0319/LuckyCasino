@@ -620,6 +620,14 @@ abstract class CasinoTable {
         }
     }
 
+    /** 実績を解除する（ボットと自己テスト中は何もしない）。 */
+    protected void achieve(Seat seat, Achievements.Achievement achievement) {
+        Player player = observer == null ? online(seat) : null;
+        if (player != null) {
+            plugin.achievements().grant(player, achievement);
+        }
+    }
+
     protected static Player online(Seat seat) {
         return seat == null || seat.bot ? null : Bukkit.getPlayer(seat.player);
     }
