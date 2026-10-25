@@ -15,6 +15,7 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Display;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Interaction;
+import org.bukkit.entity.Mannequin;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -61,6 +62,10 @@ final class TableManager implements Listener {
         this.file = new File(plugin.getDataFolder(), "tables.yml");
     }
 
+    CasinoTable table(String id) {
+        return tables.get(id);
+    }
+
     Collection<CasinoTable> tables() {
         return tables.values();
     }
@@ -85,7 +90,9 @@ final class TableManager implements Listener {
                 continue;
             }
             UUID owner = parseUuid(section.getString("owner"));
-            tables.put(id, createTable(type, id, frame, owner, false));
+            CasinoTable table = createTable(type, id, frame, owner, false);
+            table.dealerLook(DealerLook.load(section.getConfigurationSection("dealer")));
+            tables.put(id, table);
         }
         for (CasinoTable table : tables.values()) {
             Location origin = table.frame().origin();
@@ -93,6 +100,12 @@ final class TableManager implements Listener {
                 table.spawn();
             }
         }
+    }
+
+    /** ディーラーの見た目を変えて保存する。 */
+    void changeDealer(CasinoTable table, DealerLook look) {
+        table.dealerLook(look);
+        save();
     }
 
     private void save() {
@@ -107,6 +120,9 @@ final class TableManager implements Listener {
             section.set("z", origin.getZ());
             section.set("yaw", table.frame().yaw());
             section.set("owner", table.owner() == null ? null : table.owner().toString());
+            if (!table.dealerLook().equals(DealerLook.DEFAULT)) {
+                table.dealerLook().save(section.createSection("dealer"));
+            }
         }
         try {
             yaml.save(file);
@@ -168,6 +184,21 @@ final class TableManager implements Listener {
         for (CasinoTable table : tables.values()) {
             Location origin = table.frame().origin();
             if (origin.getWorld().equals(location.getWorld()) && origin.distanceSquared(location) <= bestDistance) {
+                best = table;
+                bestDistance = origin.distanceSquared(location);
+            }
+        }
+        return best;
+    }
+
+    /** いちばん近い、ディーラーのいる種類のテーブル。 */
+    CasinoTable nearestWithDealer(Location location, double radius) {
+        CasinoTable best = null;
+        double bestDistance = radius * radius;
+        for (CasinoTable table : tables.values()) {
+            Location origin = table.frame().origin();
+            if (table.shape().dealer() != null && origin.getWorld().equals(location.getWorld())
+                    && origin.distanceSquared(location) <= bestDistance) {
                 best = table;
                 bestDistance = origin.distanceSquared(location);
             }
@@ -299,6 +330,24 @@ final class TableManager implements Listener {
         }
     }
 
+    /** 置いた人か管理者がディーラーをスニーク + 右クリックすると、見た目のメニューを開く。 */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onInteractDealer(PlayerInteractEntityEvent event) {
+        if (!(event.getRightClicked() instanceof Mannequin) || event.getHand() != EquipmentSlot.HAND) {
+            return;
+        }
+        for (CasinoTable table : tables.values()) {
+            if (table.isDealer(event.getRightClicked())) {
+                event.setCancelled(true);
+                Player player = event.getPlayer();
+                if (player.isSneaking() && table.canEdit(player)) {
+                    plugin.dealerMenu().open(player, table);
+                }
+                return;
+            }
+        }
+    }
+
     @EventHandler(priority = EventPriority.HIGH)
     public void onInteract(PlayerInteractEvent event) {
         if (event.getHand() != EquipmentSlot.HAND || event.getAction() != Action.RIGHT_CLICK_BLOCK || event.getClickedBlock() == null) {
@@ -309,7 +358,7 @@ final class TableManager implements Listener {
         CasinoTable table = block.getType() == Material.BARRIER ? tableAt(block) : null;
         if (table != null) {
             event.setCancelled(true);
-            if (player.isSneaking() && (player.getUniqueId().equals(table.owner()) || player.hasPermission(ADMIN))) {
+            if (player.isSneaking() && table.canEdit(player)) {
                 if (!table.empty()) {
                     player.sendMessage(Component.text("座っている人がいるので片付けられません", NamedTextColor.RED));
                 } else {
