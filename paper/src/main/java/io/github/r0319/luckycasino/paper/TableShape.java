@@ -70,6 +70,11 @@ interface TableShape {
         return true;
     }
 
+    /** cells の上に空いている必要があるブロックの数（高い飾りのある卓は増やす）。 */
+    default int headroom() {
+        return needsHeadroom() ? 1 : 0;
+    }
+
     /** 置くときの説明（空きが足りないとき）。 */
     default String spaceText() {
         return "4 x 2 ブロック、高さ 2 ブロックの空きが必要です";

@@ -248,7 +248,11 @@ final class TableManager implements Listener {
 
         List<Block> footprint = table.footprint();
         for (Block block : footprint) {
-            if (!block.isEmpty() || (shape.needsHeadroom() && !block.getRelative(BlockFace.UP).isEmpty()) || tableAt(block) != null) {
+            boolean blocked = !block.isEmpty() || tableAt(block) != null;
+            for (int up = 1; up <= shape.headroom() && !blocked; up++) {
+                blocked = !block.getRelative(BlockFace.UP, up).isEmpty();
+            }
+            if (blocked) {
                 player.sendMessage(Component.text(shape.spaceText(), NamedTextColor.RED));
                 return;
             }

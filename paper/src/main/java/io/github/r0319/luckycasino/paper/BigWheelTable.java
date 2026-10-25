@@ -7,6 +7,7 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
+import org.bukkit.entity.Display;
 import org.bukkit.entity.ItemDisplay;
 import org.bukkit.entity.TextDisplay;
 import org.bukkit.util.Transformation;
@@ -19,8 +20,10 @@ import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
- * ビッグホイール。テーブルの奥に立てた 54 マスのホイールを回し、上の針が指したマスの絵柄に賭けていたら当たり。
+ * ビッグホイール。ステージの幕の前に立てた 54 マスのホイールを回し、上の針が指したマスの絵柄に賭けていたら当たり。
+ * 客は扇形に並べたスツールに座り、チップは各席の前のベット台に置く。
  * 止まるマスを先に決め、そこで止まるよう回す角度を逆算する。針の上には、いま針が指しているマスの絵柄を出す。
+ * ホイールを囲む電球は 2 枚のモデルを入れ替えて点滅させる（待っている間はゆっくり、回っている間は速く）。
  */
 final class BigWheelTable extends SpotTable {
 
@@ -38,7 +41,12 @@ final class BigWheelTable extends SpotTable {
             new Spot("joker", "ジョーカー", "1 マスだけ。配当 40:1（41 倍が戻る）", Material.BLACK_CONCRETE, 24),
             new Spot("logo", "ロゴ（LC）", "1 マスだけ。配当 40:1（41 倍が戻る）", Material.RED_CONCRETE, 25));
 
+    /** 回っている間の電球の切り替え間隔（tick）。 */
+    private static final int BLINK_FAST = 4;
+
     private ItemDisplay wheel;
+    private ItemDisplay bulbs;
+    private boolean bulbPhase;
     private TextDisplay pointerLabel;
     /** ホイールの今の角度（正面から見て反時計回り、度）。 */
     private double wheelAngle;
@@ -65,7 +73,12 @@ final class BigWheelTable extends SpotTable {
 
     @Override
     protected double[] spotCenter(Spot spot) {
-        return LAYOUT.box(SPOTS.indexOf(spot));
+        return LAYOUT.chip(0, SPOTS.indexOf(spot));
+    }
+
+    @Override
+    protected double[] chipSpot(Spot spot, int seat) {
+        return LAYOUT.chip(seat, SPOTS.indexOf(spot));
     }
 
     @Override
@@ -81,12 +94,17 @@ final class BigWheelTable extends SpotTable {
 
     @Override
     protected void onSpawn() {
-        Location standAt = frame.at(LAYOUT.stand());
-        fixtures().add(standAt.getWorld().spawn(standAt, ItemDisplay.class, entity -> {
+        Location bulbsAt = frame.at(LAYOUT.bulbs(), LAYOUT.modelYaw());
+        float b = BigWheelLayout.STAGE_SCALE;
+        bulbs = bulbsAt.getWorld().spawn(bulbsAt, ItemDisplay.class, entity -> {
             entity.setPersistent(false);
-            entity.setItemStack(Items.model("bigwheel/stand"));
+            entity.setItemStack(Items.model("bigwheel/bulbs_0"));
             entity.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.NONE);
-        }));
+            entity.setTransformation(new Transformation(new Vector3f(), new AxisAngle4f(), new Vector3f(b, b, b), new AxisAngle4f()));
+            entity.setBrightness(new Display.Brightness(15, 15));
+            entity.setViewRange(2f);
+        });
+        fixtures().add(bulbs);
         Location wheelAt = frame.at(LAYOUT.wheel());
         wheel = wheelAt.getWorld().spawn(wheelAt, ItemDisplay.class, entity -> {
             entity.setPersistent(false);
@@ -98,6 +116,21 @@ final class BigWheelTable extends SpotTable {
         pointerLabel = label(LAYOUT.pointerLabel(), 0.8f);
         fixtures().add(pointerLabel);
         showPointer(BigWheel.at(underPointer(wheelAngle)));
+    }
+
+    private void blink() {
+        if (bulbs != null) {
+            bulbPhase = !bulbPhase;
+            bulbs.setItemStack(Items.model(bulbPhase ? "bigwheel/bulbs_1" : "bigwheel/bulbs_0"));
+        }
+    }
+
+    @Override
+    protected void tickSecond() {
+        super.tickSecond();
+        if (state() != State.PLAYING) {
+            blink();
+        }
     }
 
     private static Transformation wheelTransform(double degrees) {
@@ -144,6 +177,9 @@ final class BigWheelTable extends SpotTable {
         double total = end - start;
         swing();
         playSound(Sound.BLOCK_GRINDSTONE_USE, 1.2f);
+        for (int t = BLINK_FAST; t <= SPIN_TICKS + 40; t += BLINK_FAST) {
+            later(t, this::blink);
+        }
         for (int t = STEP; t <= SPIN_TICKS; t += STEP) {
             double progress = (double) t / SPIN_TICKS;
             double angle = start + total * (1 - Math.pow(1 - progress, 3));
@@ -200,6 +236,7 @@ final class BigWheelTable extends SpotTable {
     protected void onDespawn() {
         super.onDespawn();
         wheel = null;
+        bulbs = null;
         pointerLabel = null;
     }
 }

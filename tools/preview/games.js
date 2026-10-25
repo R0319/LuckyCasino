@@ -245,14 +245,27 @@ const BW_SEG = {
   W: ["20", "#FFAA00", 20], J: ["ジョーカー", "#555555", 40], L: ["ロゴ", "#FF5555", 40],
 };
 const BW_SPOTS = { one: "A", two: "B", five: "E", ten: "T", twenty: "W", joker: "J", logo: "L" };
+// BigWheelLayout と同じ数字（ステージ・ベット台・電球はモデル）
+const BW_ANGLE = (i) => (0.5 - i / 4) * 1.2;
 const BW = {
-  shape: { model: "table/bigwheel", seatRise: RAISED_SEAT, dealer: [-0.9, 0, -1.55], seats: [0, 1, 2, 3, 4].map((i) => [1.6 - 0.8 * i, 0, 1.55]) },
-  SCALE: 1.7,
-  wheel: [0.75, 1.95, -1.5],
-  stand: [0.75, 1.45, -1.5],
-  pointerLabel: [0.75, 1.95 + 1.7 / 2 + 0.2, -1.5],
-  box: (i) => [-1.71 + 0.57 * i, TOP + 0.001, 0.3],
-  croupier: [-0.9, TOP + 0.001, -0.6],
+  shape: {
+    model: "bigwheel/stage", modelAt: [0, 2.1, -1.1], modelScale: 2, seatRise: RAISED_SEAT,
+    dealer: [1.55, 0, -1.0], status: [-2.5, 2.0, -0.9],
+    seats: [0, 1, 2, 3, 4].map((i) => [3 * Math.sin(BW_ANGLE(i)), 0, -1.55 + 3 * Math.cos(BW_ANGLE(i))]),
+    // 扇形の席はホイールの方を向く
+    seatYaw: (i) => 180 - (BW_ANGLE(i) * 180) / Math.PI,
+  },
+  SCALE: 3,
+  wheel: [0, 2.2, -1.55],
+  pointerLabel: [0, 2.2 + 1.5 + 0.45, -1.45],
+  stand: (seat) => [2.3 * Math.sin(BW_ANGLE(seat)), 1.001, -1.55 + 2.3 * Math.cos(BW_ANGLE(seat))],
+  chip(seat, k) {
+    const s = BW.stand(seat);
+    const dx = k < 4 ? -0.165 + 0.11 * k : -0.11 + 0.11 * (k - 4);
+    const dz = k < 4 ? -0.07 : 0.08;
+    return [s[0] + dx, s[1] + seat * 0.0005, s[2] + dz];
+  },
+  croupier: [1.1, 0.201, -0.75],
 };
 
 function bigWheelScenario() {
@@ -266,7 +279,14 @@ function bigWheelScenario() {
   const SPIN_TICKS = 150, STEP = 2;
   const RESULT = 20; // マス 20 は 10
   const random = seeded(20261025);
-  new ItemDisplay(at(BW.stand), "bigwheel/stand");
+  const bulbs = new ItemDisplay(at(BW.shape.modelAt), "bigwheel/bulbs_0");
+  const bt = transformation([0, 0, 0], null, 0, 2);
+  bulbs.tr = { from: bt, to: bt, start: 0, dur: 0 };
+  let bulbPhase = false;
+  const blink = () => { bulbPhase = !bulbPhase; bulbs.setItem(bulbPhase ? "bigwheel/bulbs_1" : "bigwheel/bulbs_0"); };
+  let spinning = false;
+  const slowBlink = () => { if (!spinning) blink(); sim.later(20, slowBlink); };
+  sim.later(20, slowBlink);
   const wheel = new ItemDisplay(at(BW.wheel), "bigwheel/wheel");
   const wt = (deg) => transformation([0, 0, 0], [0, 0, 1], deg, BW.SCALE);
   wheel.tr = { from: wt(0), to: wt(0), start: 0, dur: 0 };
@@ -286,6 +306,9 @@ function bigWheelScenario() {
     const end = base + ((((target - base) % 360) + 360) % 360);
     const total = end - start;
     t.swing();
+    spinning = true;
+    for (let tt = 4; tt <= SPIN_TICKS + 40; tt += 4) sim.later(tt, blink);
+    sim.later(SPIN_TICKS + 40, () => { spinning = false; });
     for (let tt = STEP; tt <= SPIN_TICKS; tt += STEP) {
       const p = tt / SPIN_TICKS;
       const angle = start + total * (1 - Math.pow(1 - p, 3));
@@ -303,11 +326,7 @@ function bigWheelScenario() {
   const seg = BW_ORDER[RESULT];
   const flow = spotFlow({
     table: t, you: YOU, bettingSeconds: 6, minBet: 10, maxBet: 500, maxTotal: 2000,
-    chipSpot: (spot, seat) => {
-      const c = BW.box(Object.keys(BW_SPOTS).indexOf(spot));
-      const d = (seat - 2) * 0.014;
-      return [c[0] + d, c[1] + seat * 0.0005, c[2] + d * 0.5];
-    },
+    chipSpot: (spot, seat) => BW.chip(seat, Object.keys(BW_SPOTS).indexOf(spot)),
     croupier: BW.croupier, spotName: (s) => BW_SEG[BW_SPOTS[s]][0],
     play,
     payout: (spot, amount) => (BW_SPOTS[spot] === seg ? amount * (BW_SEG[seg][2] + 1) : 0),
@@ -321,14 +340,15 @@ function bigWheelScenario() {
     you: YOU, table: t,
     camera(kind) {
       if (kind === "seat") {
-        camera.position.set(t.shape.seats[YOU][0], 1.48 + RAISED_SEAT, 1.5);
-        controls.target.set(0.5, 1.6, -1.2);
+        const p = t.shape.seats[YOU];
+        camera.position.set(p[0], 1.48 + RAISED_SEAT, p[2]);
+        controls.target.set(0, 1.9, -1.55);
       } else if (kind === "high") {
-        camera.position.set(0.6, 3.3, 4.4);
-        controls.target.set(0.3, 1.4, -0.5);
+        camera.position.set(2.6, 3.4, 4.6);
+        controls.target.set(0, 1.5, -0.8);
       } else {
-        camera.position.set(0.75, 1.95, 0.6);
-        controls.target.set(0.75, 1.95, -1.5);
+        camera.position.set(0, 2.2, 1.3);
+        controls.target.set(0, 2.2, -1.55);
       }
     },
   };

@@ -91,14 +91,6 @@ SEGMENT_COLOR = {
     "W": (232, 120, 40, 255), "J": (30, 30, 38, 255), "L": (196, 28, 58, 255),
 }
 SEGMENT_LABEL = {"A": "1", "B": "2", "E": "5", "T": "10", "W": "20", "J": "J", "L": "L"}
-# 卓のマスの並び（paper の BigWheelTable.SPOTS と同じ順）
-BW_SPOTS = ["A", "B", "E", "T", "W", "J", "L"]
-BW_BOX_Z = 0.3
-
-
-def bw_box_x(i):
-    return -1.71 + 0.57 * i
-
 
 def bigwheel_texture():
     """ホイールの正面。正面から見た向きで描く（マス 0 が上、時計回り）。数字は外側から縦に積む。"""
@@ -173,41 +165,99 @@ def bigwheel_model():
     }
 
 
-def bigwheel_stand_model():
-    """台と柱と、上の針。ItemDisplay は Y 軸まわりに 180 度回して描くので、z は前後を逆にしてある（z が大きいほど奥）。"""
-    wood, gold = "#wood", "#gold"
+# ---- ビッグホイールのステージ（paper の BigWheelLayout と合わせる） ----
+STAGE_CENTER = (0.0, 2.1, -1.1)   # ステージのモデルを置く位置（ブロック、局所座標）
+STAGE_SCALE = 2.0                 # 表示倍率（モデル 8 単位 = 1 ブロック）
+BW_WHEEL = (0.0, 2.2, -1.55)
+BW_WHEEL_D = 3.0
+BW_SEAT_R, BW_STAND_R, BW_SPREAD = 3.0, 2.3, 1.2
 
-    def el(frm, to, t):
-        return {"from": frm, "to": to, "faces": {f: {"texture": t, "uv": [0, 0, 16, 16]}
-                                                 for f in ("north", "south", "east", "west", "up", "down")}}
+
+def bw_angle(i):
+    """席 i（0 が右端）の、ホイールの中心から見た角度（ラジアン、手前が 0）。"""
+    return (0.5 - i / 4) * BW_SPREAD
+
+
+def bw_stand(i):
+    import math
+    a = bw_angle(i)
+    return (BW_STAND_R * math.sin(a), BW_WHEEL[2] + BW_STAND_R * math.cos(a))
+
+
+def world_box(lo, hi, tex, center=STAGE_CENTER, scale=STAGE_SCALE, faces=("north", "south", "east", "west", "up", "down")):
+    """局所座標（ブロック）の箱を、ItemDisplay の 180 度回転を打ち消したモデルの要素にする。1 ブロックごとに分けて模様を詰める。"""
+    import math
+    u = 16 / scale
+    out = []
+
+    def cuts(a, b):
+        n = max(1, math.ceil(round(b - a, 6)))
+        return [(a + (b - a) * k / n, a + (b - a) * (k + 1) / n) for k in range(n)]
+    for x0, x1 in cuts(lo[0], hi[0]):
+        for y0, y1 in cuts(lo[1], hi[1]):
+            for z0, z1 in cuts(lo[2], hi[2]):
+                fx = sorted((8 - (x0 - center[0]) * u, 8 - (x1 - center[0]) * u))
+                fz = sorted((8 - (z0 - center[2]) * u, 8 - (z1 - center[2]) * u))
+                fy = (8 + (y0 - center[1]) * u, 8 + (y1 - center[1]) * u)
+                out.append({"from": [round(fx[0], 3), round(fy[0], 3), round(fz[0], 3)],
+                            "to": [round(fx[1], 3), round(fy[1], 3), round(fz[1], 3)],
+                            "faces": {f: {"texture": tex, "uv": [0, 0, 16, 16]} for f in faces}})
+    return out
+
+
+def bigwheel_stage_model():
+    wood, wool, gold, green = "#wood", "#wool", "#gold", "#green"
+    els = []
+    els += world_box((-2, 0, -1.85), (2, 0.2, -0.3), wood)                  # 舞台の床
+    els += world_box((-2, 0, -2), (2, 4, -1.85), wool)                     # 赤い幕
+    els += world_box((-2.1, 4, -2.05), (2.1, 4.25, -1.8), gold)            # 上の金の縁
+    for x in (-2.1, 1.9):
+        els += world_box((x, 0, -2.05), (x + 0.2, 4, -1.75), wood)         # 両脇の柱
+    wx, wy, wz = BW_WHEEL
+    r = BW_WHEEL_D / 2
+    els += world_box((-0.12, 0.2, -1.8), (0.12, wy, -1.62), wood)         # ホイールの軸の柱
+    els += world_box((-0.12, wy + r + 0.08, wz + 0.02), (0.12, wy + r + 0.32, wz + 0.12), gold)  # 針
+    els += world_box((-0.05, wy + r - 0.04, wz + 0.02), (0.05, wy + r + 0.08, wz + 0.12), gold)
+    for i in range(5):
+        x, z = bw_stand(i)
+        els += world_box((x - 0.25, 0, z - 0.2), (x + 0.25, 0.95, z + 0.2), wood)   # ベット台
+        els += world_box((x - 0.28, 0.95, z - 0.23), (x + 0.28, 1.0, z + 0.23), green)
     return {
-        "textures": {"wood": "minecraft:block/dark_oak_planks", "gold": "minecraft:block/gold_block",
-                     "particle": "minecraft:block/dark_oak_planks"},
-        "elements": [
-            el([3, -15.2, 7], [13, -14.2, 13], wood),
-            el([7, -14.2, 8.6], [9, 16, 10], wood),
-            # 針（ホイールの手前・上）
-            el([7, 29.4, 6.6], [9, 31.6, 7.6], gold),
-            el([7.5, 28.2, 6.6], [8.5, 29.4, 7.6], gold),
-        ],
+        "textures": {"wood": "minecraft:block/dark_oak_planks", "wool": "minecraft:block/red_wool",
+                     "gold": "minecraft:block/gold_block", "green": "minecraft:block/green_wool",
+                     "particle": "minecraft:block/red_wool"},
+        "elements": els,
     }
 
 
-def bigwheel_felt():
-    img = felt_base(192, 96)
-    d = ImageDraw.Draw(img)
-    d.rectangle([2, 2, 189, 93], outline=GOLD)
-    text(img, "BIG WHEEL", 0, -0.8, GOLD)
-    pays = {"A": "1:1", "B": "2:1", "E": "5:1", "T": "10:1", "W": "20:1", "J": "40:1", "L": "40:1"}
-    names = {"A": "1", "B": "2", "E": "5", "T": "10", "W": "20", "J": "JOKER", "L": "LOGO"}
-    for i, seg in enumerate(BW_SPOTS):
-        x = bw_box_x(i)
-        color = SEGMENT_COLOR[seg]
-        box(d, x, BW_BOX_Z, 0.53, 0.62, GOLD, color)
-        ink = (40, 30, 20, 255) if seg == "A" else WHITE
-        text(img, names[seg], x, BW_BOX_Z - 0.12, ink)
-        text(img, pays[seg], x, BW_BOX_Z + 0.14, ink)
-    return img
+BW_BULBS = 24
+
+
+def bw_bulb_points():
+    import math
+    wx, wy, wz = BW_WHEEL
+    r = BW_WHEEL_D / 2 + 0.13
+    return [(wx + r * math.sin(2 * math.pi * k / BW_BULBS), wy + r * math.cos(2 * math.pi * k / BW_BULBS), wz - 0.2)
+            for k in range(BW_BULBS)]
+
+
+def bigwheel_bulbs_model(phase):
+    """ホイールのまわりの電球。phase 0 は偶数番、1 は奇数番が光る（2 つのモデルを交互に出して点滅させる）。"""
+    els = []
+    for k, (x, y, z) in enumerate(bw_bulb_points()):
+        tex = "#on" if k % 2 == phase else "#off"
+        els += world_box((x - 0.05, y - 0.05, z - 0.05), (x + 0.05, y + 0.05, z + 0.05), tex)
+    return {"textures": {"on": "minecraft:block/glowstone", "off": "minecraft:block/redstone_lamp",
+                         "particle": "minecraft:block/glowstone"}, "elements": els}
+
+
+def bigwheel_icon_model():
+    """手に持つ・メニューのアイコン（ホイールそのもの）。"""
+    return {"parent": "luckycasino:item/bigwheel/wheel",
+            "display": {"gui": {"rotation": [0, 0, 0], "scale": [0.9, 0.9, 0.9]},
+                        "ground": {"scale": [0.4, 0.4, 0.4]}, "fixed": {"scale": [0.8, 0.8, 0.8]},
+                        "thirdperson_righthand": {"rotation": [0, 90, 0], "scale": [0.5, 0.5, 0.5]},
+                        "firstperson_righthand": {"rotation": [0, 90, 0], "scale": [0.5, 0.5, 0.5]}}}
 
 
 # ---- 大小（paper の SicBoLayout・SicBoTable と合わせる） ----
@@ -498,11 +548,12 @@ def main():
     item("table/baccarat")
 
     bigwheel_texture().save(tex / "bigwheel_wheel.png")
-    for_item_display(bigwheel_felt(), 96).save(tex / "bigwheel_felt.png")
-    write_json(JAVA / "models" / "item" / "table" / "bigwheel.json", table_model("bigwheel_felt"))
+    write_json(JAVA / "models" / "item" / "table" / "bigwheel.json", bigwheel_icon_model())
     write_json(JAVA / "models" / "item" / "bigwheel" / "wheel.json", bigwheel_model())
-    write_json(JAVA / "models" / "item" / "bigwheel" / "stand.json", bigwheel_stand_model())
-    for path in ("table/bigwheel", "bigwheel/wheel", "bigwheel/stand"):
+    write_json(JAVA / "models" / "item" / "bigwheel" / "stage.json", bigwheel_stage_model())
+    for phase in (0, 1):
+        write_json(JAVA / "models" / "item" / "bigwheel" / f"bulbs_{phase}.json", bigwheel_bulbs_model(phase))
+    for path in ("table/bigwheel", "bigwheel/wheel", "bigwheel/stage", "bigwheel/bulbs_0", "bigwheel/bulbs_1"):
         item(path)
 
     for n in range(1, 7):

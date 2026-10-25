@@ -59,6 +59,17 @@ def vanilla(name):
         d.rectangle([0, 0, 15, 15], fill=(240, 146, 70, 255))
         for x, y in ((2, 4), (9, 2), (5, 10), (12, 11)):
             d.rectangle([x, y, x + 1, y + 1], fill=(255, 220, 150, 255))
+    elif name == "block/red_wool":
+        d.rectangle([0, 0, 15, 15], fill=(160, 39, 34, 255))
+        for x, y in ((2, 3), (9, 1), (5, 9), (13, 7), (11, 13)):
+            d.point([x, y], fill=(125, 28, 25, 255))
+    elif name == "block/green_wool":
+        d.rectangle([0, 0, 15, 15], fill=(84, 109, 27, 255))
+        for x, y in ((3, 2), (10, 5), (6, 12), (13, 10)):
+            d.point([x, y], fill=(64, 86, 20, 255))
+    elif name == "block/redstone_lamp":
+        d.rectangle([0, 0, 15, 15], fill=(95, 54, 30, 255))
+        d.rectangle([3, 3, 12, 12], fill=(140, 80, 45, 255))
     else:
         d.rectangle([0, 0, 15, 15], fill=(255, 0, 255, 255))
     return img
