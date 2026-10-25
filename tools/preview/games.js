@@ -359,22 +359,34 @@ addGame("bigwheel", "ビッグホイール", { make: bigWheelScenario, length: 4
 
 // ================================================================ 大小（シックボー）
 
+// SicBoLayout と同じ数字（畳・座布団・どんぶりはモデル）
+const SB_ANGLE = (seat) => ((120 - 60 * seat) * Math.PI) / 180;
 const SB = {
-  shape: { model: "table/sicbo", seatRise: RAISED_SEAT, dealer: [0, 0, -1.55], seats: [0, 1, 2, 3, 4].map((i) => [1.6 - 0.8 * i, 0, 1.55]) },
-  TRAY_SCALE: 0.56, DIE_SCALE: 0.13,
-  tray: [0.75, TOP + 0.28, -0.68],
-  dice: [0.75, TOP + 0.56 / 16 + 0.065, -0.68],
-  resultLabel: [0.05, TOP + 0.45, -0.68],
-  croupier: [-1.5, TOP + 0.001, -0.72],
-  REST: [[-0.1, 0.06], [0.1, 0.07], [0, -0.1]],
-  spot(id) {
-    const front = { small: 0, odd: 1, even: 2, big: 3 };
-    if (id in front) return [-1.44 + 0.96 * front[id], TOP + 0.001, 0.73];
-    if (id === "any_triple") return [-1.74 + 0.29 * 6, TOP + 0.001, -0.26];
+  shape: {
+    model: "sicbo/zashiki", modelAt: [0, 0.5, 0], modelScale: 2, seatRise: 0.1 - 0.38,
+    dealer: [0, 0, -1.55], dealerSeated: true, status: [0, 1.95, -1.8],
+    seats: [0, 1, 2, 3, 4].map((i) => [1.55 * Math.sin(SB_ANGLE(i)), 0, 1.55 * Math.cos(SB_ANGLE(i))]),
+    // 座布団の輪の真ん中（どんぶり）を向く
+    seatYaw: (i) => 180 - (SB_ANGLE(i) * 180) / Math.PI,
+  },
+  DIE_SCALE: 0.12, MAT: 0.1,
+  bowl: [0, 0.1, 0],
+  dice: [0, 0.1 + 0.04 + 0.06, 0],
+  resultLabel: [0, 0.75, 0],
+  croupier: [0, 0.101, -0.72],
+  HAND: [0, 0.5, -1.0],
+  REST: [[-0.09, 0.05], [0.09, 0.06], [0, -0.09]],
+  group(id) {
+    const fixed = { small: [0, 0], big: [1, 0], odd: [2, 0], even: [3, 0], any_triple: [7, 0] };
+    if (id in fixed) return fixed[id];
     const n = Number(id.slice(id.lastIndexOf("_") + 1));
-    if (id.startsWith("total_")) return [-1.783 + 0.2743 * (n - 4), TOP + 0.001, 0.06];
-    if (id.startsWith("single_")) return [-1.6 + 0.64 * (n - 1), TOP + 0.001, 0.38];
-    return [-1.74 + 0.29 * (id.startsWith("double_") ? n - 1 : n + 6), TOP + 0.001, -0.26];
+    return { single: [4, n - 1], total: [5, n - 4], double: [6, n - 1], triple: [7, n] }[id.slice(0, id.lastIndexOf("_"))];
+  },
+  chip(seat, group, k) {
+    const a = SB_ANGLE(seat);
+    const col = ((group % 4) - 1.5) * 0.12 + k * 0.012;
+    const row = 0.72 - Math.floor(group / 4) * 0.12;
+    return [row * Math.sin(a) + col * Math.cos(a), 0.101 + seat * 0.0005, row * Math.cos(a) - col * Math.sin(a)];
   },
 };
 
@@ -413,20 +425,18 @@ function sbName(id) {
 function sicBoScenario() {
   const t = new Table(SB.shape);
   t.spawn();
-  const YOU = 1;
+  const YOU = 2;
   t.sit(0, "Bot1", 1000);
+  t.sit(1, "Bot2", 1000);
   t.sit(YOU, "あなた", 1000, true);
   t.sit(3, "Bot4", 1000);
   const DICE = [2, 5, 5];
   const random = seeded(4242);
   const rnd = () => random.nextInt(10000) / 10000;
-  const SHAKE_TICKS = 42, SHAKE_STEP = 3, SETTLE = 6, LIFT_AT = 42 + 6 + 10, LIFT_TICKS = 14;
+  const TOSS_TICKS = 10, TOSS_STEP = 2, BOUNCE_TICKS = 30, BOUNCE_STEP = 3, SETTLE = 6;
+  const SHOW_AT = TOSS_TICKS + BOUNCE_TICKS + SETTLE + 8;
   const tr = (t3, q, s) => ({ t: t3, q, s: [s, s, s] });
-  const still = (d) => { d.tr = { from: d.tr.to, to: d.tr.to, start: 0, dur: 0 }; };
-  const base = new ItemDisplay(at(SB.tray), "sicbo/base");
-  base.tr = { from: tr([0, 0, 0], new THREE.Quaternion(), SB.TRAY_SCALE), to: tr([0, 0, 0], new THREE.Quaternion(), SB.TRAY_SCALE), start: 0, dur: 0 };
-  const dome = new ItemDisplay(at(SB.tray), "sicbo/dome");
-  dome.tr = { ...base.tr };
+  const bowl = new ItemDisplay(at(SB.bowl), "sicbo/bowl");
   const dieAt = (i, face, yaw) => tr([SB.REST[i][0], 0, SB.REST[i][1]], sbQuat([0, 1, 0], yaw).multiply(sbFaceUp(face)), SB.DIE_SCALE);
   const dice = [4, 5, 6].map((face, i) => {
     const d = new ItemDisplay(at(SB.dice), "sicbo/die");
@@ -434,6 +444,7 @@ function sicBoScenario() {
     return d;
   });
   const move = (e, to, ticks) => { e.interpolationDuration = ticks; e.setTransformation(to); };
+  const spin = () => new THREE.Quaternion().setFromEuler(new THREE.Euler(rnd() * 6.3, rnd() * 6.3, rnd() * 6.3, "XYZ"));
   let resultLabel = null;
   const total = DICE[0] + DICE[1] + DICE[2];
   const resultText = () => [DICE.join("・") + " 合計 " + total + " " + (total <= 10 ? "小" : "大") + (total % 2 ? "・奇数" : "・偶数"), total <= 10 ? C.AQUA : C.RED];
@@ -442,37 +453,38 @@ function sicBoScenario() {
   function play() {
     resultLabel = t.label(SB.resultLabel, 0.8);
     t.swing();
-    t.broadcast([["サイコロを振ります", C.GRAY]]);
-    for (let tt = 0; tt <= SHAKE_TICKS; tt += SHAKE_STEP) {
+    t.broadcast([["親がサイコロを投げます", C.GRAY]]);
+    dice.forEach((d, i) => {
+      const hand = [SB.HAND[0] + (i - 1) * 0.06, SB.HAND[1], SB.HAND[2]];
+      const land = [(rnd() - 0.5) * 0.25, 0.08, (rnd() - 0.5) * 0.25];
+      move(d, tr(hand, spin(), SB.DIE_SCALE), 0);
+      for (let tt = TOSS_STEP; tt <= TOSS_TICKS; tt += TOSS_STEP) {
+        const u = tt / TOSS_TICKS;
+        const p = [0, 1, 2].map((k) => lerp(hand[k], land[k], u) + (k === 1 ? 0.35 * 4 * u * (1 - u) : 0));
+        const pose = tr(p, spin(), SB.DIE_SCALE);
+        sim.later(tt, () => move(d, pose, TOSS_STEP));
+      }
+    });
+    for (let tt = TOSS_TICKS + BOUNCE_STEP; tt <= TOSS_TICKS + BOUNCE_TICKS; tt += BOUNCE_STEP) {
+      const left = 1 - (tt - TOSS_TICKS) / BOUNCE_TICKS;
       const hop = [0, 1, 2].map(() => {
-        const e = new THREE.Euler(rnd() * 6.3, rnd() * 6.3, rnd() * 6.3, "XYZ");
-        return tr([(rnd() - 0.5) * 0.3, rnd() * 0.2, (rnd() - 0.5) * 0.3], new THREE.Quaternion().setFromEuler(e), SB.DIE_SCALE);
+        const a = rnd() * 2 * Math.PI, r = 0.08 + rnd() * 0.12;
+        return tr([Math.sin(a) * r, rnd() * 0.14 * left, Math.cos(a) * r], spin(), SB.DIE_SCALE);
       });
-      const shake = tr([(rnd() - 0.5) * 0.02, 0, (rnd() - 0.5) * 0.02], new THREE.Quaternion(), SB.TRAY_SCALE);
-      sim.later(Math.max(1, tt), () => { dice.forEach((d, i) => move(d, hop[i], SHAKE_STEP)); move(dome, shake, SHAKE_STEP); });
+      sim.later(tt, () => dice.forEach((d, i) => move(d, hop[i], BOUNCE_STEP)));
     }
     const rest = DICE.map((face, i) => dieAt(i, face, (rnd() - 0.5) * 1.2));
-    sim.later(SHAKE_TICKS + SHAKE_STEP, () => {
-      dice.forEach((d, i) => move(d, rest[i], SETTLE));
-      move(dome, tr([0, 0, 0], new THREE.Quaternion(), SB.TRAY_SCALE), SETTLE);
-    });
-    sim.later(LIFT_AT, () => move(dome, tr([0, 0.5, -0.35], new THREE.Quaternion(), SB.TRAY_SCALE), LIFT_TICKS));
-    const shown = LIFT_AT + LIFT_TICKS;
-    sim.later(shown, () => { resultLabel.text([[resultText()]]); sparkle(at(SB.resultLabel), 0xffffff); });
-    return shown + 2;
+    sim.later(TOSS_TICKS + BOUNCE_TICKS + BOUNCE_STEP, () => dice.forEach((d, i) => move(d, rest[i], SETTLE)));
+    sim.later(SHOW_AT, () => { resultLabel.text([[resultText()]]); sparkle(at(SB.resultLabel), 0xffffff); });
+    return SHOW_AT + 2;
   }
 
   const flow = spotFlow({
     table: t, you: YOU, bettingSeconds: 6, minBet: 10, maxBet: 500, maxTotal: 2000,
-    chipSpot: (spot, seat) => {
-      const c = SB.spot(spot);
-      const d = (seat - 2) * 0.008;
-      return [c[0] + d, c[1] + seat * 0.0005, c[2] + d * 0.5];
-    },
+    chipSpot: (spot, seat) => SB.chip(seat, ...SB.group(spot)),
     croupier: SB.croupier, spotName: sbName,
     play, payout: (spot, amount) => sbPayout(DICE, spot, amount), resultText,
     clearRound() {
-      move(dome, tr([0, 0, 0], new THREE.Quaternion(), SB.TRAY_SCALE), 10);
       if (resultLabel) resultLabel.remove();
     },
   });
@@ -484,14 +496,15 @@ function sicBoScenario() {
     you: YOU, table: t,
     camera(kind) {
       if (kind === "seat") {
-        camera.position.set(t.shape.seats[YOU][0], 1.48 + RAISED_SEAT, 1.5);
-        controls.target.set(0.4, 0.95, -0.6);
+        const p = t.shape.seats[YOU];
+        camera.position.set(p[0], 1.48 + t.shape.seatRise, p[2]);
+        controls.target.set(0, 0.2, 0);
       } else if (kind === "high") {
-        camera.position.set(0.3, 3.4, 3.2);
-        controls.target.set(0.1, 0.9, -0.1);
+        camera.position.set(3.4, 2.6, 2.4);
+        controls.target.set(0, 0.3, 0);
       } else {
-        camera.position.set(0.75, 1.6, -0.35);
-        controls.target.set(0.75, TOP, -0.68);
+        camera.position.set(0.5, 1.4, 0.7);
+        controls.target.set(0, 0.15, 0);
       }
     },
   };

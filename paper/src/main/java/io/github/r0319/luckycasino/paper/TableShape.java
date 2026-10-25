@@ -38,6 +38,11 @@ interface TableShape {
     /** ディーラーが立つ位置（床）。ディーラーがいなければ null。 */
     double[] dealer();
 
+    /** ディーラーを椅子の高さ（seatRise）で座らせるか（座敷など）。 */
+    default boolean dealerSeated() {
+        return false;
+    }
+
     /** 状況を表示する文字の位置。 */
     default double[] status() {
         double[] dealer = dealer();

@@ -62,6 +62,8 @@ abstract class CasinoTable {
     private final Interaction[] seatHits;
     private final ItemDisplay[] mounts;
     protected Mannequin dealer;
+    /** 座っているディーラー（TableShape.dealerSeated）の乗り物。 */
+    private ItemDisplay dealerSeat;
     private DealerLook dealerLook = DealerLook.DEFAULT;
     private boolean spawned;
     private TextDisplay status;
@@ -310,7 +312,7 @@ abstract class CasinoTable {
 
     private Mannequin spawnDealer() {
         Location dealerAt = frame.at(shape().dealer());
-        return dealerAt.getWorld().spawn(dealerAt, Mannequin.class, entity -> {
+        Mannequin mannequin = dealerAt.getWorld().spawn(dealerAt, Mannequin.class, entity -> {
             entity.setPersistent(false);
             entity.setInvulnerable(true);
             entity.setImmovable(true);
@@ -318,6 +320,23 @@ abstract class CasinoTable {
             dealerLook.apply(entity);
             entity.setRotation(frame.yaw(), 0f);
         });
+        seatDealer(mannequin);
+        return mannequin;
+    }
+
+    /** 座るディーラーなら、客の椅子と同じ高さの乗り物に乗せる。 */
+    private void seatDealer(Mannequin mannequin) {
+        if (!shape().dealerSeated()) {
+            return;
+        }
+        if (dealerSeat == null || !dealerSeat.isValid()) {
+            fixtures.remove(dealerSeat);
+            double[] d = shape().dealer();
+            Location seatAt = frame.at(d[0], d[1] + 0.25 + shape().seatRise(), d[2]);
+            dealerSeat = seatAt.getWorld().spawn(seatAt, ItemDisplay.class, entity -> entity.setPersistent(false));
+            fixtures.add(dealerSeat);
+        }
+        dealerSeat.addPassenger(mannequin);
     }
 
     boolean isDealer(Entity entity) {
@@ -330,6 +349,8 @@ abstract class CasinoTable {
             fixtures.remove(dealer);
             dealer = spawnDealer();
             fixtures.add(dealer);
+        } else if (dealer != null && dealer.isValid() && shape().dealerSeated() && dealer.getVehicle() == null) {
+            seatDealer(dealer);
         }
     }
 
@@ -378,6 +399,7 @@ abstract class CasinoTable {
         fixtures.clear();
         spawned = false;
         dealer = null;
+        dealerSeat = null;
         status = null;
     }
 

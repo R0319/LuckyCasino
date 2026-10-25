@@ -19,19 +19,24 @@ import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
- * 大小（シックボー）。奥の皿のガラスのふたの中でサイコロ 3 個を振り、ふたを上げて出目を見せる。
- * 出目は先に決め、振っている間はでたらめに跳ねさせてから、決めた目を上にして止める。
+ * 大小（シックボー）を座敷で。畳の真ん中のどんぶりへ、奥に座った親がサイコロ 3 個を投げ込む。
+ * 出目は先に決め、どんぶりの中ででたらめに跳ねさせてから、決めた目を上にして止める。
  */
 final class SicBoTable extends SpotTable {
 
     private static final SicBoLayout LAYOUT = new SicBoLayout();
-    private static final int SHAKE_TICKS = 42;
-    private static final int SHAKE_STEP = 3;
+    /** 親の手からどんぶりに入るまで（tick）。 */
+    private static final int TOSS_TICKS = 10;
+    private static final int TOSS_STEP = 2;
+    /** どんぶりの中で跳ねている間（tick）。 */
+    private static final int BOUNCE_TICKS = 30;
+    private static final int BOUNCE_STEP = 3;
     private static final int SETTLE = 6;
-    private static final int LIFT_AT = SHAKE_TICKS + SETTLE + 10;
-    private static final int LIFT_TICKS = 14;
-    /** 止まったサイコロの皿の中での位置（基準からのずれ）。 */
-    private static final float[][] REST = {{-0.1f, 0.06f}, {0.1f, 0.07f}, {0f, -0.1f}};
+    private static final int SHOW_AT = TOSS_TICKS + BOUNCE_TICKS + SETTLE + 8;
+    /** 投げる前のサイコロ（親の手の中。どんぶりの底の基準からのずれ）。 */
+    private static final Vector3f HAND = new Vector3f(0f, 0.5f, -1.0f);
+    /** 止まったサイコロのどんぶりの中での位置（基準からのずれ）。 */
+    private static final float[][] REST = {{-0.09f, 0.05f}, {0.09f, 0.06f}, {0f, -0.09f}};
 
     private static final List<Spot> SPOTS = buildSpots();
 
@@ -59,7 +64,6 @@ final class SicBoTable extends SpotTable {
         return List.copyOf(out);
     }
 
-    private ItemDisplay dome;
     private final ItemDisplay[] dice = new ItemDisplay[3];
     private TextDisplay resultLabel;
     private SicBo roll;
@@ -78,39 +82,33 @@ final class SicBoTable extends SpotTable {
         return SPOTS;
     }
 
-    @Override
-    protected double[] spotCenter(Spot spot) {
-        String id = spot.id();
-        switch (id) {
-            case "small":
-                return LAYOUT.front(0);
-            case "odd":
-                return LAYOUT.front(1);
-            case "even":
-                return LAYOUT.front(2);
-            case "big":
-                return LAYOUT.front(3);
-            case "any_triple":
-                return LAYOUT.combo(6);
-            default:
-                break;
-        }
-        int n = Integer.parseInt(id.substring(id.lastIndexOf('_') + 1));
-        if (id.startsWith("total_")) {
-            return LAYOUT.total(n);
-        }
-        if (id.startsWith("single_")) {
-            return LAYOUT.single(n);
-        }
-        return LAYOUT.combo(id.startsWith("double_") ? n - 1 : n + 6);
+    /** 賭けの種類（チップを置く列）と、その中での番号。 */
+    private static int[] group(String id) {
+        int dash = id.lastIndexOf('_');
+        int n = dash < 0 ? 0 : Integer.parseInt(id.substring(dash + 1));
+        return switch (id.substring(0, dash < 0 ? id.length() : dash)) {
+            case "small" -> new int[]{0, 0};
+            case "big" -> new int[]{1, 0};
+            case "odd" -> new int[]{2, 0};
+            case "even" -> new int[]{3, 0};
+            case "single" -> new int[]{4, n - 1};
+            case "total" -> new int[]{5, n - 4};
+            case "double" -> new int[]{6, n - 1};
+            case "triple" -> new int[]{7, n};
+            case "any" -> new int[]{7, 0};
+            default -> throw new IllegalArgumentException(id);
+        };
     }
 
-    /** 合計やゾロ目のマスは小さいので、席ごとのずれを小さくする。 */
+    @Override
+    protected double[] spotCenter(Spot spot) {
+        return chipSpot(spot, 0);
+    }
+
     @Override
     protected double[] chipSpot(Spot spot, int seat) {
-        double[] c = spotCenter(spot);
-        double d = (seat - (seatCount() - 1) / 2.0) * 0.008;
-        return new double[]{c[0] + d, c[1] + seat * 0.0005, c[2] + d * 0.5};
+        int[] g = group(spot.id());
+        return LAYOUT.chip(seat, g[0], g[1]);
     }
 
     @Override
@@ -130,20 +128,12 @@ final class SicBoTable extends SpotTable {
 
     @Override
     protected void onSpawn() {
-        Location trayAt = frame.at(LAYOUT.tray());
-        fixtures().add(trayAt.getWorld().spawn(trayAt, ItemDisplay.class, entity -> {
+        Location bowlAt = frame.at(LAYOUT.bowl());
+        fixtures().add(bowlAt.getWorld().spawn(bowlAt, ItemDisplay.class, entity -> {
             entity.setPersistent(false);
-            entity.setItemStack(Items.model("sicbo/base"));
+            entity.setItemStack(Items.model("sicbo/bowl"));
             entity.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.NONE);
-            entity.setTransformation(scaled(new Vector3f(), new Quaternionf(), SicBoLayout.TRAY_SCALE));
         }));
-        dome = trayAt.getWorld().spawn(trayAt, ItemDisplay.class, entity -> {
-            entity.setPersistent(false);
-            entity.setItemStack(Items.model("sicbo/dome"));
-            entity.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.NONE);
-            entity.setTransformation(scaled(new Vector3f(), new Quaternionf(), SicBoLayout.TRAY_SCALE));
-        });
-        fixtures().add(dome);
         Location diceAt = frame.at(LAYOUT.dice());
         int[] faces = {4, 5, 6};
         for (int i = 0; i < 3; i++) {
@@ -195,28 +185,46 @@ final class SicBoTable extends SpotTable {
 
     // ---- 勝負 ----
 
+    private Quaternionf randomSpin() {
+        return new Quaternionf().rotateXYZ(random.nextFloat() * 6.3f, random.nextFloat() * 6.3f, random.nextFloat() * 6.3f);
+    }
+
     @Override
     protected int play() {
         roll = SicBo.roll(random);
         resultLabel = label(LAYOUT.resultLabel(), 0.8f);
         swing();
-        broadcast(Component.text("サイコロを振ります", NamedTextColor.GRAY));
-        // ふたの中で跳ねる
-        for (int t = 0; t <= SHAKE_TICKS; t += SHAKE_STEP) {
+        broadcast(Component.text("親がサイコロを投げます", NamedTextColor.GRAY));
+        // 親の手の中へ（すぐ）、そこから弧を描いてどんぶりへ
+        Vector3f[] land = new Vector3f[3];
+        for (int i = 0; i < 3; i++) {
+            Vector3f hand = new Vector3f(HAND).add((i - 1) * 0.06f, 0, 0);
+            land[i] = new Vector3f((random.nextFloat() - 0.5f) * 0.25f, 0.08f, (random.nextFloat() - 0.5f) * 0.25f);
+            move(dice[i], scaled(hand, randomSpin(), SicBoLayout.DIE_SCALE), 0);
+            for (int t = TOSS_STEP; t <= TOSS_TICKS; t += TOSS_STEP) {
+                float u = (float) t / TOSS_TICKS;
+                Vector3f at = new Vector3f(hand).lerp(land[i], u).add(0, 0.35f * 4 * u * (1 - u), 0);
+                Transformation pose = scaled(at, randomSpin(), SicBoLayout.DIE_SCALE);
+                int die = i;
+                later(t, () -> move(dice[die], pose, TOSS_STEP));
+            }
+        }
+        // どんぶりの中で跳ねる（だんだん低く）
+        for (int t = TOSS_TICKS + BOUNCE_STEP; t <= TOSS_TICKS + BOUNCE_TICKS; t += BOUNCE_STEP) {
+            float left = 1f - (float) (t - TOSS_TICKS) / BOUNCE_TICKS;
             Transformation[] hop = new Transformation[3];
             for (int i = 0; i < 3; i++) {
-                Vector3f at = new Vector3f((random.nextFloat() - 0.5f) * 0.3f, random.nextFloat() * 0.2f, (random.nextFloat() - 0.5f) * 0.3f);
-                Quaternionf spin = new Quaternionf().rotateXYZ(random.nextFloat() * 6.3f, random.nextFloat() * 6.3f, random.nextFloat() * 6.3f);
-                hop[i] = scaled(at, spin, SicBoLayout.DIE_SCALE);
+                double a = random.nextDouble() * 2 * Math.PI;
+                float r = 0.08f + random.nextFloat() * 0.12f;
+                Vector3f at = new Vector3f((float) Math.sin(a) * r, random.nextFloat() * 0.14f * left, (float) Math.cos(a) * r);
+                hop[i] = scaled(at, randomSpin(), SicBoLayout.DIE_SCALE);
             }
-            Transformation shake = scaled(new Vector3f((random.nextFloat() - 0.5f) * 0.02f, 0, (random.nextFloat() - 0.5f) * 0.02f),
-                    new Quaternionf(), SicBoLayout.TRAY_SCALE);
-            later(Math.max(1, t), () -> {
+            boolean first = t == TOSS_TICKS + BOUNCE_STEP;
+            later(t, () -> {
                 for (int i = 0; i < 3; i++) {
-                    move(dice[i], hop[i], SHAKE_STEP);
+                    move(dice[i], hop[i], BOUNCE_STEP);
                 }
-                move(dome, shake, SHAKE_STEP);
-                playSound(Sound.BLOCK_BONE_BLOCK_HIT, 1.6f + random.nextFloat() * 0.4f, 0.6f);
+                playSound(Sound.BLOCK_AMETHYST_BLOCK_HIT, 1.6f + random.nextFloat() * 0.4f, first ? 1f : 0.5f + left * 0.5f);
             });
         }
         // 決めた目を上にして止める
@@ -224,19 +232,13 @@ final class SicBoTable extends SpotTable {
         for (int i = 0; i < 3; i++) {
             rest[i] = dieAt(i, roll.die(i), (random.nextFloat() - 0.5f) * 1.2f);
         }
-        later(SHAKE_TICKS + SHAKE_STEP, () -> {
+        later(TOSS_TICKS + BOUNCE_TICKS + BOUNCE_STEP, () -> {
             for (int i = 0; i < 3; i++) {
                 move(dice[i], rest[i], SETTLE);
             }
-            move(dome, scaled(new Vector3f(), new Quaternionf(), SicBoLayout.TRAY_SCALE), SETTLE);
-            playSound(Sound.BLOCK_BONE_BLOCK_PLACE, 1.2f);
+            playSound(Sound.BLOCK_AMETHYST_BLOCK_PLACE, 1.4f);
         });
-        later(LIFT_AT, () -> {
-            move(dome, scaled(new Vector3f(0, 0.5f, -0.35f), new Quaternionf(), SicBoLayout.TRAY_SCALE), LIFT_TICKS);
-            playSound(Sound.BLOCK_GLASS_HIT, 1.4f);
-        });
-        int shown = LIFT_AT + LIFT_TICKS;
-        later(shown, () -> {
+        later(SHOW_AT, () -> {
             if (resultLabel != null) {
                 resultLabel.text(resultText());
             }
@@ -244,7 +246,7 @@ final class SicBoTable extends SpotTable {
             at.getWorld().spawnParticle(Particle.END_ROD, at, 15, 0.2, 0.15, 0.2, 0.02);
             playSound(Sound.BLOCK_NOTE_BLOCK_BELL, roll.triple() ? 1.8f : 1.2f);
         });
-        return shown + 2;
+        return SHOW_AT + 2;
     }
 
     @Override
@@ -273,7 +275,6 @@ final class SicBoTable extends SpotTable {
 
     @Override
     protected void clearRound() {
-        move(dome, scaled(new Vector3f(), new Quaternionf(), SicBoLayout.TRAY_SCALE), 10);
         if (resultLabel != null) {
             resultLabel.remove();
         }
@@ -284,7 +285,6 @@ final class SicBoTable extends SpotTable {
     @Override
     protected void onDespawn() {
         super.onDespawn();
-        dome = null;
         java.util.Arrays.fill(dice, null);
     }
 }

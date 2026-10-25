@@ -503,8 +503,10 @@ class Table {
     model.tr = { from: ms, to: ms, start: 0, dur: 0 };
     const d = sh.dealer;
     if (d) {
-      this.dealer = new Figure({ x: d[0], y: 0, z: d[2], yaw: 0 }, { shirt: 0x1d1d22, pants: 0x18181c, skin: 0xd2a07c, hair: 0x2a1c12 });
-      const name = new TextDisplay(at([d[0], 2.05, d[2]]), 0.5);
+      // dealerSeated: 客の椅子と同じ高さに座る（座敷など）
+      const sy = sh.dealerSeated ? sh.seatRise || 0 : 0;
+      this.dealer = new Figure({ x: d[0], y: sy, z: d[2], yaw: 0 }, { shirt: 0x1d1d22, pants: 0x18181c, skin: 0xd2a07c, hair: 0x2a1c12, sitting: !!sh.dealerSeated });
+      const name = new TextDisplay(at([d[0], (sh.dealerSeated ? 1.55 + sy : 2.05), d[2]]), 0.5);
       name.text([[["ディーラー", C.GOLD]]]);
     }
     this.status = new TextDisplay(at(sh.status || [d[0], 2.45, d[2]]), sh.statusScale || 1);

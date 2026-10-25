@@ -261,28 +261,14 @@ def bigwheel_icon_model():
 
 
 # ---- 大小（paper の SicBoLayout・SicBoTable と合わせる） ----
-SB_FRONT_Z, SB_SINGLE_Z, SB_TOTAL_Z, SB_COMBO_Z = 0.73, 0.38, 0.06, -0.26
-SB_TRAY = (0.75, -0.68)
+ZS_CENTER, ZS_SCALE = (0.0, 0.5, 0.0), 2.0   # 座敷のモデルを置く位置と倍率（SicBoLayout.modelAt・modelScale）
+ZS_RING = 1.55                                # 座布団の輪の半径
+ZS_MAT = 0.1                                  # 畳の表面の高さ
 
 
-def sb_front_x(i):
-    """手前の段: small, odd, even, big。"""
-    return -1.44 + 0.96 * i
-
-
-def sb_single_x(i):
-    """目 i + 1 に賭けるマス。"""
-    return -1.6 + 0.64 * i
-
-
-def sb_total_x(i):
-    """合計 i + 4。"""
-    return -1.783 + 0.2743 * i
-
-
-def sb_combo_x(i):
-    """0〜5 はダブル 1〜6、6 はゾロ目どれでも、7〜12 はゾロ目 1〜6。"""
-    return -1.74 + 0.29 * i
+def zs_angle(i):
+    """座布団 i の角度（度、手前が 0）。0〜4 が客（右から）、5 が親。"""
+    return 180.0 if i == 5 else 120.0 - 60.0 * i
 
 
 PIPS = {1: [(1, 1)], 2: [(0, 0), (2, 2)], 3: [(0, 0), (1, 1), (2, 2)], 4: [(0, 0), (2, 0), (0, 2), (2, 2)],
@@ -327,79 +313,83 @@ def die_model():
     }
 
 
-def glass_texture():
-    """ふた（ガラスの箱）。半透明はアイテムの描き方次第で不透明になるので、縁と光の筋だけ描いて中は透明にする。"""
-    img = gt.Image.new("RGBA", (16, 16), (0, 0, 0, 0))
+def tatami_texture():
+    """畳 1 ブロック分。上下（z の端）に濃い緑の縁（へり）。長い畳は x 方向に並べてつなぐ。"""
+    img = gt.Image.new("RGBA", (16, 16), (196, 190, 116, 255))
+    for y in range(16):
+        for x in range(16):
+            if y % 2 == 0 and (x + y // 2) % 3 == 0:
+                img.putpixel((x, y), (178, 172, 100, 255))
     d = ImageDraw.Draw(img)
-    d.rectangle([0, 0, 15, 15], outline=(220, 236, 244, 255))
-    for i in range(4):
-        img.putpixel((3 + i, 9 - i * 2), (255, 255, 255, 255))
-        img.putpixel((3 + i, 10 - i * 2), (255, 255, 255, 255))
-    img.putpixel((12, 3), (255, 255, 255, 255))
+    d.rectangle([0, 0, 15, 1], fill=(46, 74, 42, 255))
+    d.rectangle([0, 14, 15, 15], fill=(46, 74, 42, 255))
     return img
 
 
-def sicbo_base_model():
-    wood, gold = "#wood", "#gold"
-
-    def el(frm, to, t):
-        return {"from": frm, "to": to, "faces": {f: {"texture": t, "uv": [0, 0, 16, 16]}
-                                                 for f in ("north", "south", "east", "west", "up", "down")}}
-    return {
-        "textures": {"wood": "minecraft:block/dark_oak_planks", "gold": "minecraft:block/gold_block",
-                     "particle": "minecraft:block/dark_oak_planks"},
-        "elements": [el([0.5, 0, 0.5], [15.5, 0.5, 15.5], gold), el([1, 0.5, 1], [15, 1, 15], wood)],
-    }
+def zs_box(lo, hi, tex, faces=("north", "south", "east", "west", "up", "down")):
+    return world_box(lo, hi, tex, ZS_CENTER, ZS_SCALE, faces)
 
 
-def sicbo_dome_model():
-    g = {"texture": "#glass", "uv": [0, 0, 16, 16]}
-    return {
-        "textures": {"glass": "luckycasino:block/sicbo_glass", "particle": "luckycasino:block/sicbo_glass"},
-        "elements": [{"from": [1.5, 1, 1.5], "to": [14.5, 12, 14.5],
-                      "faces": {f: g for f in ("north", "south", "east", "west", "up")}}],
-    }
-
-
-def sicbo_felt():
-    img = felt_base(192, 96)
-    d = ImageDraw.Draw(img)
-    d.rectangle([2, 2, 189, 93], outline=GOLD)
-    text(img, "SIC BO", -0.75, -0.8, GOLD)
-    text(img, "DAI SIU", -0.75, -0.64, GOLD)
-    # サイコロの皿
-    cx, cy, r = u(SB_TRAY[0]), v(SB_TRAY[1]), 13
-    d.ellipse([cx - r, cy - r, cx + r, cy + r], outline=GOLD, fill=tint(GOLD, 0.2))
-    # 手前: SMALL ODD EVEN BIG
-    for i, (name, sub, color) in enumerate((("SMALL", "4-10", BLUE), ("ODD", "", None), ("EVEN", "", None), ("BIG", "11-17", RED))):
-        x = sb_front_x(i)
-        box(d, x, SB_FRONT_Z, 0.9, 0.3, GOLD, tint(color) if color else None)
-        text(img, (name + " " + sub).strip(), x, SB_FRONT_Z - 0.06, WHITE)
-        text(img, "1:1", x, SB_FRONT_Z + 0.08, GOLD)
-    # 1 つの目（出た個数ぶん配当）
+def sicbo_zashiki_model():
+    """4 x 4 の畳（2 x 1 の畳 8 枚）と、輪に並べた座布団 6 枚（5 枚は客、奥の赤い 1 枚は親）。"""
+    import math
+    els = zs_box((-2.05, 0, -2.05), (2.05, 0.04, 2.05), "#wood")
+    for row in range(4):
+        for col in range(2):
+            x0, z0 = -2 + 2 * col, -2 + row
+            els += zs_box((x0 + 0.01, 0.04, z0 + 0.01), (x0 + 1.99, ZS_MAT, z0 + 0.99), "#tatami", ("up", "north", "south", "east", "west"))
     for i in range(6):
-        x = sb_single_x(i)
-        box(d, x, SB_SINGLE_Z, 0.6, 0.28, GOLD)
-        draw_die(d, u(x) - 6, v(SB_SINGLE_Z) - 6, 12, i + 1, 2)
-    # 合計
-    pays = {4: 60, 5: 30, 6: 17, 7: 12, 8: 8, 9: 6, 10: 6, 11: 6, 12: 6, 13: 8, 14: 12, 15: 17, 16: 30, 17: 60}
-    for i in range(14):
-        x = sb_total_x(i)
-        box(d, x, SB_TOTAL_Z, 0.26, 0.28, GOLD)
-        gt.text(img, str(i + 4), u(x) + 1, v(SB_TOTAL_Z) - 5, WHITE)
-        gt.text(img, str(pays[i + 4]), u(x) + 1, v(SB_TOTAL_Z) + 1, GOLD)
-    # ダブル・ゾロ目
-    for i in range(13):
-        x = sb_combo_x(i)
-        if i < 6:
-            label, color = str(i + 1) * 2, None
-        elif i == 6:
-            label, color = "ANY", GOLD
-        else:
-            label, color = str(i - 6) * 3, RED
-        box(d, x, SB_COMBO_Z, 0.27, 0.28, GOLD, tint(color, 0.3) if color else None)
-        gt.text(img, label, u(x) + 1, v(SB_COMBO_Z) - 2, WHITE)
-    return img
+        a = math.radians(zs_angle(i))
+        x, z = ZS_RING * math.sin(a), ZS_RING * math.cos(a)
+        els += zs_box((x - 0.31, ZS_MAT, z - 0.31), (x + 0.31, ZS_MAT + 0.11, z + 0.31), "#oya" if i == 5 else "#zabuton")
+    return {
+        "textures": {"wood": "minecraft:block/dark_oak_planks", "tatami": "luckycasino:block/tatami",
+                     "zabuton": "minecraft:block/purple_wool", "oya": "minecraft:block/red_wool",
+                     "particle": "luckycasino:block/tatami"},
+        "elements": els,
+    }
+
+
+def sicbo_bowl_model():
+    """どんぶり（白に青い縁）。モデルの中心（8, 8, 8）が底の中心。16 角形の壁は要素の回転（22.5 度刻み）で作る。"""
+    import math
+    r, t, w = 6.0, 0.9, 2 * 6.0 * math.tan(math.radians(11.25)) + 0.3
+    bottom, wall, rim = 8.0, 8.0 + 4.0, 8.0 + 5.0
+    els = []
+
+    def box(frm, to, tex, angle=0.0):
+        e = {"from": [round(v, 3) for v in frm], "to": [round(v, 3) for v in to],
+             "faces": {f: {"texture": tex, "uv": [0, 0, 16, 16]} for f in ("north", "south", "east", "west", "up", "down")}}
+        if angle:
+            e["rotation"] = {"origin": [8, 8, 8], "axis": "y", "angle": angle}
+        return e
+    # 底（四角を 0 度と 45 度で重ねて八角形に）
+    for angle in (0.0, 45.0):
+        els.append(box([8 - 4.2, bottom - 0.6, 8 - 4.2], [8 + 4.2, bottom + 0.6, 8 + 4.2], "#white", angle))
+    for k in range(16):
+        quarter, rest = divmod(k, 4)
+        angle = (-45.0, -22.5, 0.0, 22.5)[rest]
+        # quarter ごとに軸を入れ替えた位置に置き、残りの角度を要素の回転で足す
+        dx, dz = [(0, 1), (1, 0), (0, -1), (-1, 0)][quarter]
+        for lo, hi, tex in ((bottom, wall, "#white"), (wall, rim, "#blue")):
+            if dx == 0:
+                frm = [8 - w / 2, lo, 8 + dz * r - t / 2]
+                to = [8 + w / 2, hi, 8 + dz * r + t / 2]
+            else:
+                frm = [8 + dx * r - t / 2, lo, 8 - w / 2]
+                to = [8 + dx * r + t / 2, hi, 8 + w / 2]
+            els.append(box(frm, to, tex, angle))
+    return {"textures": {"white": "minecraft:block/white_concrete", "blue": "minecraft:block/blue_concrete",
+                         "particle": "minecraft:block/white_concrete"}, "elements": els}
+
+
+def sicbo_icon_model():
+    """手に持つ・メニューのアイコン（どんぶり）。"""
+    return {"parent": "luckycasino:item/sicbo/bowl",
+            "display": {"gui": {"rotation": [30, 45, 0], "scale": [1.4, 1.4, 1.4]},
+                        "ground": {"scale": [0.6, 0.6, 0.6]}, "fixed": {"scale": [1.2, 1.2, 1.2]},
+                        "thirdperson_righthand": {"scale": [0.6, 0.6, 0.6]},
+                        "firstperson_righthand": {"scale": [0.6, 0.6, 0.6]}}}
 
 
 # ---- ハイ＆ロー（paper の HighLowLayout と合わせる） ----
@@ -597,13 +587,12 @@ def main():
 
     for n in range(1, 7):
         die_texture(n).save(tex / f"die_{n}.png")
-    glass_texture().save(tex / "sicbo_glass.png")
-    for_item_display(sicbo_felt(), 96).save(tex / "sicbo_felt.png")
-    write_json(JAVA / "models" / "item" / "table" / "sicbo.json", table_model("sicbo_felt"))
+    tatami_texture().save(tex / "tatami.png")
+    write_json(JAVA / "models" / "item" / "table" / "sicbo.json", sicbo_icon_model())
     write_json(JAVA / "models" / "item" / "sicbo" / "die.json", die_model())
-    write_json(JAVA / "models" / "item" / "sicbo" / "base.json", sicbo_base_model())
-    write_json(JAVA / "models" / "item" / "sicbo" / "dome.json", sicbo_dome_model())
-    for path in ("table/sicbo", "sicbo/die", "sicbo/base", "sicbo/dome"):
+    write_json(JAVA / "models" / "item" / "sicbo" / "zashiki.json", sicbo_zashiki_model())
+    write_json(JAVA / "models" / "item" / "sicbo" / "bowl.json", sicbo_bowl_model())
+    for path in ("table/sicbo", "sicbo/die", "sicbo/zashiki", "sicbo/bowl"):
         item(path)
 
     for_item_display(highlow_felt(), 96).save(tex / "highlow_felt.png")

@@ -67,6 +67,12 @@ def vanilla(name):
         d.rectangle([0, 0, 15, 15], fill=(84, 109, 27, 255))
         for x, y in ((3, 2), (10, 5), (6, 12), (13, 10)):
             d.point([x, y], fill=(64, 86, 20, 255))
+    elif name == "block/blue_concrete":
+        d.rectangle([0, 0, 15, 15], fill=(45, 47, 143, 255))
+    elif name == "block/purple_wool":
+        d.rectangle([0, 0, 15, 15], fill=(122, 42, 172, 255))
+        for x, y in ((2, 3), (9, 1), (5, 9), (13, 7), (11, 13)):
+            d.point([x, y], fill=(100, 32, 145, 255))
     elif name == "block/smooth_stone":
         d.rectangle([0, 0, 15, 15], fill=(158, 158, 158, 255))
         d.rectangle([0, 0, 15, 15], outline=(120, 120, 120, 255))
