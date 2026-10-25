@@ -3,6 +3,7 @@ package io.github.r0319.luckycasino.paper;
 import io.github.r0319.luckycasino.slot.Line;
 import io.github.r0319.luckycasino.slot.Reels;
 import io.github.r0319.luckycasino.slot.Spin;
+import io.github.r0319.luckycasino.slot.Symbol;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.title.Title;
@@ -488,6 +489,17 @@ final class SlotMachine extends CasinoTable {
             writeLedger(seat);
             if (observer != null) {
                 observer.payout(index, spin.bet(), spin.payout());
+            }
+            achieve(seat, Achievements.Achievement.FIRST_PLAY);
+            for (Spin.LineWin w : spin.wins()) {
+                Symbol[] symbols = w.line().symbols(spin.stops());
+                if (symbols[0] == symbols[1] && symbols[1] == symbols[2]) {
+                    if (symbols[0] == Symbol.SEVEN) {
+                        achieve(seat, Achievements.Achievement.SLOT_SEVENS);
+                    } else if (symbols[0] == Symbol.BAR) {
+                        achieve(seat, Achievements.Achievement.SLOT_BARS);
+                    }
+                }
             }
         }
         Spin.LineWin best = spin.best();
