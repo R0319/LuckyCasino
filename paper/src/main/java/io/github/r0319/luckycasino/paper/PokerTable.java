@@ -415,7 +415,7 @@ final class PokerTable extends CasinoTable {
                 shownPot = e.pot();
                 later(9, () -> {
                     moving.forEach(ChipView::remove);
-                    potView.show(frame.at(LAYOUT.pot()), shownPot);
+                    potView.showPlain(frame.at(LAYOUT.pot()), shownPot);
                 });
                 updatePotLabel();
                 playSound(Sound.BLOCK_CHAIN_PLACE, 1.0f);
@@ -454,7 +454,7 @@ final class PokerTable extends CasinoTable {
             case PokerEvent.Refund e -> {
                 shownPot -= e.amount();
                 shownStack[e.seat()] += e.amount();
-                potView.show(frame.at(LAYOUT.pot()), shownPot);
+                potView.showPlain(frame.at(LAYOUT.pot()), shownPot);
                 updatePotLabel();
                 updateSeatLabel(e.seat());
                 send(seats[e.seat()], Component.text("誰も合わせなかった " + e.amount() + " 枚が戻りました", NamedTextColor.GRAY));
@@ -547,7 +547,7 @@ final class PokerTable extends CasinoTable {
         int index = e.seat();
         shownPot -= e.amount();
         shownStack[index] += e.amount();
-        potView.show(frame.at(LAYOUT.pot()), Math.max(shownPot, 0));
+        potView.showPlain(frame.at(LAYOUT.pot()), Math.max(shownPot, 0));
         ChipView win = new ChipView();
         win.show(frame.at(LAYOUT.pot()), e.amount());
         payoutViews.add(win);

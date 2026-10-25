@@ -23,6 +23,11 @@ final class RouletteLayout implements TableShape {
     static final double BALL_POCKET = 0.32;
 
     @Override
+    public double seatRise() {
+        return RAISED_SEAT;
+    }
+
+    @Override
     public int seats() {
         return SEATS;
     }

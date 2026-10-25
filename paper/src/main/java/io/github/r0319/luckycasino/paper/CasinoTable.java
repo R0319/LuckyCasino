@@ -277,16 +277,17 @@ abstract class CasinoTable {
 
         for (int i = 0; i < seats.length; i++) {
             double[] p = shape.seat(i);
-            fixtures.add(block(frame.at(p[0], 0, p[2]), Material.DARK_OAK_FENCE, new Vector3f(1f, 0.38f, 1f)));
-            fixtures.add(block(frame.at(p[0], 0.38, p[2]), Material.RED_WOOL, new Vector3f(0.5f, 0.1f, 0.5f)));
-            Location mountAt = frame.at(p[0], 0.25, p[2]);
+            double rise = shape.seatRise();
+            fixtures.add(block(frame.at(p[0], 0, p[2]), Material.DARK_OAK_FENCE, new Vector3f(1f, (float) (0.38 + rise), 1f)));
+            fixtures.add(block(frame.at(p[0], 0.38 + rise, p[2]), Material.RED_WOOL, new Vector3f(0.5f, 0.1f, 0.5f)));
+            Location mountAt = frame.at(p[0], 0.25 + rise, p[2]);
             mounts[i] = mountAt.getWorld().spawn(mountAt, ItemDisplay.class, entity -> entity.setPersistent(false));
             fixtures.add(mounts[i]);
             Location hitAt = frame.at(p[0], 0, p[2]);
             seatHits[i] = hitAt.getWorld().spawn(hitAt, Interaction.class, entity -> {
                 entity.setPersistent(false);
                 entity.setInteractionWidth(0.8f);
-                entity.setInteractionHeight(1.2f);
+                entity.setInteractionHeight((float) (1.2 + shape.seatRise()));
                 entity.setResponsive(true);
             });
             fixtures.add(seatHits[i]);

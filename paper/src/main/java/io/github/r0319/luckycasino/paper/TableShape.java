@@ -27,6 +27,14 @@ interface TableShape {
     /** 席の椅子の位置（床）。 */
     double[] seat(int index);
 
+    /** 卓を見下ろせるよう高くした椅子（バースツール）の、ふつうの椅子からの上げ幅。 */
+    double RAISED_SEAT = 0.45;
+
+    /** 椅子の座面をふつうの高さからどれだけ上げるか（ブロック）。 */
+    default double seatRise() {
+        return 0;
+    }
+
     /** ディーラーが立つ位置（床）。ディーラーがいなければ null。 */
     double[] dealer();
 

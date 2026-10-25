@@ -12,6 +12,11 @@ final class PokerLayout implements TableShape {
     private static final double BOARD_Z = -0.2;
 
     @Override
+    public double seatRise() {
+        return RAISED_SEAT;
+    }
+
+    @Override
     public int seats() {
         return SEATS;
     }
@@ -80,7 +85,7 @@ final class PokerLayout implements TableShape {
     /** 名前・チップ・直前の行動を出す位置（席の上）。 */
     double[] seatLabel(int seat) {
         double[] p = seat(seat);
-        return new double[]{p[0], 1.75, p[2]};
+        return new double[]{p[0], 1.75 + seatRise(), p[2]};
     }
 
     /** カードを配り出す位置（ディーラーの手元）。 */

@@ -86,6 +86,9 @@ def main():
     for item in sorted((PACK / "items").rglob("*.json")):
         key = str(item.relative_to(PACK / "items"))[:-5]
         ref = json.loads(item.read_text())["model"]["model"]
+        if key.startswith("achievement/"):
+            # 実績のアイコンは平らな絵（item/generated）で、卓の上には出さない
+            continue
         model = load_model(ref, cache)
         # テクスチャの参照（#front など）を実際の名前に
         def resolve(t):

@@ -44,6 +44,15 @@ final class ChipView {
 
     /** withLabel が false なら額の文字を出さない（ルーレットのマットのように小さく並べるとき）。 */
     void show(Location base, long amount, boolean withLabel) {
+        show(base, amount, !withLabel, withLabel);
+    }
+
+    /** 大きさはふつうのまま、額の文字だけ出さない（額をほかの表示で見せているとき）。 */
+    void showPlain(Location base, long amount) {
+        show(base, amount, false, false);
+    }
+
+    private void show(Location base, long amount, boolean small, boolean withLabel) {
         if (amount == this.amount && base.equals(this.base)) {
             return;
         }
@@ -53,8 +62,8 @@ final class ChipView {
         if (amount <= 0) {
             return;
         }
-        float scale = withLabel ? SCALE : SMALL_SCALE;
-        spacing = withLabel ? SPACING : SMALL_SPACING;
+        float scale = small ? SMALL_SCALE : SCALE;
+        spacing = small ? SMALL_SPACING : SPACING;
         List<ItemStack> columns = columns(amount);
         for (int i = 0; i < columns.size(); i++) {
             double offset = (i - (columns.size() - 1) / 2.0) * spacing;
@@ -75,10 +84,10 @@ final class ChipView {
         Location labelAt = base.clone().add(0, 0.28, 0);
         label = labelAt.getWorld().spawn(labelAt, TextDisplay.class, entity -> {
             entity.setPersistent(false);
-            entity.text(Component.text(amount, NamedTextColor.GOLD));
+            entity.text(Component.text(amount + " 枚", NamedTextColor.GOLD));
             entity.setBillboard(Display.Billboard.CENTER);
             entity.setTransformation(new Transformation(new Vector3f(), new AxisAngle4f(),
-                    new Vector3f(0.5f, 0.5f, 0.5f), new AxisAngle4f()));
+                    new Vector3f(0.6f, 0.6f, 0.6f), new AxisAngle4f()));
             entity.setTeleportDuration(SLIDE_TICKS);
         });
     }

@@ -17,6 +17,11 @@ final class BlackjackLayout implements TableShape {
     }
 
     @Override
+    public double seatRise() {
+        return RAISED_SEAT;
+    }
+
+    @Override
     public int seats() {
         return SEATS;
     }

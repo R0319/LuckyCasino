@@ -194,6 +194,11 @@ final class BlackjackTable extends CasinoTable {
         writeLedger(seat);
         pendingBetViews[index].show(frame.at(LAYOUT.chips(index)), amount);
         playSound(Sound.BLOCK_CHAIN_PLACE, 1.4f);
+        Player player = online(seat);
+        if (player != null) {
+            player.sendActionBar(Component.text(amount + " 枚賭けました", NamedTextColor.GOLD)
+                    .append(Component.text("（手元 " + seat.chips + " 枚）", NamedTextColor.GRAY)));
+        }
         if (state == State.IDLE) {
             state = State.BETTING;
             countdown = settings.bettingSeconds();
@@ -261,15 +266,29 @@ final class BlackjackTable extends CasinoTable {
             countdown--;
             int index = round.currentSeat();
             Seat seat = index >= 0 ? seats[index] : null;
+            showStakes(index);
             Player player = online(seat);
             if (player != null) {
-                player.sendActionBar(Component.text("あなたの番です（あと " + Math.max(countdown, 0) + " 秒）", NamedTextColor.YELLOW));
+                player.sendActionBar(Component.text("あなたの番です（あと " + Math.max(countdown, 0) + " 秒）", NamedTextColor.YELLOW)
+                        .append(Component.text("　賭け " + seat.atRisk + " 枚", NamedTextColor.GOLD)));
             }
             if (countdown <= 0 && index >= 0) {
                 if (seat != null) {
                     send(seat, Component.text("時間切れのため、スタンドしました", NamedTextColor.GRAY));
                 }
                 act(index, Action.STAND);
+            }
+        }
+    }
+
+    /** 勝負中、自分の番でない人のアクションバーに、賭けている額と手元を出し続ける。 */
+    private void showStakes(int current) {
+        for (int i = 0; i < seats.length; i++) {
+            Seat seat = seats[i];
+            Player player = i == current ? null : online(seat);
+            if (player != null && seat.atRisk > 0) {
+                player.sendActionBar(Component.text("あなたの賭け " + seat.atRisk + " 枚", NamedTextColor.GOLD)
+                        .append(Component.text("（手元 " + seat.chips + " 枚）", NamedTextColor.GRAY)));
             }
         }
     }
@@ -287,9 +306,10 @@ final class BlackjackTable extends CasinoTable {
                 handCards.get(i).add(new ArrayList<>());
                 handViews.get(i).add(new ArrayList<>());
                 ChipView chips = new ChipView();
-                chips.show(frame.at(LAYOUT.chips(i)), bet);
+                chips.showPlain(frame.at(LAYOUT.chips(i)), bet);
                 betViews.get(i).add(chips);
                 handLabels.get(i).add(label(LAYOUT.handLabel(i, 0, 1), HAND_LABEL_SCALE));
+                updateHandLabel(i, 0, null);
             }
         }
         dealerLabel = label(LAYOUT.dealerLabel(), HAND_LABEL_SCALE);
@@ -404,7 +424,8 @@ final class BlackjackTable extends CasinoTable {
                 yield 10;
             }
             case BlackjackEvent.Doubled e -> {
-                betViews.get(e.seat()).get(e.hand()).show(chipSpot(e.seat(), e.hand()), e.bet());
+                betViews.get(e.seat()).get(e.hand()).showPlain(chipSpot(e.seat(), e.hand()), e.bet());
+                updateHandLabel(e.seat(), e.hand(), null);
                 playSound(Sound.BLOCK_CHAIN_PLACE, 1.4f);
                 yield 4;
             }
@@ -460,7 +481,8 @@ final class BlackjackTable extends CasinoTable {
         updateStatus();
         int total = Hand.total(handCards.get(index).get(hand));
         player.showTitle(Title.title(Component.text("あなたの番", NamedTextColor.YELLOW),
-                Component.text("合計 " + total, NamedTextColor.WHITE),
+                Component.text("合計 " + total, NamedTextColor.WHITE)
+                        .append(Component.text("　賭け " + betViews.get(index).get(hand).amount() + " 枚", NamedTextColor.GOLD)),
                 Title.Times.times(Duration.ofMillis(100), Duration.ofMillis(1200), Duration.ofMillis(300))));
         player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 1f, 1.6f);
         Component buttons = Component.empty();
@@ -468,7 +490,7 @@ final class BlackjackTable extends CasinoTable {
             buttons = buttons.append(button(action)).append(Component.space());
         }
         player.sendMessage(Component.text("手札 " + (handCards.get(index).size() > 1 ? (hand + 1) + " つ目 " : "")
-                + "合計 " + total + "： ", NamedTextColor.WHITE).append(buttons));
+                + "合計 " + total + "（賭け " + betViews.get(index).get(hand).amount() + " 枚）： ", NamedTextColor.WHITE).append(buttons));
     }
 
     /** ボットの行動。分岐をひととおり通るよう、簡単な基本戦略に少し乱数を混ぜる。 */
@@ -536,7 +558,7 @@ final class BlackjackTable extends CasinoTable {
         long amount = bets.getFirst().amount();
         bets.add(new ChipView());
         for (int h = 0; h < bets.size(); h++) {
-            bets.get(h).show(chipSpot(seat, h), amount);
+            bets.get(h).showPlain(chipSpot(seat, h), amount);
         }
         List<TextDisplay> labels = handLabels.get(seat);
         labels.add(label(LAYOUT.handLabel(seat, newHand, hands), HAND_LABEL_SCALE));
@@ -584,12 +606,14 @@ final class BlackjackTable extends CasinoTable {
             case LOSE, BUST -> NamedTextColor.RED;
         };
         // 合計の行に「ブラックジャック」と出ているので、結果の行は短く
-        updateHandLabel(e.seat(), e.hand(), Component.text(e.outcome() == Outcome.BLACKJACK ? "3:2 で勝ち" : result, color));
+        long gain = e.payout() - e.bet();
+        String change = gain > 0 ? " +" + gain + " 枚" : gain < 0 ? " " + gain + " 枚" : " ±0";
+        updateHandLabel(e.seat(), e.hand(), Component.text((e.outcome() == Outcome.BLACKJACK ? "3:2 で勝ち" : result) + change, color));
         switch (e.outcome()) {
             case LOSE, BUST -> bet.slideTo(frame.at(LAYOUT.dealerChips()));
             case WIN, BLACKJACK -> {
                 ChipView win = new ChipView();
-                win.show(frame.at(LAYOUT.dealerChips()), e.payout() - e.bet());
+                win.showPlain(frame.at(LAYOUT.dealerChips()), e.payout() - e.bet());
                 payoutViews.add(win);
                 Location spot = payoutSpot(e.seat(), e.hand());
                 later(2, () -> win.slideTo(spot));
@@ -683,8 +707,13 @@ final class BlackjackTable extends CasinoTable {
         }
         List<Card> cards = handCards.get(seat).get(hand);
         Component text = totalText(cards, handCards.get(seat).size() == 1);
-        if (result != null) {
-            text = text.append(Component.newline()).append(result);
+        // 合計の下に、その手に賭けている額（決着したら勝ち負けと増減）
+        Component second = result;
+        if (second == null && hand < betViews.get(seat).size()) {
+            second = Component.text("賭け " + betViews.get(seat).get(hand).amount() + " 枚", NamedTextColor.GOLD);
+        }
+        if (second != null) {
+            text = cards.isEmpty() ? second : text.append(Component.newline()).append(second);
         }
         labels.get(hand).text(text);
     }

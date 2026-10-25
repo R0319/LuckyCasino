@@ -6,6 +6,8 @@
 const DEG = Math.PI / 180;
 const TOP = 0.95;
 const MODEL_SCALE = 4 / 3;
+// 卓を見下ろせるよう高くした椅子の上げ幅（TableShape.RAISED_SEAT）
+const RAISED_SEAT = 0.45;
 const C = {
   GOLD: "#FFAA00", AQUA: "#55FFFF", YELLOW: "#FFFF55", GRAY: "#AAAAAA", DARK_GRAY: "#555555",
   GREEN: "#55FF55", RED: "#FF5555", WHITE: "#FFFFFF", DARK_RED: "#AA0000", BLACK: "#000000",
@@ -490,8 +492,9 @@ class Table {
     this.status = new TextDisplay(at(sh.status || [d[0], 2.45, d[2]]), sh.statusScale || 1);
     for (let i = 0; i < this.shape.seats.length; i++) {
       const p = this.shape.seats[i];
-      new BlockDisplay(at([p[0], 0, p[2]]), 0x42291a, [1, 0.38, 1], "post");
-      new BlockDisplay(at([p[0], 0.38, p[2]]), 0xa12722, [0.5, 0.1, 0.5]);
+      const rise = this.shape.seatRise || 0;
+      new BlockDisplay(at([p[0], 0, p[2]]), 0x42291a, [1, 0.38 + rise, 1], "post");
+      new BlockDisplay(at([p[0], 0.38 + rise, p[2]]), 0xa12722, [0.5, 0.1, 0.5]);
     }
   }
 
@@ -500,8 +503,9 @@ class Table {
     const p = this.shape.seats[index];
     const yaw = this.shape.seatYaw ? this.shape.seatYaw(index) : 180;
     const colors = [0x3b6fb6, 0x7b3fa0, 0xb5553a, 0x2f8f6a, 0x9a8a2a, 0x4a4a8a];
-    const fig = new Figure({ x: p[0], y: 0, z: p[2], yaw }, { sitting: true, shirt: you ? 0x2e9e9e : colors[index % 6], pants: 0x2a2f55 });
-    const tag = new TextDisplay(at([p[0], 1.62, p[2]]), 0.45);
+    const rise = this.shape.seatRise || 0;
+    const fig = new Figure({ x: p[0], y: rise, z: p[2], yaw }, { sitting: true, shirt: you ? 0x2e9e9e : colors[index % 6], pants: 0x2a2f55 });
+    const tag = new TextDisplay(at([p[0], 1.62 + rise, p[2]]), 0.45);
     tag.text([[[name, C.WHITE]]]);
     this.seats[index] = { name, chips, atRisk: 0, you: !!you, fig, tag };
     // 自分の体と名札は、自分の目線では見えない（Minecraft の一人称と同じ）
@@ -697,14 +701,19 @@ class ChipView {
     return { x: base.x + o * Math.cos(r), y: base.y, z: base.z + o * Math.sin(r), yaw: base.yaw };
   }
 
-  show(base, amount, withLabel = true) {
+  /** 大きさはふつうのまま、額の文字だけ出さない（ChipView.showPlain）。 */
+  showPlain(base, amount) {
+    this.show(base, amount, false, false);
+  }
+
+  show(base, amount, withLabel = true, small = !withLabel) {
     if (amount === this.amount && this.base && base.x === this.base.x && base.y === this.base.y && base.z === this.base.z) return;
     this.remove();
     this.base = { ...base };
     this.amount = amount;
     if (amount <= 0) return;
-    const scale = withLabel ? 0.3 : 0.22;
-    this.spacing = withLabel ? 0.15 : 0.07;
+    const scale = small ? 0.22 : 0.3;
+    this.spacing = small ? 0.07 : 0.15;
     const cols = ChipView.columns(amount);
     cols.forEach((path, i) => {
       const o = (i - (cols.length - 1) / 2) * this.spacing;
@@ -715,8 +724,8 @@ class ChipView {
       this.stacks.push(d);
     });
     if (withLabel) {
-      this.label = new TextDisplay({ x: base.x, y: base.y + 0.28, z: base.z }, 0.5);
-      this.label.text([[[String(amount), C.GOLD]]]);
+      this.label = new TextDisplay({ x: base.x, y: base.y + 0.28, z: base.z }, 0.6);
+      this.label.text([[[amount + " 枚", C.GOLD]]]);
       this.label.teleportDuration = 8;
     }
   }
@@ -776,7 +785,7 @@ class Player {
 
 const BJ = {
   seatX: (i) => 1.6 - 0.8 * i,
-  shape: { model: "table/blackjack", dealer: [0, 0, -1.55], seats: [0, 1, 2, 3, 4].map((i) => [1.6 - 0.8 * i, 0, 1.55]) },
+  shape: { model: "table/blackjack", seatRise: RAISED_SEAT, dealer: [0, 0, -1.55], seats: [0, 1, 2, 3, 4].map((i) => [1.6 - 0.8 * i, 0, 1.55]) },
   shoe: [1.4, TOP + 0.05, -0.6],
   playerCard(seat, hand, hands, index) {
     const base = BJ.seatX(seat) + (hand - (hands - 1) / 2) * 0.34;
@@ -829,6 +838,7 @@ function blackjackScenario() {
       pending[i] = new ChipView();
       pending[i].show(at(BJ.chips(i)), bets[i]);
       t.seats[i].chips -= bets[i];
+      if (i === YOU) actionbar(bets[i] + " 枚賭けました（手元 " + t.seats[i].chips + " 枚）");
       if (state === "IDLE") {
         state = "BETTING";
         countdown = 15;
@@ -848,7 +858,12 @@ function blackjackScenario() {
       status();
     } else if (state === "PLAYING" && turn === YOU) {
       countdown--;
-      actionbar("あなたの番です（あと " + Math.max(countdown, 0) + " 秒）");
+      const stake = betViews[YOU].reduce((sum, v) => sum + v.amount, 0);
+      actionbar("あなたの番です（あと " + Math.max(countdown, 0) + " 秒）　賭け " + stake + " 枚");
+    } else if (state === "PLAYING" && betViews[YOU] && betViews[YOU].length) {
+      // 自分の番でないあいだも、賭けている額と手元を出し続ける（BlackjackTable.showStakes）
+      const stake = betViews[YOU].reduce((sum, v) => sum + v.amount, 0);
+      actionbar("あなたの賭け " + stake + " 枚（手元 " + t.seats[YOU].chips + " 枚）");
     }
     sim.later(20, tick);
   };
@@ -884,9 +899,10 @@ function blackjackScenario() {
       handCards[i] = [[]];
       handViews[i] = [[]];
       const chips = new ChipView();
-      chips.show(at(BJ.chips(i)), bets[i]);
+      chips.showPlain(at(BJ.chips(i)), bets[i]);
       betViews[i] = [chips];
       handLabels[i] = [t.label(BJ.handLabel(i, 0, 1), 0.45)];
+      updateHandLabel(i, 0);
     }
     dealerLabel = t.label(BJ.dealerLabel, 0.45);
     t.broadcast([["ノーモアベット。配ります", C.AQUA]]);
@@ -903,8 +919,10 @@ function blackjackScenario() {
   function updateHandLabel(seat, hand, result) {
     const label = handLabels[seat][hand];
     if (!label) return;
-    const lines = [totalText(handCards[seat][hand], handCards[seat].length === 1)];
-    if (result) lines.push([result]);
+    const cards = handCards[seat][hand];
+    const second = result || (betViews[seat][hand] ? ["賭け " + betViews[seat][hand].amount + " 枚", C.GOLD] : null);
+    const lines = cards.length ? [totalText(cards, handCards[seat].length === 1)] : [];
+    if (second) lines.push([second]);
     label.text(lines);
   }
   function updateDealerLabel() {
@@ -957,7 +975,7 @@ function blackjackScenario() {
         const bv = betViews[e.seat];
         const amount = bv[0].amount;
         bv.push(new ChipView());
-        bv.forEach((v, h) => v.show(chipSpot(e.seat, h), amount));
+        bv.forEach((v, h) => v.showPlain(chipSpot(e.seat, h), amount));
         t.seats[e.seat].chips -= amount;
         const labels = handLabels[e.seat];
         labels.push(t.label(BJ.handLabel(e.seat, e.newHand, hands), 0.45));
@@ -965,7 +983,8 @@ function blackjackScenario() {
         return 10;
       }
       case "Doubled":
-        betViews[e.seat][e.hand].show(chipSpot(e.seat, e.hand), e.bet);
+        betViews[e.seat][e.hand].showPlain(chipSpot(e.seat, e.hand), e.bet);
+        updateHandLabel(e.seat, e.hand);
         return 4;
       case "Turn":
         startTurn(e);
@@ -1001,8 +1020,10 @@ function blackjackScenario() {
     };
     if (e.seat === YOU) {
       const total = handTotal(handCards[e.seat][e.hand]);
-      showTitle(["あなたの番", C.YELLOW], ["合計 " + total, C.WHITE], 24);
-      chat([["手札 合計 " + total + "： ", C.WHITE], button("ヒット", C.GREEN), [" "], button("スタンド", C.RED), [" "], button("ダブルダウン", C.GOLD)]);
+      const stake = betViews[e.seat][e.hand].amount;
+      showTitle(["あなたの番", C.YELLOW], ["合計 " + total + "　賭け " + stake + " 枚", C.WHITE], 24);
+      actionbar("あなたの番です（あと 20 秒）　賭け " + stake + " 枚");
+      chat([["手札 合計 " + total + "（賭け " + stake + " 枚）： ", C.WHITE], button("ヒット", C.GREEN), [" "], button("スタンド", C.RED), [" "], button("ダブルダウン", C.GOLD)]);
       sim.later(50, () => { chat([["（あなたは [ダブルダウン] を押した）", C.DARK_GRAY]]); act(); });
     } else {
       sim.later(12, act);
@@ -1015,11 +1036,13 @@ function blackjackScenario() {
     const bet = betViews[e.seat][e.hand];
     const result = { BLACKJACK: "ブラックジャック！", WIN: "勝ち", PUSH: "引き分け", LOSE: "負け", BUST: "バースト" }[e.outcome];
     const color = { BLACKJACK: C.GREEN, WIN: C.GREEN, PUSH: C.YELLOW, LOSE: C.RED, BUST: C.RED }[e.outcome];
-    updateHandLabel(e.seat, e.hand, [e.outcome === "BLACKJACK" ? "3:2 で勝ち" : result, color]);
+    const gain = e.payout - e.bet;
+    const change = gain > 0 ? " +" + gain + " 枚" : gain < 0 ? " " + gain + " 枚" : " ±0";
+    updateHandLabel(e.seat, e.hand, [(e.outcome === "BLACKJACK" ? "3:2 で勝ち" : result) + change, color]);
     if (e.outcome === "LOSE" || e.outcome === "BUST") bet.slideTo(at(BJ.dealerChips));
     else if (e.outcome === "WIN" || e.outcome === "BLACKJACK") {
       const win = new ChipView();
-      win.show(at(BJ.dealerChips), e.payout - e.bet);
+      win.showPlain(at(BJ.dealerChips), e.payout - e.bet);
       payoutViews.push(win);
       const spot = payoutSpot(e.seat, e.hand);
       sim.later(2, () => win.slideTo(spot));
@@ -1113,7 +1136,7 @@ const RB = {
 const RL = {
   PX: 48, MAT_U: 58, MAT_V: 30, CELL: 9, WHEEL_U: 28, WHEEL_V: 48,
   BALL_TRACK: 0.44, BALL_POCKET: 0.32,
-  shape: { model: "table/roulette", dealer: [-1.2, 0, -1.55], seats: [0, 1, 2, 3, 4].map((i) => [1.7 - 0.85 * i, 0, 1.55]) },
+  shape: { model: "table/roulette", seatRise: RAISED_SEAT, dealer: [-1.2, 0, -1.55], seats: [0, 1, 2, 3, 4].map((i) => [1.7 - 0.85 * i, 0, 1.55]) },
   wheel() { return [RL.WHEEL_U / RL.PX - 2, TOP + 0.002, RL.WHEEL_V / RL.PX - 1]; },
   aroundWheel(angle, radius, height) {
     const c = RL.wheel(), r = angle * DEG;
@@ -1367,11 +1390,12 @@ const PK = {
   },
   board: (i) => [-0.6 + 0.3 * i, TOP + 0.004, -0.2],
   pot: [0, TOP + 0.001, 0.2],
-  seatLabel: (seat) => [PK.SEAT[seat][0], 1.75, PK.SEAT[seat][1]],
+  seatLabel: (seat) => [PK.SEAT[seat][0], 1.75 + RAISED_SEAT, PK.SEAT[seat][1]],
   deck: [0.3, TOP + 0.05, -0.75],
   potLabel: [0, TOP + 0.45, 0.2],
 };
 PK.shape = {
+  seatRise: RAISED_SEAT,
   model: "table/poker", dealer: [0, 0, -1.55], seats: PK.SEAT.map((s) => [s[0], 0, s[1]]),
   // 端の席はテーブルの方（横）を向いて座る
   seatYaw: (i) => (i === 0 ? 90 : i === 5 ? -90 : 180),
@@ -1542,7 +1566,7 @@ function pokerScenario() {
           shownBet[i] = 0;
         }
         shownPot = e.pot;
-        sim.later(9, () => { moving.forEach((v) => v.remove()); potView.show(at(PK.pot), shownPot); });
+        sim.later(9, () => { moving.forEach((v) => v.remove()); potView.showPlain(at(PK.pot), shownPot); });
         updatePotLabel();
         return 12;
       }
@@ -1572,7 +1596,7 @@ function pokerScenario() {
       case "Won": {
         shownPot -= e.amount;
         shownStack[e.seat] += e.amount;
-        potView.show(at(PK.pot), Math.max(shownPot, 0));
+        potView.showPlain(at(PK.pot), Math.max(shownPot, 0));
         const win = new ChipView();
         win.show(at(PK.pot), e.amount);
         payoutViews.push(win);
@@ -1968,7 +1992,7 @@ function cameraPreset(kind) {
   if (current.camera) {
     current.camera(kind);
   } else if (kind === "seat") {
-    camera.position.set(seat[0], 1.48, seat[2] - 0.05);
+    camera.position.set(seat[0], 1.48 + (t.shape.seatRise || 0), seat[2] - 0.05);
     controls.target.set(seat[0] * 0.35, TOP - 0.1, -0.5);
   } else if (kind === "high") {
     camera.position.set(0.6, 3.3, 4.4);
