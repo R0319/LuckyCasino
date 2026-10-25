@@ -24,6 +24,7 @@ import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.EntityDismountEvent;
 import org.bukkit.event.entity.EntityRemoveEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
@@ -425,6 +426,18 @@ final class TableManager implements Listener {
             table.despawn("テーブルの表示が消されたため作り直しました。賭けていた分も戻して精算したので、座り直してください");
             table.spawn();
         });
+    }
+
+    /** /kill でディーラーが倒されても、着せた物を落とさない（写しなので、落とすと増えてしまう）。 */
+    @EventHandler
+    public void onDealerDeath(EntityDeathEvent event) {
+        for (CasinoTable table : tables.values()) {
+            if (table.isDealer(event.getEntity())) {
+                event.getDrops().clear();
+                event.setDroppedExp(0);
+                return;
+            }
+        }
     }
 
     @EventHandler

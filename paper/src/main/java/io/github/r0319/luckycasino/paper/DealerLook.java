@@ -68,9 +68,9 @@ record DealerLook(String skin, String name, Map<EquipmentSlot, ItemStack> equipm
         dealer.setProfile(skin == null ? Mannequin.defaultProfile() : ResolvableProfile.resolvableProfile().name(skin).build());
         dealer.setDescription(nameText());
         EntityEquipment gear = dealer.getEquipment();
+        // Mannequin は Mob ではないので落とす確率は決められない。倒されたときの落とし物は TableManager で消す
         for (EquipmentSlot slot : SLOTS) {
             gear.setItem(slot, equipment.get(slot));
-            gear.setDropChance(slot, 0f);
         }
     }
 
