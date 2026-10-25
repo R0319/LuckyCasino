@@ -170,6 +170,14 @@ abstract class CasinoTable {
         return false;
     }
 
+    /**
+     * 席に着いている人の、椅子かバリアへのクリックが、その奥にある種類ごとの当たり判定を狙っていたら扱う。扱ったら true。
+     * 視線の先の当たり判定はクライアントが決めるので、手前のバリアや自分の椅子の判定に吸われたクリックをここで拾い直す。
+     */
+    boolean clickAimed(Player player) {
+        return false;
+    }
+
     Seat seat(int index) {
         return seats[index];
     }
@@ -427,6 +435,9 @@ abstract class CasinoTable {
             mounts[index].addPassenger(player);
             playSound(Sound.BLOCK_WOODEN_BUTTON_CLICK_ON, 1f);
             updateStatus();
+            return;
+        }
+        if (clickAimed(player)) {
             return;
         }
         openMenu(player);

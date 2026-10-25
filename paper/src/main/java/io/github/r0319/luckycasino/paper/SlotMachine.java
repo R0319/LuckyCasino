@@ -205,7 +205,6 @@ final class SlotMachine extends CasinoTable {
             later(10, this::botSpin);
         } else {
             plugin.menus().openSlot(player, this);
-            player.sendMessage(Component.text("レバーをクリックすると回ります。台をクリックすると賭け金を変えられます", NamedTextColor.GRAY));
         }
         updateStatus();
     }
@@ -224,6 +223,20 @@ final class SlotMachine extends CasinoTable {
             player.sendMessage(Component.text(seats[0] == null ? "先に椅子をクリックして座ってください" : "この台は " + seats[0].name + " が使っています",
                     NamedTextColor.GRAY));
             return true;
+        }
+        spin(player);
+        return true;
+    }
+
+    /** 座った位置からはレバーが筐体（バリア）の奥に見えるので、視線がレバーの当たり判定を通っていれば回す。 */
+    @Override
+    boolean clickAimed(Player player) {
+        if (leverHit == null || seatOf(player.getUniqueId()) < 0) {
+            return false;
+        }
+        Location eye = player.getEyeLocation();
+        if (leverHit.getBoundingBox().expand(0.05).rayTrace(eye.toVector(), eye.getDirection(), 4.5) == null) {
+            return false;
         }
         spin(player);
         return true;
@@ -454,8 +467,8 @@ final class SlotMachine extends CasinoTable {
         Player player = online(seat);
         if (player != null) {
             Component result = win.times() == 0
-                    ? Component.text("はずれ（手元 " + seat.chips + " 枚）", NamedTextColor.GRAY)
-                    : Component.text(win.name() + "：" + spin.payout() + " 枚（手元 " + seat.chips + " 枚）", NamedTextColor.GOLD);
+                    ? Component.text("はずれ", NamedTextColor.GRAY)
+                    : Component.text(win.big() ? "大当たり" : "当たり", NamedTextColor.GOLD);
             player.sendMessage(result.append(Component.text("  "))
                     .append(Component.text("[もう一度回す]", NamedTextColor.GREEN).clickEvent(ClickEvent.runCommand("/casino spin")))
                     .append(Component.text(" "))
