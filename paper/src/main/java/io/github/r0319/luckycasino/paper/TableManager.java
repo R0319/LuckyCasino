@@ -12,6 +12,7 @@ import org.bukkit.block.BlockFace;
 import org.bukkit.block.BlockState;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.entity.Display;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Interaction;
 import org.bukkit.entity.Player;
@@ -23,6 +24,7 @@ import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDismountEvent;
+import org.bukkit.event.entity.EntityRemoveEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
@@ -35,9 +37,11 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.logging.Level;
 
@@ -49,6 +53,8 @@ final class TableManager implements Listener {
     private final LuckyCasinoPaper plugin;
     private final File file;
     private final Map<String, CasinoTable> tables = new LinkedHashMap<>();
+    /** 表示が消されて、次の tick に作り直す卓の id。 */
+    private final Set<String> rebuilding = new HashSet<>();
 
     TableManager(LuckyCasinoPaper plugin) {
         this.plugin = plugin;
@@ -343,6 +349,33 @@ final class TableManager implements Listener {
                 return;
             }
         }
+    }
+
+    /**
+     * /kill などでテーブルの表示（カード・チップ・ホイールなどを含む）が消されたら、次の tick に卓ごと作り直す。
+     * 表示エンティティは消されるのを止められないので、出し直す。勝負の途中なら賭け金を戻して全員を精算する。
+     * このプラグインが消したもの（PLUGIN）とチャンクの読み込み解除（UNLOAD）は対象外。ディーラーだけなら出し直すだけ（checkDealer）。
+     */
+    @EventHandler
+    public void onEntityRemove(EntityRemoveEvent event) {
+        Entity entity = event.getEntity();
+        if (event.getCause() == EntityRemoveEvent.Cause.PLUGIN || event.getCause() == EntityRemoveEvent.Cause.UNLOAD
+                || entity.isPersistent() || !(entity instanceof Display || entity instanceof Interaction)) {
+            return;
+        }
+        CasinoTable table = nearest(entity.getLocation(), 5);
+        if (table == null || !table.spawned() || !rebuilding.add(table.id())) {
+            return;
+        }
+        plugin.getServer().getScheduler().runTask(plugin, () -> {
+            rebuilding.remove(table.id());
+            if (tables.get(table.id()) != table || !table.spawned()) {
+                return;
+            }
+            plugin.getLogger().info("テーブル " + table.id() + " の表示が消されたため作り直します（" + event.getCause() + "）");
+            table.despawn("テーブルの表示が消されたため作り直しました。賭けていた分も戻して精算したので、座り直してください");
+            table.spawn();
+        });
     }
 
     @EventHandler

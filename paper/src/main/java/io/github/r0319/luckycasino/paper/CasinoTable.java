@@ -267,6 +267,7 @@ abstract class CasinoTable {
         onSpawn();
         ticker = plugin.getServer().getScheduler().runTaskTimer(plugin, () -> guarded(() -> {
             checkDealer();
+            restoreBarriers();
             checkStanding();
             tickSecond();
         }), 20L, 20L);
@@ -298,6 +299,18 @@ abstract class CasinoTable {
         }
     }
 
+    /** /fill や WorldEdit などでテーブルのバリアが空気にされていたら置き直す（ほかのブロックに変えられていたら触らない）。 */
+    private void restoreBarriers() {
+        if (observer != null || !frame.origin().isChunkLoaded()) {
+            return;
+        }
+        for (org.bukkit.block.Block block : footprint()) {
+            if (block.getType().isAir()) {
+                block.setType(Material.BARRIER, false);
+            }
+        }
+    }
+
     /** BlockDisplay はブロックの角が原点なので、中心に合わせて置く。 */
     protected BlockDisplay block(Location at, Material material, Vector3f scale) {
         return at.getWorld().spawn(at, BlockDisplay.class, entity -> {
@@ -312,6 +325,11 @@ abstract class CasinoTable {
      * 表示を片付け、全員を精算する。勝負の途中なら賭け金はそのまま返す（サーバー停止やチャンクの読み込み解除のとき）。
      */
     void despawn() {
+        despawn("テーブルが片付けられたため、チップを精算しました");
+    }
+
+    /** despawn と同じ。精算のときに座っている人へ送る文を変えられる。 */
+    void despawn(String reason) {
         cancelTasks();
         onDespawn();
         for (int i = 0; i < seats.length; i++) {
@@ -319,7 +337,7 @@ abstract class CasinoTable {
             if (seat != null) {
                 seat.chips += seat.atRisk;
                 seat.atRisk = 0;
-                cashOut(i, "テーブルが片付けられたため、チップを精算しました");
+                cashOut(i, reason);
             }
         }
         fixtures.forEach(Entity::remove);
