@@ -50,7 +50,9 @@ final class Achievements implements Listener {
 
         SICBO_TRIPLE("sicbo/triple", FIRST_PLAY, "achievement/sicbo_triple", "ゾロ目師", "大小で目を指定したゾロ目に賭けて当てる", Frame.CHALLENGE),
 
-        HIGHLOW_SAME("highlow/same", FIRST_PLAY, "achievement/highlow_same", "以心伝心", "ハイ＆ローで「同じ」に賭けて当てる", Frame.GOAL);
+        HIGHLOW_SAME("highlow/same", FIRST_PLAY, "achievement/highlow_same", "以心伝心", "ハイ＆ローで「同じ」に賭けて当てる", Frame.GOAL),
+
+        HORSERACE_LONGSHOT("horserace/longshot", FIRST_PLAY, "achievement/horserace_longshot", "大穴的中", "競馬で 8 倍以上の馬の単勝を当てる", Frame.CHALLENGE);
 
         final String path;
         final Achievement parent;

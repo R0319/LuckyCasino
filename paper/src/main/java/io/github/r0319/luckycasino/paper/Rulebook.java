@@ -31,6 +31,7 @@ final class Rulebook {
             case BIGWHEEL -> GameRules.bigWheel();
             case SICBO -> GameRules.sicBo();
             case HIGHLOW -> GameRules.highLow();
+            case HORSERACE -> GameRules.horseRace();
         });
         player.openBook(Book.book(Component.text(type.displayName() + "のルール"), Component.text("LuckyCasino"), pages));
     }

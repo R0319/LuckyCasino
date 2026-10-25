@@ -296,6 +296,24 @@ def highlow_same():
     return img
 
 
+def horserace_longshot():
+    """大穴的中: 金の蹄鉄（U の字、口が上）に、緑の勝負服の帽子色のリボン。"""
+    img = Image.new("RGBA", (SIZE, SIZE), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    d.arc([10, 8, 62, 66], 0, 180, fill=GOLD_DARK, width=13)
+    d.arc([12, 8, 60, 64], 0, 180, fill=GOLD, width=10)
+    for x0 in (10, 49):
+        d.rectangle([x0, 22, x0 + 12, 38], fill=GOLD, outline=GOLD_DARK)
+    d.rectangle([9, 18, 23, 23], fill=GOLD_DARK)
+    d.rectangle([48, 18, 62, 23], fill=GOLD_DARK)
+    for x, y in ((14, 30), (55, 30), (16, 46), (53, 46), (25, 57), (44, 57)):
+        d.rectangle([x, y, x + 1, y + 2], fill=OUTLINE)
+    d.polygon([(30, 4), (42, 4), (40, 16), (36, 12), (32, 16)], fill=GREEN, outline=GREEN_DARK)
+    for x, y, r in ((6, 8, 3), (66, 10, 3), (64, 64, 2), (8, 62, 2)):
+        sparkle(img, x, y, r, GOLD)
+    return img
+
+
 ICONS = {
     "first_play": first_play,
     "blackjack": blackjack,
@@ -313,6 +331,7 @@ ICONS = {
     "bigwheel_star": bigwheel_star,
     "sicbo_triple": sicbo_triple,
     "highlow_same": highlow_same,
+    "horserace_longshot": horserace_longshot,
 }
 
 

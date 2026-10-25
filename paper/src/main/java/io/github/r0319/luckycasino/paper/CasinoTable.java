@@ -245,6 +245,11 @@ abstract class CasinoTable {
         return fixtures;
     }
 
+    /** 卓が出しているエンティティか（自己テストの片付け漏れの判定）。回をまたいで残す表示がある卓は足す。 */
+    boolean owns(Entity entity) {
+        return fixtures.contains(entity);
+    }
+
     void spawn() {
         if (spawned()) {
             return;

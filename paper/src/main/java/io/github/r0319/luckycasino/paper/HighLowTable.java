@@ -236,6 +236,12 @@ final class HighLowTable extends SpotTable {
         return out;
     }
 
+    /** 基準のカードと履歴は回をまたいで残す。 */
+    @Override
+    boolean owns(org.bukkit.entity.Entity entity) {
+        return super.owns(entity) || allCards().stream().anyMatch(card -> card.owns(entity));
+    }
+
     @Override
     void stateLines(List<String> out) {
         allCards().forEach(card -> out.add(card.stateLine()));

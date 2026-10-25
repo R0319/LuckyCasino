@@ -102,6 +102,15 @@ highlow:
   buy-ins: [100, 500, 1000, 5000]
   standing-range: 8
 
+# 競馬（6 頭、単勝）。レースごとに馬の強さと配当が変わる
+horserace:
+  min-bet: 10
+  max-bet: 500
+  max-total: 1500
+  betting-seconds: 15
+  buy-ins: [100, 500, 1000, 5000]
+  standing-range: 8
+
 # テーブルのクラフトレシピ。材料は素材名か、#planks のようなタグ名。使わないなら enabled: false
 recipes:
   blackjack:
@@ -194,6 +203,17 @@ recipes:
       A: light_blue_carpet
       W: '#planks'
       B: book
+  horserace:
+    enabled: true
+    shape:
+      - WHW
+      - PSP
+      - 'P P'
+    ingredients:
+      W: white_carpet
+      H: hay_block
+      P: '#planks'
+      S: saddle
 
 # Geyser 拡張（統合版にカードを見せる）との通信
 bridge:

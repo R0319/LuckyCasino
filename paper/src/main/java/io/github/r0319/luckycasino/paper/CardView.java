@@ -117,6 +117,11 @@ final class CardView {
         }
     }
 
+    /** このカードの表示に使っているエンティティか。 */
+    boolean owns(org.bukkit.entity.Entity entity) {
+        return entity.equals(display) || entity.equals(carrier);
+    }
+
     void remove() {
         if (removed) {
             return;

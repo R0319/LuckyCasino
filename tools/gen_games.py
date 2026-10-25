@@ -392,6 +392,101 @@ def highlow_felt():
     return img
 
 
+# ---- 競馬（paper の HorseRaceLayout と合わせる） ----
+# 枠の色（JRA の枠色: 1 白、2 黒、3 赤、4 青、5 黄、6 緑）
+SILKS = [(240, 240, 236, 255), (36, 36, 40, 255), (210, 40, 40, 255), (40, 90, 210, 255), (240, 210, 40, 255), (40, 160, 70, 255)]
+HR_LANE_Z = [-0.88 + 0.14 * i for i in range(6)]
+HR_START_X, HR_FINISH_X, HR_BOX_Z = -1.7, 1.55, 0.5
+DIRT = (150, 110, 70, 255)
+DIRT_DARK = (128, 92, 58, 255)
+
+
+def hr_box_x(i):
+    return -1.6 + 0.64 * i
+
+
+def silk_ink(i):
+    return (30, 30, 36, 255) if i in (0, 4) else WHITE
+
+
+def horse_coat():
+    img = gt.Image.new("RGBA", (16, 16), (120, 72, 40, 255))
+    for y in range(16):
+        for x in range(16):
+            if (x * 5 + y * 3) % 7 == 0:
+                img.putpixel((x, y), (104, 62, 34, 255))
+    return img
+
+
+def silk_texture(i):
+    img = gt.Image.new("RGBA", (16, 16), SILKS[i])
+    d = ImageDraw.Draw(img)
+    d.rectangle([0, 0, 15, 15], outline=tuple(max(0, c - 40) for c in SILKS[i][:3]) + (255,))
+    return img
+
+
+def horse_model(i):
+    """+X（ゴール）へ走る馬と騎手。ItemDisplay は Y 軸まわりに 180 度回して描くので、モデルでは頭を -X に置く。"""
+    coat, mane, silk, white = "#coat", "#mane", "#silk", "#white"
+
+    def el(frm, to, t):
+        return {"from": frm, "to": to, "faces": {f: {"texture": t, "uv": [0, 0, 16, 16]}
+                                                 for f in ("north", "south", "east", "west", "up", "down")}}
+    elements = [
+        el([4, 6, 6.5], [12, 10, 9.5], coat),          # 胴
+        el([2, 9, 7], [5, 13, 9], coat),               # 首
+        el([0, 12, 7], [3.5, 14.5, 9], coat),          # 頭
+        el([4.5, 12, 7.5], [5.5, 13.5, 8.5], mane),    # たてがみ
+        el([12, 6.5, 7.5], [13.5, 10, 8.5], mane),     # しっぽ
+        el([6, 10, 6], [10, 10.6, 10], white),         # 鞍の下の布（ゼッケン）
+        el([7, 10.6, 7], [9.5, 14, 9], silk),          # 騎手の胴（勝負服）
+        el([6.6, 14, 7.2], [9, 15.6, 8.8], silk),      # 帽子
+    ]
+    for lx in (4.5, 10.5):
+        for lz in (6.5, 8.5):
+            elements.append(el([lx, 0, lz], [lx + 1, 6, lz + 1], coat))
+    return {
+        "textures": {"coat": "luckycasino:block/horse_coat", "mane": "luckycasino:block/horse_mane",
+                     "silk": f"luckycasino:block/silk_{i + 1}", "white": "luckycasino:block/silk_1",
+                     "particle": "luckycasino:block/horse_coat"},
+        "elements": elements,
+    }
+
+
+def horserace_felt():
+    img = felt_base(192, 96)
+    d = ImageDraw.Draw(img)
+    d.rectangle([2, 2, 189, 93], outline=GOLD)
+    # ダートのコース
+    top, bottom = v(HR_LANE_Z[0] - 0.07), v(HR_LANE_Z[-1] + 0.07)
+    for y in range(top, bottom + 1):
+        for x in range(u(-1.92), u(1.92) + 1):
+            img.putpixel((x, y), DIRT_DARK if (x * 3 + y * 7) % 9 == 0 else DIRT)
+    d.line([u(-1.92), top - 1, u(1.92), top - 1], fill=WHITE)
+    d.line([u(-1.92), bottom + 1, u(1.92), bottom + 1], fill=WHITE)
+    for z in HR_LANE_Z[1:]:
+        y = v(z - 0.07)
+        for x in range(u(HR_START_X), u(HR_FINISH_X), 4):
+            img.putpixel((x, y), DIRT_DARK)
+    # スタートとゴール（市松模様）
+    d.line([u(HR_START_X), top, u(HR_START_X), bottom], fill=WHITE)
+    for y in range(top, bottom + 1):
+        for k in range(2):
+            x = u(HR_FINISH_X) + k
+            img.putpixel((x, y), WHITE if ((y - top) // 2 + k) % 2 == 0 else (30, 30, 36, 255))
+    for i, z in enumerate(HR_LANE_Z):
+        gt.text(img, str(i + 1), u(-1.84) + 1, v(z) - 2, SILKS[i] if i != 1 else WHITE)
+    text(img, "GOAL", HR_FINISH_X, HR_LANE_Z[-1] + 0.2, GOLD)
+    text(img, "HORSE RACE", -0.6, 0.08, GOLD)
+    text(img, "WIN", 0.75, 0.08, WHITE)
+    # 単勝の枠
+    for i in range(6):
+        x = hr_box_x(i)
+        box(d, x, HR_BOX_Z, 0.58, 0.5, GOLD, SILKS[i])
+        gt.text(img, str(i + 1), u(x) + 1, v(HR_BOX_Z) - 2, silk_ink(i))
+    return img
+
+
 def item(path):
     write_json(JAVA / "items" / f"{path}.json", {"model": {"type": "minecraft:model", "model": f"luckycasino:item/{path}"}})
 
@@ -424,6 +519,16 @@ def main():
     for_item_display(highlow_felt(), 96).save(tex / "highlow_felt.png")
     write_json(JAVA / "models" / "item" / "table" / "highlow.json", table_model("highlow_felt"))
     item("table/highlow")
+
+    horse_coat().save(tex / "horse_coat.png")
+    gt.Image.new("RGBA", (16, 16), (50, 30, 20, 255)).save(tex / "horse_mane.png")
+    for i in range(6):
+        silk_texture(i).save(tex / f"silk_{i + 1}.png")
+        write_json(JAVA / "models" / "item" / "horserace" / f"horse_{i + 1}.json", horse_model(i))
+        item(f"horserace/horse_{i + 1}")
+    for_item_display(horserace_felt(), 96).save(tex / "horserace_felt.png")
+    write_json(JAVA / "models" / "item" / "table" / "horserace.json", table_model("horserace_felt"))
+    item("table/horserace")
 
 
 if __name__ == "__main__":

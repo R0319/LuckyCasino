@@ -186,7 +186,7 @@ final class SelfTest {
         Location center = table.frame().at(0, 1, 0);
         List<String> out = new ArrayList<>();
         for (Entity entity : center.getWorld().getNearbyEntities(center, 4, 3, 4)) {
-            if (entity instanceof Player || !entity.isValid() || table.fixtures().contains(entity)) {
+            if (entity instanceof Player || !entity.isValid() || table.owns(entity)) {
                 continue;
             }
             out.add(entity.getType().name().toLowerCase());
