@@ -1,0 +1,70 @@
+{
+  "providers": [
+    {
+      "type": "bitmap",
+      "file": "luckycasino:font/slot_seven.png",
+      "ascent": 9,
+      "height": 14,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "luckycasino:font/slot_bar.png",
+      "ascent": 9,
+      "height": 14,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "luckycasino:font/slot_bell.png",
+      "ascent": 9,
+      "height": 14,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "luckycasino:font/slot_melon.png",
+      "ascent": 9,
+      "height": 14,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "luckycasino:font/slot_lemon.png",
+      "ascent": 9,
+      "height": 14,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "luckycasino:font/slot_cherry.png",
+      "ascent": 9,
+      "height": 14,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "luckycasino:font/cards.png",
+      "ascent": 8,
+      "height": 13,
+      "chars": [
+        "",
+        "",
+        "",
+        ""
+      ]
+    }
+  ]
+}

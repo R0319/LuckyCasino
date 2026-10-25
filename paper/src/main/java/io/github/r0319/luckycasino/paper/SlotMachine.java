@@ -4,7 +4,6 @@ import io.github.r0319.luckycasino.slot.Line;
 import io.github.r0319.luckycasino.slot.Reels;
 import io.github.r0319.luckycasino.slot.Spin;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.title.Title;
 import org.bukkit.Location;
@@ -511,13 +510,17 @@ final class SlotMachine extends CasinoTable {
         }
         Player player = online(seat);
         if (player != null) {
-            Component result = best == null
-                    ? Component.text("はずれ", NamedTextColor.GRAY)
-                    : Component.text(spin.big() ? "大当たり" : "当たり", NamedTextColor.GOLD);
-            player.sendMessage(result.append(Component.text("  "))
-                    .append(Component.text("[もう一度回す]", NamedTextColor.GREEN).clickEvent(ClickEvent.runCommand("/casino spin")))
-                    .append(Component.text(" "))
-                    .append(Component.text("[賭け金を変える]", NamedTextColor.AQUA).clickEvent(ClickEvent.runCommand("/casino bet"))));
+            // チャットには結果と当たった役だけを出す（回すのはレバー、賭け金はメニューで）
+            if (best == null) {
+                player.sendMessage(Component.text("はずれ", NamedTextColor.GRAY));
+            } else {
+                player.sendMessage(Component.text((spin.big() ? "大当たり" : "当たり") + "  +" + spin.payout() + " 枚", NamedTextColor.GOLD));
+                long lineBet = spin.bet() / Line.COUNT;
+                for (Spin.LineWin w : spin.wins()) {
+                    player.sendMessage(Component.text("  " + w.line().displayName() + "：" + w.win().name(), NamedTextColor.YELLOW)
+                            .append(Component.text("  +" + lineBet * w.win().times() + " 枚", NamedTextColor.GRAY)));
+                }
+            }
         }
         later(wait, this::finishRound);
     }

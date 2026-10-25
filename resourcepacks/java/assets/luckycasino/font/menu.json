@@ -1,0 +1,29 @@
+{
+  "providers": [
+    {
+      "type": "space",
+      "advances": {
+        "": -8,
+        "": -169
+      }
+    },
+    {
+      "type": "bitmap",
+      "file": "luckycasino:font/menu_27.png",
+      "ascent": 13,
+      "height": 168,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "luckycasino:font/menu_54.png",
+      "ascent": 13,
+      "height": 222,
+      "chars": [
+        ""
+      ]
+    }
+  ]
+}

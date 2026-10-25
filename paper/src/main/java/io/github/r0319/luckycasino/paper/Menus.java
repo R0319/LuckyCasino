@@ -136,7 +136,7 @@ final class Menus implements Listener {
         }
         Bet holder = new Bet(table);
         holder.amount = Math.min(table.settings().rules().minBet(), table.seat(seat).chips);
-        Inventory inventory = Bukkit.createInventory(holder, 27, Component.text("賭け金を決める"));
+        Inventory inventory = Bukkit.createInventory(holder, 27, Glyphs.menuTitle(player, 27, Component.text("賭け金を決める")));
         holder.inventory = inventory;
         for (int i = 0; i < BET_CHIP_SLOTS.length; i++) {
             inventory.setItem(BET_CHIP_SLOTS[i], named(Items.model("chip/c" + CHIP_VALUES[i] + "_1"),
@@ -259,7 +259,7 @@ final class Menus implements Listener {
         RouletteMenu holder = new RouletteMenu(table);
         holder.chip = table.settings().minBet();
         holder.title = rouletteTitle(table, player);
-        holder.inventory = Bukkit.createInventory(holder, 54, Component.text(holder.title));
+        holder.inventory = Bukkit.createInventory(holder, 54, Glyphs.menuTitle(player, 54, Component.text(holder.title)));
         renderRoulette(holder, player);
         player.openInventory(holder.inventory);
         player.sendMessage(Component.text("閉じてしまったら ", NamedTextColor.GRAY)
@@ -479,7 +479,7 @@ final class Menus implements Listener {
         String title = rouletteTitle(table, player);
         if (!title.equals(menu.title) && player.getOpenInventory().getTopInventory() == menu.inventory) {
             menu.title = title;
-            player.getOpenInventory().setTitle(title);
+            retitle(menu, player, title);
         }
     }
 
@@ -514,7 +514,7 @@ final class Menus implements Listener {
         }
         Raise holder = new Raise(table);
         holder.amount = legal.minRaiseTo();
-        holder.inventory = Bukkit.createInventory(holder, 27, Component.text(legal.streetBet() + legal.toCall() == 0 ? "ベットする額" : "レイズする額"));
+        holder.inventory = Bukkit.createInventory(holder, 27, Glyphs.menuTitle(player, 27, Component.text(legal.streetBet() + legal.toCall() == 0 ? "ベットする額" : "レイズする額")));
         for (int i = 0; i < RAISE_CHIP_SLOTS.length; i++) {
             holder.inventory.setItem(RAISE_CHIP_SLOTS[i], named(Items.model("chip/c" + CHIP_VALUES[i] + "_1"),
                     Component.text(CHIP_VALUES[i] + " 枚", NamedTextColor.GOLD),
@@ -585,7 +585,7 @@ final class Menus implements Listener {
             return;
         }
         SeatInfo holder = new SeatInfo(table);
-        holder.inventory = Bukkit.createInventory(holder, 27, Component.text("ポーカー"));
+        holder.inventory = Bukkit.createInventory(holder, 27, Glyphs.menuTitle(player, 27, Component.text("ポーカー")));
         CasinoTable.Seat s = table.seat(seat);
         holder.inventory.setItem(13, named(ItemStack.of(Material.PAPER), Component.text("手元のチップ " + (s.chips + s.atRisk) + " 枚", NamedTextColor.YELLOW),
                 List.of(Component.text("ブラインド " + table.settings().smallBlind() + "/" + table.settings().bigBlind(), NamedTextColor.GRAY),
@@ -617,7 +617,7 @@ final class Menus implements Listener {
             return;
         }
         SlotMenu holder = new SlotMenu(table);
-        holder.inventory = Bukkit.createInventory(holder, 27, Component.text(slotTitle(table)));
+        holder.inventory = Bukkit.createInventory(holder, 27, Glyphs.menuTitle(player, 27, Component.text(slotTitle(table))));
         renderSlot(holder);
         player.openInventory(holder.inventory);
     }
@@ -704,9 +704,31 @@ final class Menus implements Listener {
             table.setBet(player, bets.get(index));
         }
         renderSlot(menu);
-        if (player.getOpenInventory().getTopInventory() == menu.inventory) {
-            player.getOpenInventory().setTitle(slotTitle(table));
+        retitle(menu, player, slotTitle(table));
+    }
+
+    /**
+     * 開いているメニューのタイトルを変える。背景の絵を出している人には文字列の setTitle が使えない（フォントを指定できない）ので、
+     * 同じ中身の画面を次の tick に開き直す（クリックの処理中に画面を開かないため）。
+     */
+    private void retitle(Menu menu, Player player, String title) {
+        Inventory old = menu.inventory;
+        if (player.getOpenInventory().getTopInventory() != old) {
+            return;
         }
+        if (!Glyphs.enabled(player)) {
+            player.getOpenInventory().setTitle(title);
+            return;
+        }
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            if (menu.inventory != old || player.getOpenInventory().getTopInventory() != old) {
+                return;
+            }
+            Inventory next = Bukkit.createInventory(menu, old.getSize(), Glyphs.menuTitle(player, old.getSize(), Component.text(title)));
+            next.setContents(old.getContents());
+            menu.inventory = next;
+            player.openInventory(next);
+        });
     }
 
     // ---- クリック ----

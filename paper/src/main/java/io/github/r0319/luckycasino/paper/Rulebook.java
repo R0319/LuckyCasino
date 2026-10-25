@@ -1,5 +1,9 @@
 package io.github.r0319.luckycasino.paper;
 
+import io.github.r0319.luckycasino.card.Card;
+import io.github.r0319.luckycasino.card.Rank;
+import io.github.r0319.luckycasino.card.Suit;
+import io.github.r0319.luckycasino.slot.Symbol;
 import net.kyori.adventure.inventory.Book;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -16,12 +20,13 @@ final class Rulebook {
     }
 
     static void open(Player player, GameType type) {
+        boolean pictures = Glyphs.enabled(player);
         List<Component> pages = new ArrayList<>(common());
         pages.addAll(switch (type) {
             case BLACKJACK -> blackjack();
             case ROULETTE -> roulette();
-            case POKER -> poker();
-            case SLOT -> slot();
+            case POKER -> poker(pictures);
+            case SLOT -> slot(pictures);
         });
         player.openBook(Book.book(Component.text(type.displayName() + "のルール"), Component.text("LuckyCasino"), pages));
     }
@@ -86,8 +91,8 @@ final class Rulebook {
                         "0 を含む賭け（0 そのもの、0 と 1〜3）は当たりです。"));
     }
 
-    private static List<Component> slot() {
-        return List.of(
+    private static List<Component> slot(boolean pictures) {
+        List<Component> pages = new ArrayList<>(List.of(
                 page("スロット",
                         "1 人用。1 回の賭け金を決めて、台の右のレバーをクリックすると回ります。",
                         "",
@@ -97,8 +102,23 @@ final class Rulebook {
                         "",
                         "賭け金は 5 ラインに等分します（1 回 10 枚なら 1 ライン 2 枚）。",
                         "",
-                        "当たったラインが光り、その分を合計して戻します。"),
-                page("配当（1 ラインの何倍か）",
+                        "当たったラインが光り、その分を合計して戻します。")));
+        if (pictures) {
+            pages.add(picturePage("配当（1 ラインの何倍か）",
+                    slotRow(Symbol.SEVEN, Symbol.SEVEN, Symbol.SEVEN, "300 倍"),
+                    slotRow(Symbol.BAR, Symbol.BAR, Symbol.BAR, "50 倍"),
+                    slotRow(Symbol.BELL, Symbol.BELL, Symbol.BELL, "20 倍"),
+                    slotRow(Symbol.MELON, Symbol.MELON, Symbol.MELON, "15 倍"),
+                    slotRow(Symbol.LEMON, Symbol.LEMON, Symbol.LEMON, "10 倍")));
+            pages.add(picturePage("チェリー（左から数える）",
+                    slotRow(Symbol.CHERRY, Symbol.CHERRY, Symbol.CHERRY, "20 倍"),
+                    slotRow(Symbol.CHERRY, Symbol.CHERRY, null, "4 倍"),
+                    slotRow(Symbol.CHERRY, null, null, "1 倍"),
+                    Component.text("？ は何でも", NamedTextColor.DARK_GRAY),
+                    Component.text("（設定で変わります。今の配当は台のメニューの紙に出ます）", NamedTextColor.DARK_GRAY)));
+            return pages;
+        }
+        pages.add(page("配当（1 ラインの何倍か）",
                         "7 7 7: 300 倍",
                         "BAR 3 つ: 50 倍",
                         "ベル 3 つ: 20 倍",
@@ -108,10 +128,11 @@ final class Rulebook {
                         "チェリー左から 2 つ: 4 倍",
                         "チェリー左に 1 つ: 1 倍",
                         "（設定で変わります。今の配当は台のメニューの紙に出ます）"));
+        return pages;
     }
 
-    private static List<Component> poker() {
-        return List.of(
+    private static List<Component> poker(boolean pictures) {
+        List<Component> pages = new ArrayList<>(List.of(
                 page("ポーカー",
                         "テキサスホールデム（ノーリミット）。ディーラーは配るだけで、チップはプレイヤーの間で動きます。",
                         "",
@@ -131,8 +152,25 @@ final class Rulebook {
                         "フォールド: 降りる",
                         "オールイン: 全部出す",
                         "",
-                        "自分の番になるとチャットにボタンが出ます。"),
-                page("役（強い順）",
+                        "自分の番になるとチャットにボタンが出ます。")));
+        if (pictures) {
+            pages.add(picturePage("役（強い順）1",
+                    hand("ロイヤルフラッシュ", "最強", "AS KS QS JS TS"),
+                    hand("ストレートフラッシュ", "同マーク連番", "9H 8H 7H 6H 5H"),
+                    hand("フォーカード", "同じ数4枚", "KS KH KD KC 3S"),
+                    hand("フルハウス", "3枚＋2枚", "QS QH QD 7C 7S")));
+            pages.add(picturePage("役（強い順）2",
+                    hand("フラッシュ", "同マーク5枚", "AD JD 8D 6D 2D"),
+                    hand("ストレート", "数が連番", "TC 9D 8S 7H 6C"),
+                    hand("スリーカード", "同じ数3枚", "7S 7H 7D KC 2S"),
+                    hand("ツーペア", "ペア2組", "JS JH 4D 4C 9S")));
+            pages.add(picturePage("役（強い順）3",
+                    hand("ワンペア", "ペア1組", "AH AC 9D 6S 3H"),
+                    hand("ハイカード", "役なし", "AS QD 9C 6H 3S"),
+                    Component.text("同じ役なら、数の大きいほうが勝ち（A が一番強い）", NamedTextColor.DARK_GRAY)));
+            return pages;
+        }
+        pages.add(page("役（強い順）",
                         "ロイヤルフラッシュ",
                         "ストレートフラッシュ",
                         "フォーカード",
@@ -143,5 +181,36 @@ final class Rulebook {
                         "ツーペア",
                         "ワンペア",
                         "ハイカード"));
+        return pages;
+    }
+
+    /** 絵の入ったページ。絵は行より背が高いので、項目の間を 1 行あける。 */
+    private static Component picturePage(String title, Component... items) {
+        Component page = Component.text(title, NamedTextColor.DARK_BLUE).decorate(TextDecoration.BOLD);
+        for (Component item : items) {
+            page = page.append(Component.newline()).append(Component.newline()).append(item.decoration(TextDecoration.BOLD, false));
+        }
+        return page;
+    }
+
+    /** スロットの絵柄 3 つと配当。null は「何でも」。 */
+    private static Component slotRow(Symbol a, Symbol b, Symbol c, String pay) {
+        Component row = Component.empty();
+        for (Symbol symbol : new Symbol[]{a, b, c}) {
+            row = row.append(symbol == null ? Component.text(" ？ ", NamedTextColor.DARK_GRAY) : Glyphs.slot(symbol));
+        }
+        return row.append(Component.text(" " + pay, NamedTextColor.BLACK));
+    }
+
+    /** ポーカーの役の名前と、その例の 5 枚（"AS KH TD" のように、ランク + スート S/H/D/C）。 */
+    private static Component hand(String name, String hint, String cards) {
+        Component row = Component.text(name, NamedTextColor.BLACK).append(Component.newline());
+        for (String code : cards.split(" ")) {
+            Rank rank = Rank.values()["A23456789TJQK".indexOf(code.charAt(0))];
+            Suit suit = Suit.values()["SHDC".indexOf(code.charAt(1))];
+            row = row.append(Glyphs.card(new Card(suit, rank)));
+        }
+        // 本の 1 行は 114 px。カード 5 枚（1 枚 10 px）と短い説明が収まるように詰める
+        return row.append(Component.text(" " + hint, NamedTextColor.DARK_GRAY));
     }
 }

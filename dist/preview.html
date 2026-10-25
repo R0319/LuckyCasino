@@ -2044,8 +2044,13 @@ function slotScenario() {
       showTitle(["大当たり！", C.GOLD], [result.best.win.name + (lines.length > 1 ? "（" + lines.length + " ライン）" : "") + "  +" + payout + " 枚", C.YELLOW], 36);
       wait = 76;
     }
-    const head = !result.best ? [["はずれ", C.GRAY]] : [[result.big ? "大当たり" : "当たり", C.GOLD]];
-    chat([...head, ["  "], button("もう一度回す", C.GREEN), [" "], button("賭け金を変える", C.AQUA)]);
+    if (!result.best) {
+      chat([["はずれ", C.GRAY]]);
+    } else {
+      chat([[(result.big ? "大当たり" : "当たり") + "  +" + payout + " 枚", C.GOLD]]);
+      const lineBet = bet / SLOT.LINES.length;
+      for (const w of result.wins) chat([["  " + SLOT.LINES[w.line].name + "：" + w.win.name, C.YELLOW], ["  +" + lineBet * w.win.times + " 枚", C.GRAY]]);
+    }
     sim.later(wait, () => {
       shower.forEach((c) => c.remove());
       celebrating = false;
