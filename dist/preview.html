@@ -1277,7 +1277,7 @@ const RL = {
     const c = RL.wheel(), r = angle * DEG;
     return [c[0] + radius * Math.sin(r), TOP + height, c[2] - radius * Math.cos(r)];
   },
-  resultLabel() { const c = RL.wheel(); return [c[0], TOP + 0.9, c[2]]; },
+  resultLabel() { const c = RL.wheel(); return [c[0], TOP + 0.5, c[2]]; },
   history: [-0.4, TOP + 0.75, -0.75],
   croupierChips: [-0.4, TOP + 0.001, -0.75],
   px(u, v) { return [u / RL.PX - 2, TOP + 0.001, v / RL.PX - 1]; },
@@ -1346,6 +1346,7 @@ function rouletteScenario() {
   };
   let state = "IDLE", countdown = 0;
   let wheelAngle = 0;
+  let shownUnder = -1;
   const history = [32, 5, 0, 21, 14];
   const bets = {};
   const chipViews = {};
@@ -1420,7 +1421,7 @@ function rouletteScenario() {
   function spin() {
     state = "SPINNING";
     t.broadcast([["ノーモアベット", C.AQUA]]);
-    resultLabel.text([]);
+    shownUnder = -1;
     animateSpin(RESULT);
     sim.later(SPIN_TICKS + 10, payout);
   }
@@ -1449,7 +1450,11 @@ function rouletteScenario() {
         if (k < 0.8) height += Math.abs(Math.sin(k * Math.PI * 4)) * 0.04 * (1 - k);
       }
       const pos = RL.aroundWheel(b, radius, height);
+      // ボールの真下のポケットの数字をホイールの上に出す（減速に合わせて切り替わりも遅くなる）
+      const idx = Math.round((b + w) / (360 / 37));
+      const under = WHEEL_ORDER[((idx % 37) + 37) % 37];
       sim.later(Math.max(1, tt), () => {
+        if (under !== shownUnder) { shownUnder = under; resultLabel.text([[numberParts(under)]]); }
         wheel.interpolationDuration = STEP;
         wheel.setTransformation(wt(w));
         ball.teleport(at(pos));

@@ -55,6 +55,8 @@ final class RouletteTable extends CasinoTable {
     private TextDisplay resultLabel;
     private TextDisplay historyLabel;
     private float wheelAngle;
+    /** 回っているあいだ、ホイールの上に出しているボールの真下の数字。 */
+    private int shownUnder = -1;
     private final Deque<Integer> history = new ArrayDeque<>();
     /** 席ごとの、置いた場所ごとのチップの表示。 */
     private final Map<Integer, Map<String, ChipView>> chips = new HashMap<>();
@@ -291,7 +293,7 @@ final class RouletteTable extends CasinoTable {
         plugin.menus().closeRoulette(this);
         broadcast(Component.text("ノーモアベット", NamedTextColor.AQUA));
         int result = round.spin(random);
-        resultLabel.text(Component.empty());
+        shownUnder = -1;
         animateSpin(result);
         later(SPIN_TICKS + 10, this::payout);
     }
@@ -327,7 +329,17 @@ final class RouletteTable extends CasinoTable {
             }
             int tick = t;
             double[] pos = LAYOUT.aroundWheel(b, radius, height);
+            // ボールの真下のポケット（ポケット i は i×(360/37) − φ 度の位置にある）
+            int under = Wheel.numberAt((int) Math.round((b + w) / (360.0 / Wheel.POCKETS)));
+            boolean late = progress > 0.45;
             later(Math.max(1, tick), () -> {
+                if (resultLabel != null && under != shownUnder) {
+                    shownUnder = under;
+                    resultLabel.text(numberText(under));
+                    if (late) {
+                        playSound(Sound.BLOCK_NOTE_BLOCK_HAT, 1.6f, 0.6f);
+                    }
+                }
                 if (wheel != null) {
                     wheel.setInterpolationDelay(0);
                     wheel.setInterpolationDuration(STEP);

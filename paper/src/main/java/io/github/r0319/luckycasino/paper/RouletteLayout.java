@@ -60,7 +60,7 @@ final class RouletteLayout implements TableShape {
 
     double[] resultLabel() {
         double[] c = wheel();
-        return new double[]{c[0], TOP + 0.9, c[2]};
+        return new double[]{c[0], TOP + 0.5, c[2]};
     }
 
     double[] history() {
