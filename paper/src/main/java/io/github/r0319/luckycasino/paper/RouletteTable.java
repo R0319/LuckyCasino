@@ -170,6 +170,11 @@ final class RouletteTable extends CasinoTable {
         return seat.atRisk == 0;
     }
 
+    @Override
+    protected boolean canStandAndWatch() {
+        return state == State.SPINNING || state == State.PAYING;
+    }
+
     boolean canBet() {
         return state == State.IDLE || state == State.BETTING;
     }

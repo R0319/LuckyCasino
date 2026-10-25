@@ -273,7 +273,7 @@ final class TableManager implements Listener {
             event.setCancelled(true);
             Player player = event.getPlayer();
             if (table.seatOf(player.getUniqueId()) >= 0) {
-                table.openMenu(player);
+                table.interact(player);
             } else if (table.seat(seat) != null) {
                 player.sendMessage(Component.text("その席は " + table.seat(seat).name + " が使っています", NamedTextColor.GRAY));
             } else if (tableOf(player.getUniqueId()) != null) {
@@ -303,7 +303,7 @@ final class TableManager implements Listener {
                     player.sendMessage(Component.text("テーブルを片付けました", NamedTextColor.GREEN));
                 }
             } else if (table.seatOf(player.getUniqueId()) >= 0) {
-                table.openMenu(player);
+                table.interact(player);
             }
             return;
         }
@@ -333,7 +333,7 @@ final class TableManager implements Listener {
         }
         for (CasinoTable table : tables.values()) {
             if (table.isMount(event.getDismounted())) {
-                table.leave(player.getUniqueId());
+                table.dismounted(player.getUniqueId());
                 return;
             }
         }
