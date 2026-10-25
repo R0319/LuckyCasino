@@ -1,0 +1,77 @@
+{
+  "textures": {
+    "glow": "minecraft:block/shroomlight",
+    "particle": "minecraft:block/shroomlight"
+  },
+  "elements": [
+    {
+      "from": [
+        1.8,
+        20.82,
+        14.55
+      ],
+      "to": [
+        14.2,
+        21.18,
+        14.55
+      ],
+      "faces": {
+        "south": {
+          "texture": "#glow",
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ]
+        }
+      }
+    },
+    {
+      "from": [
+        1.8,
+        19.55,
+        14.55
+      ],
+      "to": [
+        2.1,
+        22.45,
+        14.55
+      ],
+      "faces": {
+        "south": {
+          "texture": "#glow",
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ]
+        }
+      }
+    },
+    {
+      "from": [
+        13.9,
+        19.55,
+        14.55
+      ],
+      "to": [
+        14.2,
+        22.45,
+        14.55
+      ],
+      "faces": {
+        "south": {
+          "texture": "#glow",
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ]
+        }
+      }
+    }
+  ]
+}

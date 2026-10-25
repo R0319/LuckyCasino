@@ -92,7 +92,8 @@ final class SelfTest {
         chunk = world.getChunkAt(x >> 4, z >> 4);
         chunk.addPluginChunkTicket(plugin);
         int y = world.getHighestBlockYAt(x, z) + 1;
-        Frame frame = new Frame(world, x, y, z, 0f);
+        double center = type.singleBlock() ? 0.5 : 0;
+        Frame frame = new Frame(world, x + center, y, z + center, 0f);
         String id = "selftest-" + UUID.randomUUID().toString().substring(0, 4);
         table = plugin.tables().createTable(type, id, frame, null, true);
         table.observer = new Observer() {

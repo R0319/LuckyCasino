@@ -40,6 +40,24 @@ def vanilla(name):
         d.line([0, 15, 15, 15], fill=(200, 160, 30, 255))
     elif name == "block/white_concrete":
         d.rectangle([0, 0, 15, 15], fill=(207, 213, 214, 255))
+    elif name == "block/black_concrete":
+        d.rectangle([0, 0, 15, 15], fill=(8, 10, 15, 255))
+    elif name == "block/red_concrete":
+        d.rectangle([0, 0, 15, 15], fill=(142, 33, 33, 255))
+    elif name == "block/iron_block":
+        d.rectangle([0, 0, 15, 15], fill=(220, 220, 220, 255))
+        d.rectangle([0, 0, 15, 15], outline=(240, 240, 240, 255))
+        d.line([0, 15, 15, 15], fill=(170, 170, 170, 255))
+    elif name == "block/glowstone":
+        d.rectangle([0, 0, 15, 15], fill=(250, 210, 120, 255))
+        for x, y in ((3, 3), (10, 5), (6, 11), (12, 12)):
+            d.rectangle([x, y, x + 1, y + 1], fill=(255, 245, 200, 255))
+    elif name == "block/brown_terracotta":
+        d.rectangle([0, 0, 15, 15], fill=(77, 51, 36, 255))
+    elif name == "block/shroomlight":
+        d.rectangle([0, 0, 15, 15], fill=(240, 146, 70, 255))
+        for x, y in ((2, 4), (9, 2), (5, 10), (12, 11)):
+            d.rectangle([x, y, x + 1, y + 1], fill=(255, 220, 150, 255))
     else:
         d.rectangle([0, 0, 15, 15], fill=(255, 0, 255, 255))
     return img
@@ -79,7 +97,10 @@ def main():
         elements = []
         for el in model["elements"]:
             faces = {f: {"uv": v.get("uv", [0, 0, 16, 16]), "texture": resolve(v["texture"])} for f, v in el["faces"].items()}
-            elements.append({"from": el["from"], "to": el["to"], "faces": faces})
+            element = {"from": el["from"], "to": el["to"], "faces": faces}
+            if "rotation" in el:
+                element["rotation"] = el["rotation"]
+            elements.append(element)
         models[key] = elements
 
     textures = {}

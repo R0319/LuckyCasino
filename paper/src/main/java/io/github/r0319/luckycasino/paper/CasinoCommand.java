@@ -18,6 +18,7 @@ import java.util.Locale;
 /**
  * /casino hit|stand|double|split … ブラックジャックの行動（チャットのボタンから呼ばれる）
  * /casino fold|check|call|raise [合計]|allin … ポーカーの行動
+ * /casino spin … スロットを回す（チャットのボタンから呼ばれる）
  * /casino bet … 賭けのメニューを開き直す
  * /casino leave … 席を立つ
  * /casino rules [種類] … ルールブック
@@ -29,7 +30,7 @@ import java.util.Locale;
 final class CasinoCommand implements BasicCommand {
 
     private static final List<String> PLAYER = List.of("hit", "stand", "double", "split", "fold", "check", "call", "raise", "allin",
-            "bet", "leave", "rules");
+            "spin", "bet", "leave", "rules");
     private static final List<String> ADMIN = List.of("give", "remove", "status", "selftest");
 
     private final LuckyCasinoPaper plugin;
@@ -71,6 +72,7 @@ final class CasinoCommand implements BasicCommand {
                 switch (table) {
                     case BlackjackTable blackjack -> blackjack(player, blackjack, sub);
                     case PokerTable poker -> poker(player, poker, sub, args);
+                    case SlotMachine slot when sub.equals("spin") -> slot.spin(player);
                     default -> usage(player, table);
                 }
             }
@@ -113,6 +115,7 @@ final class CasinoCommand implements BasicCommand {
             case BLACKJACK -> "/casino hit|stand|double|split|bet|leave|rules";
             case ROULETTE -> "/casino bet|leave|rules";
             case POKER -> "/casino fold|check|call|raise [合計]|allin|leave|rules";
+            case SLOT -> "/casino spin|bet|leave|rules";
         };
         player.sendMessage(Component.text("使い方: " + text, NamedTextColor.GRAY));
     }
@@ -133,7 +136,7 @@ final class CasinoCommand implements BasicCommand {
                     return;
                 }
                 target.getInventory().addItem(plugin.tableItem().create(type));
-                sender.sendMessage(Component.text(target.getName() + " に" + type.displayName() + "テーブルを渡しました", NamedTextColor.GREEN));
+                sender.sendMessage(Component.text(target.getName() + " に" + type.itemName() + "を渡しました", NamedTextColor.GREEN));
             }
             case "remove" -> {
                 if (!(source.getExecutor() instanceof Player player)) {

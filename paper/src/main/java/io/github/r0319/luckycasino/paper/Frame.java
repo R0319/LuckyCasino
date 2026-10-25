@@ -10,7 +10,7 @@ import java.util.List;
 
 /**
  * テーブルの局所座標。テーブル中心の床を原点、プレイヤー側を +Z、プレイヤーから見て右を +X とし、
- * ワールド座標に直す。どのテーブルも 4 x 2 ブロックを占める。
+ * ワールド座標に直す。占めるブロックは種類ごとに TableShape.cells で決まる。
  */
 final class Frame {
 
@@ -82,18 +82,12 @@ final class Frame {
         return at;
     }
 
-    /** テーブルが占めるブロック（4 x 2）。当たり判定のバリアを置く。 */
-    List<Block> footprint() {
+    /** 局所座標で中心を指したブロックの一覧。 */
+    List<Block> blocks(double[][] cells) {
         List<Block> blocks = new ArrayList<>();
-        for (int bx = -2; bx < 2; bx++) {
-            for (int bz = -1; bz < 1; bz++) {
-                blocks.add(at(bx + 0.5, 0.5, bz + 0.5).getBlock());
-            }
+        for (double[] cell : cells) {
+            blocks.add(at(cell).getBlock());
         }
         return blocks;
-    }
-
-    boolean contains(Block block) {
-        return block.getWorld().equals(world) && footprint().contains(block);
     }
 }

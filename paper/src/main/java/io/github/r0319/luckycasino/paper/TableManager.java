@@ -130,6 +130,7 @@ final class TableManager implements Listener {
                 yield new PokerTable(plugin, id, frame, owner, bank,
                         selfTest ? new PokerSettings(s.smallBlind(), s.bigBlind(), 5, 2, s.buyIns()) : s);
             }
+            case SLOT -> new SlotMachine(plugin, id, frame, owner, bank, plugin.slotSettings());
         };
     }
 
@@ -148,7 +149,7 @@ final class TableManager implements Listener {
 
     private CasinoTable tableAt(Block block) {
         for (CasinoTable table : tables.values()) {
-            if (table.frame().contains(block)) {
+            if (table.contains(block)) {
                 return table;
             }
         }
@@ -190,15 +191,17 @@ final class TableManager implements Listener {
         }
         float snapped = Math.round(player.getYaw() / 90f) * 90f;
         float yaw = ((snapped + 180f) % 360f + 360f) % 360f;
-        Frame frame = new Frame(clicked.getWorld(), clicked.getX(), clicked.getY() + 1, clicked.getZ(), yaw);
+        // 1 ブロックの台（スロット）はブロックの中心、テーブルはブロックの角を中心にする
+        double center = type.singleBlock() ? 0.5 : 0;
+        Frame frame = new Frame(clicked.getWorld(), clicked.getX() + center, clicked.getY() + 1, clicked.getZ() + center, yaw);
         String id = UUID.randomUUID().toString().substring(0, 8);
         CasinoTable table = createTable(type, id, frame, player.getUniqueId(), false);
         TableShape shape = table.shape();
 
-        List<Block> footprint = frame.footprint();
+        List<Block> footprint = table.footprint();
         for (Block block : footprint) {
-            if (!block.isEmpty() || !block.getRelative(BlockFace.UP).isEmpty() || tableAt(block) != null) {
-                player.sendMessage(Component.text("4 x 2 ブロック、高さ 2 ブロックの空きが必要です", NamedTextColor.RED));
+            if (!block.isEmpty() || (shape.needsHeadroom() && !block.getRelative(BlockFace.UP).isEmpty()) || tableAt(block) != null) {
+                player.sendMessage(Component.text(shape.spaceText(), NamedTextColor.RED));
                 return;
             }
         }
@@ -209,7 +212,7 @@ final class TableManager implements Listener {
                 return;
             }
         }
-        if (!frame.at(shape.dealer()).getBlock().isPassable()) {
+        if (shape.dealer() != null && !frame.at(shape.dealer()).getBlock().isPassable()) {
             player.sendMessage(Component.text("ディーラーが立つ場所（奥）が塞がっています", NamedTextColor.RED));
             return;
         }
@@ -239,13 +242,13 @@ final class TableManager implements Listener {
         if (player.getGameMode() != GameMode.CREATIVE) {
             item.subtract();
         }
-        player.sendMessage(Component.text(type.displayName() + "テーブルを置きました" + (plugin.bank().practice() ? "（このサーバーには経済プラグインが無いので練習用です）" : ""), NamedTextColor.GREEN));
+        player.sendMessage(Component.text(type.itemName() + "を置きました" + (plugin.bank().practice() ? "（このサーバーには経済プラグインが無いので練習用です）" : ""), NamedTextColor.GREEN));
     }
 
     /** 片付ける。座っている人がいれば精算してから。 */
     void remove(CasinoTable table, boolean dropItem) {
         table.despawn();
-        for (Block block : table.frame().footprint()) {
+        for (Block block : table.footprint()) {
             if (block.getType() == Material.BARRIER) {
                 block.setType(Material.AIR, false);
             }
@@ -267,6 +270,10 @@ final class TableManager implements Listener {
             return;
         }
         for (CasinoTable table : tables.values()) {
+            if (table.clickFixture(event.getPlayer(), clicked)) {
+                event.setCancelled(true);
+                return;
+            }
             int seat = table.seatOfHitbox(clicked);
             if (seat < 0) {
                 continue;

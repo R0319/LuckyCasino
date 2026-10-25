@@ -62,6 +62,7 @@ abstract class CasinoTable {
     private final Interaction[] seatHits;
     private final ItemDisplay[] mounts;
     protected Mannequin dealer;
+    private boolean spawned;
     private TextDisplay status;
     private BukkitTask ticker;
     private final List<BukkitTask> pending = new ArrayList<>();
@@ -152,7 +153,21 @@ abstract class CasinoTable {
     }
 
     boolean spawned() {
-        return dealer != null;
+        return spawned;
+    }
+
+    /** 当たり判定のバリアを置くブロック。 */
+    List<org.bukkit.block.Block> footprint() {
+        return frame.blocks(shape().cells());
+    }
+
+    boolean contains(org.bukkit.block.Block block) {
+        return block.getWorld().equals(frame.world()) && footprint().contains(block);
+    }
+
+    /** 席や椅子・バリア以外の、種類ごとの当たり判定（スロットのレバーなど）をクリックした。扱ったら true。 */
+    boolean clickFixture(Player player, Entity entity) {
+        return false;
     }
 
     Seat seat(int index) {
@@ -208,9 +223,10 @@ abstract class CasinoTable {
         if (spawned()) {
             return;
         }
+        spawned = true;
         TableShape shape = shape();
-        Location origin = frame.origin();
-        float s = TableShape.MODEL_SCALE;
+        Location origin = frame.at(shape.modelAt(), shape.modelYaw());
+        float s = shape.modelScale();
         fixtures.add(origin.getWorld().spawn(origin, ItemDisplay.class, entity -> {
             entity.setPersistent(false);
             entity.setItemStack(Items.model(shape.model()));
@@ -219,8 +235,10 @@ abstract class CasinoTable {
             entity.setViewRange(2f);
         }));
 
-        dealer = spawnDealer();
-        fixtures.add(dealer);
+        if (shape.dealer() != null) {
+            dealer = spawnDealer();
+            fixtures.add(dealer);
+        }
 
         Location statusAt = frame.at(shape.status());
         status = statusAt.getWorld().spawn(statusAt, TextDisplay.class, entity -> {
@@ -306,6 +324,7 @@ abstract class CasinoTable {
         }
         fixtures.forEach(Entity::remove);
         fixtures.clear();
+        spawned = false;
         dealer = null;
         status = null;
     }
@@ -541,8 +560,12 @@ abstract class CasinoTable {
     }
 
     protected void playSound(Sound sound, float pitch) {
+        playSound(sound, pitch, 1f);
+    }
+
+    protected void playSound(Sound sound, float pitch, float volume) {
         Location at = frame.at(0, TableShape.TOP, 0);
-        at.getWorld().playSound(at, sound, 1f, pitch);
+        at.getWorld().playSound(at, sound, volume, pitch);
     }
 
     protected void broadcast(Component message) {

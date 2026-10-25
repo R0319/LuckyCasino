@@ -25,6 +25,7 @@ public final class LuckyCasinoPaper extends JavaPlugin {
     private ChipLedger ledger;
     private BlackjackSettings blackjackSettings;
     private RouletteSettings rouletteSettings;
+    private SlotSettings slotSettings;
     private PokerSettings pokerSettings;
     private TableItem tableItem;
     private Menus menus;
@@ -43,6 +44,9 @@ public final class LuckyCasinoPaper extends JavaPlugin {
         blackjackSettings = BlackjackSettings.load(section("blackjack"));
         rouletteSettings = RouletteSettings.load(section("roulette"));
         pokerSettings = PokerSettings.load(section("poker"));
+        slotSettings = SlotSettings.load(section("slot"));
+        getLogger().info(String.format("スロットの還元率 %.1f%%、当たる確率 %.1f%%",
+                slotSettings.paytable().returnRate() * 100, slotSettings.paytable().hitRate() * 100));
         tableItem = new TableItem(this);
         tableItem.registerRecipes(getConfig().getConfigurationSection("recipes"), getLogger());
         menus = new Menus(this);
@@ -143,6 +147,10 @@ public final class LuckyCasinoPaper extends JavaPlugin {
 
     RouletteSettings rouletteSettings() {
         return rouletteSettings;
+    }
+
+    SlotSettings slotSettings() {
+        return slotSettings;
     }
 
     PokerSettings pokerSettings() {

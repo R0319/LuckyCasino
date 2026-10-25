@@ -21,6 +21,7 @@ final class Rulebook {
             case BLACKJACK -> blackjack();
             case ROULETTE -> roulette();
             case POKER -> poker();
+            case SLOT -> slot();
         });
         player.openBook(Book.book(Component.text(type.displayName() + "のルール"), Component.text("LuckyCasino"), pages));
     }
@@ -83,6 +84,24 @@ final class Rulebook {
                         "0 に止まると、赤黒・偶奇・前半後半・ダズン・縦の段はすべて負けです。",
                         "",
                         "0 を含む賭け（0 そのもの、0 と 1〜3）は当たりです。"));
+    }
+
+    private static List<Component> slot() {
+        return List.of(
+                page("スロット",
+                        "1 人用。1 回の賭け金を決めて、台の右のレバーをクリックすると回ります。",
+                        "",
+                        "左のリールから順に止まり、中央のラインの絵柄で配当が決まります。"),
+                page("配当（賭け金の何倍が戻るか）",
+                        "7 7 7: 300 倍",
+                        "BAR 3 つ: 50 倍",
+                        "ベル 3 つ: 20 倍",
+                        "スイカ 3 つ: 15 倍",
+                        "レモン 3 つ: 10 倍",
+                        "チェリー 3 つ: 20 倍",
+                        "チェリー左から 2 つ: 4 倍",
+                        "チェリー左に 1 つ: 1 倍",
+                        "（設定で変わります。今の配当は台のメニューの紙に出ます）"));
     }
 
     private static List<Component> poker() {

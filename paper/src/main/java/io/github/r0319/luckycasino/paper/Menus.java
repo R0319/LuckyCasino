@@ -24,7 +24,7 @@ import org.bukkit.inventory.ItemStack;
 import java.util.ArrayList;
 import java.util.List;
 
-/** 両替・賭け金・ルーレットの盤・ポーカーのレイズのチェスト GUI（Java 版向け）。 */
+/** 両替・賭け金・ルーレットの盤・ポーカーのレイズ・スロットの賭け金のチェスト GUI（Java 版向け）。 */
 final class Menus implements Listener {
 
     private static final long[] CHIP_VALUES = {10, 50, 100, 500, 1000};
@@ -594,6 +594,116 @@ final class Menus implements Listener {
         player.openInventory(holder.inventory);
     }
 
+    // ---- スロットの賭け金 ----
+
+    private static final int[] SLOT_BET_SLOTS = {11, 12, 13, 14, 15};
+    private static final int SLOT_INFO = 4;
+    private static final int SLOT_SPIN = 22;
+    private static final int SLOT_RULES = 18;
+
+    private static final class SlotMenu extends Menu {
+        SlotMenu(SlotMachine table) {
+            super(table);
+        }
+
+        SlotMachine slot() {
+            return (SlotMachine) table;
+        }
+    }
+
+    void openSlot(Player player, SlotMachine table) {
+        if (table.seatOf(player.getUniqueId()) < 0) {
+            return;
+        }
+        SlotMenu holder = new SlotMenu(table);
+        holder.inventory = Bukkit.createInventory(holder, 27, Component.text(slotTitle(table)));
+        renderSlot(holder);
+        player.openInventory(holder.inventory);
+    }
+
+    private static String slotTitle(SlotMachine table) {
+        CasinoTable.Seat seat = table.seat(0);
+        return "スロット：手元 " + (seat == null ? 0 : seat.chips) + " 枚・1 回 " + table.bet() + " 枚";
+    }
+
+    private void renderSlot(SlotMenu menu) {
+        SlotMachine table = menu.slot();
+        Inventory inv = menu.inventory;
+        inv.clear();
+        List<Long> bets = table.settings().bets();
+        int first = 13 - bets.size() / 2;
+        for (int i = 0; i < bets.size(); i++) {
+            long value = bets.get(i);
+            boolean selected = value == table.bet();
+            ItemStack item = named(Items.model("chip/" + chipIcon(value, selected ? 3 : 1)),
+                    Component.text("1 回 " + value + " 枚", selected ? NamedTextColor.GREEN : NamedTextColor.GOLD),
+                    List.of(Component.text(selected ? "選択中" : "クリックで切り替え", selected ? NamedTextColor.GREEN : NamedTextColor.YELLOW)));
+            if (selected) {
+                item.editMeta(meta -> meta.setEnchantmentGlintOverride(true));
+            }
+            inv.setItem(first + i, item);
+        }
+        io.github.r0319.luckycasino.slot.Paytable p = table.settings().paytable();
+        long bet = table.bet();
+        inv.setItem(SLOT_INFO, named(ItemStack.of(Material.PAPER), Component.text("配当表（1 回 " + bet + " 枚のとき）", NamedTextColor.YELLOW),
+                List.of(payLine("7 7 7", p.sevens(), bet), payLine("BAR BAR BAR", p.bars(), bet), payLine("ベル 3 つ", p.bells(), bet),
+                        payLine("スイカ 3 つ", p.melons(), bet), payLine("レモン 3 つ", p.lemons(), bet),
+                        payLine("チェリー 3 つ", p.cherry3(), bet), payLine("チェリー 左から 2 つ", p.cherry2(), bet),
+                        payLine("チェリー 左に 1 つ", p.cherry1(), bet),
+                        Component.text("中央のラインだけを見ます。還元率 " + String.format("%.1f", p.returnRate() * 100) + "%", NamedTextColor.GRAY))));
+        inv.setItem(SLOT_SPIN, named(ItemStack.of(Material.LEVER), Component.text("回す（" + bet + " 枚）", NamedTextColor.GREEN),
+                List.of(Component.text("台の右のレバーをクリックしても回せます", NamedTextColor.GRAY))));
+        inv.setItem(SLOT_RULES, rulesItem());
+        inv.setItem(LEAVE_27, leaveItem());
+    }
+
+    private static Component payLine(String name, long times, long bet) {
+        return Component.text(name + "： " + times * bet + " 枚（" + times + " 倍）", NamedTextColor.WHITE);
+    }
+
+    private static String chipIcon(long value, int count) {
+        long denomination = 10;
+        for (long d : CHIP_VALUES) {
+            if (value >= d) {
+                denomination = d;
+            }
+        }
+        return "c" + denomination + "_" + count;
+    }
+
+    private void clickSlot(SlotMenu menu, Player player, int slot) {
+        SlotMachine table = menu.slot();
+        if (table.seatOf(player.getUniqueId()) < 0) {
+            player.closeInventory();
+            return;
+        }
+        if (slot == LEAVE_27) {
+            player.closeInventory();
+            table.leave(player.getUniqueId());
+            return;
+        }
+        if (slot == SLOT_RULES) {
+            player.closeInventory();
+            Rulebook.open(player, GameType.SLOT);
+            return;
+        }
+        if (slot == SLOT_SPIN) {
+            player.closeInventory();
+            table.spin(player);
+            return;
+        }
+        List<Long> bets = table.settings().bets();
+        int first = 13 - bets.size() / 2;
+        int index = slot - first;
+        if (index >= 0 && index < bets.size() && slot >= SLOT_BET_SLOTS[0] && slot <= SLOT_BET_SLOTS[SLOT_BET_SLOTS.length - 1]) {
+            table.setBet(player, bets.get(index));
+        }
+        renderSlot(menu);
+        if (player.getOpenInventory().getTopInventory() == menu.inventory) {
+            player.getOpenInventory().setTitle(slotTitle(table));
+        }
+    }
+
     // ---- クリック ----
 
     @EventHandler
@@ -623,6 +733,7 @@ final class Menus implements Listener {
             case Bet bet -> clickBet(bet, player, slot, event.getClick());
             case RouletteMenu roulette -> clickRoulette(roulette, player, slot);
             case Raise raise -> clickRaise(raise, player, slot, event.getClick());
+            case SlotMenu slotMenu -> clickSlot(slotMenu, player, slot);
             case SeatInfo info -> {
                 if (slot == 18) {
                     player.closeInventory();

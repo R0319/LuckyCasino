@@ -32,8 +32,8 @@ final class TableItem {
     }
 
     ItemStack create(GameType type) {
-        ItemStack item = Menus.named(Items.model("table/" + type.id()), Component.text(type.displayName() + "テーブル", NamedTextColor.GOLD),
-                List.of(Component.text("ブロックの上面に右クリックで置く（4 x 2 ブロック）", NamedTextColor.GRAY),
+        ItemStack item = Menus.named(Items.model("table/" + type.id()), Component.text(type.itemName(), NamedTextColor.GOLD),
+                List.of(Component.text("ブロックの上面に右クリックで置く（" + (type.singleBlock() ? "1 x 1 ブロック、高さ 2" : "4 x 2 ブロック") + "）", NamedTextColor.GRAY),
                         Component.text("置いた人がスニーク + 右クリックで片付けられます", NamedTextColor.GRAY)));
         item.editPersistentDataContainer(pdc -> pdc.set(marker, PersistentDataType.STRING, type.id()));
         return item;

@@ -45,7 +45,10 @@ function texture(name) {
 const materialCache = new Map();
 function material(name) {
   if (!materialCache.has(name)) {
-    materialCache.set(name, new THREE.MeshLambertMaterial({ map: texture(name), transparent: true, alphaTest: 0.1 }));
+    // 光るブロック（ランプ・当たりの帯。実機は明るさ 15 の Display）は陰影なしで
+    const glow = /glowstone|shroomlight/.test(name);
+    const Mat = glow ? THREE.MeshBasicMaterial : THREE.MeshLambertMaterial;
+    materialCache.set(name, new Mat({ map: texture(name), transparent: true, alphaTest: 0.1 }));
   }
   return materialCache.get(name);
 }
@@ -69,11 +72,21 @@ function modelGeometries(path) {
   const byTexture = new Map();
   for (const el of elements) {
     const b = { x0: el.from[0] / 16, y0: el.from[1] / 16, z0: el.from[2] / 16, x1: el.to[0] / 16, y1: el.to[1] / 16, z1: el.to[2] / 16 };
+    // 要素の回転（Minecraft の FaceBakery と同じく、軸の正の向きに右手系で angle 度）
+    let rotate = (p) => p;
+    let rotateN = (n) => n;
+    if (el.rotation) {
+      const axis = { x: [1, 0, 0], y: [0, 1, 0], z: [0, 0, 1] }[el.rotation.axis];
+      const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(...axis), el.rotation.angle * DEG);
+      const o = new THREE.Vector3(...el.rotation.origin.map((n) => n / 16));
+      rotate = (p) => new THREE.Vector3(...p).sub(o).applyQuaternion(q).add(o).toArray();
+      rotateN = (n) => new THREE.Vector3(...n).applyQuaternion(q).toArray();
+    }
     for (const [face, def] of Object.entries(el.faces)) {
-      const info = FACE[face];
+      const info = { n: rotateN(FACE[face].n), v: FACE[face].v };
       const [u0, v0, u1, v1] = def.uv.map((n) => n / 16);
       const uvs = [[u0, v0], [u0, v1], [u1, v1], [u1, v0]];
-      const pts = info.v.map((p) => [b[p[0]], b[p[1]], b[p[2]]]);
+      const pts = info.v.map((p) => rotate([b[p[0]], b[p[1]], b[p[2]]]));
       if (!byTexture.has(def.texture)) byTexture.set(def.texture, { pos: [], uv: [], normal: [] });
       const g = byTexture.get(def.texture);
       // 外向きになるよう三角形の向きをそろえる
@@ -464,13 +477,17 @@ class Table {
   }
 
   spawn() {
-    const model = new ItemDisplay(at([0, 0, 0]), this.shape.model);
-    model.tr = { from: transformation([0, 0, 0], null, 0, MODEL_SCALE), to: transformation([0, 0, 0], null, 0, MODEL_SCALE), start: 0, dur: 0 };
-    const d = this.shape.dealer;
-    this.dealer = new Figure({ x: d[0], y: 0, z: d[2], yaw: 0 }, { shirt: 0x1d1d22, pants: 0x18181c, skin: 0xd2a07c, hair: 0x2a1c12 });
-    const name = new TextDisplay(at([d[0], 2.05, d[2]]), 0.5);
-    name.text([[["ディーラー", C.GOLD]]]);
-    this.status = new TextDisplay(at([d[0], 2.45, d[2]]), 1);
+    const sh = this.shape;
+    const model = new ItemDisplay(at(sh.modelAt || [0, 0, 0], sh.modelYaw || 0), sh.model);
+    const ms = transformation([0, 0, 0], null, 0, sh.modelScale || MODEL_SCALE);
+    model.tr = { from: ms, to: ms, start: 0, dur: 0 };
+    const d = sh.dealer;
+    if (d) {
+      this.dealer = new Figure({ x: d[0], y: 0, z: d[2], yaw: 0 }, { shirt: 0x1d1d22, pants: 0x18181c, skin: 0xd2a07c, hair: 0x2a1c12 });
+      const name = new TextDisplay(at([d[0], 2.05, d[2]]), 0.5);
+      name.text([[["ディーラー", C.GOLD]]]);
+    }
+    this.status = new TextDisplay(at(sh.status || [d[0], 2.45, d[2]]), 1);
     for (let i = 0; i < this.shape.seats.length; i++) {
       const p = this.shape.seats[i];
       new BlockDisplay(at([p[0], 0, p[2]]), 0x42291a, [1, 0.38, 1], "post");
@@ -1639,12 +1656,239 @@ function pokerScenario() {
   return { you: YOU, table: t };
 }
 
+
+// ================================================================ スロット（SlotMachine と同じ動き）
+
+const SLOT = {
+  AXIS_Y: 0.5 + (21 - 8) / 16,
+  REEL_X: [(3.9 - 8) / 16, 0, (12.1 - 8) / 16],
+  STRIPS: [
+    ["SEVEN", "CHERRY", "LEMON", "BELL", "MELON", "BAR", "LEMON", "CHERRY", "BELL", "MELON", "LEMON", "BAR", "CHERRY", "MELON", "BELL", "LEMON"],
+    ["SEVEN", "LEMON", "MELON", "CHERRY", "BELL", "BAR", "LEMON", "MELON", "CHERRY", "BELL", "LEMON", "BAR", "MELON", "CHERRY", "LEMON", "BELL"],
+    ["SEVEN", "BELL", "LEMON", "MELON", "CHERRY", "BAR", "LEMON", "BELL", "MELON", "LEMON", "BAR", "CHERRY", "BELL", "LEMON", "MELON", "LEMON"],
+  ],
+  NAMES: { SEVEN: "7", BAR: "BAR", BELL: "ベル", MELON: "スイカ", LEMON: "レモン", CHERRY: "チェリー" },
+  PAY: { SEVEN: 300, BAR: 50, BELL: 20, MELON: 15, LEMON: 10, C1: 1, C2: 4, C3: 20 },
+  STEP: 2, SPEED: 67.5, FACE: 360 / 16, STOP_AT: [32, 44, 56], REACH_EXTRA: 26, OVERSHOOT: 6, BLUR_SPEED: 25,
+  shape: { model: "table/slot", seats: [[0, 0, 1.0]], dealer: null, status: [0, 2.45, 0], modelAt: [0, 0.5, 0], modelScale: 1, modelYaw: 180 },
+};
+
+/** Paytable.evaluate と同じ。 */
+function slotEvaluate(line) {
+  const [a, b, c] = line;
+  if (a === "CHERRY") {
+    const n = b === "CHERRY" ? (c === "CHERRY" ? 3 : 2) : 1;
+    return { times: SLOT.PAY["C" + n], name: "チェリー " + n + " つ", big: n === 3 };
+  }
+  if (a === b && b === c) return { times: SLOT.PAY[a], name: SLOT.NAMES[a] + " が 3 つ", big: a === "SEVEN" || a === "BAR" };
+  return { times: 0, name: "", big: false };
+}
+
+/** SlotMachine.reelPath と同じ。 */
+function slotReelPath(start, stop, end) {
+  const windup = 2, accel = 4, decel = 14, V = SLOT.SPEED;
+  const main = end - 4 - windup;
+  const cruise = Math.max(0, main - accel - decel);
+  const nominal = V * accel / 2 + V * cruise + V * decel / 3;
+  const base = start - 8;
+  const target = (((stop % 16) + 16) % 16) * SLOT.FACE;
+  let offset = target - (base + nominal);
+  offset = ((offset % 360) + 540) % 360 - 180;
+  const travel = nominal + offset;
+  const scale = (travel + SLOT.OVERSHOOT) / nominal;
+  const path = [];
+  for (let t = 0; t <= end; t++) {
+    if (t <= windup) path.push(start - 8 * t / windup);
+    else if (t <= windup + main) {
+      const tau = t - windup;
+      let f;
+      if (tau < accel) f = V * tau * tau / (2 * accel);
+      else if (tau < accel + cruise) f = V * accel / 2 + V * (tau - accel);
+      else {
+        const u = Math.min(1, (tau - accel - cruise) / decel);
+        f = V * accel / 2 + V * cruise + V * decel / 3 * (1 - Math.pow(1 - u, 3));
+      }
+      path.push(base + scale * f);
+    } else {
+      const u = (t - windup - main) / 4;
+      path.push(base + travel + SLOT.OVERSHOOT * (1 - u * u * (3 - 2 * u)));
+    }
+  }
+  return path;
+}
+
+function slotScenario() {
+  const t = new Table(SLOT.shape);
+  t.spawn();
+  const YOU = 0;
+  t.sit(YOU, "あなた", 1000, true);
+  const reelTr = (deg) => transformation([0, 0, 0], [1, 0, 0], -deg, 1);
+  const scaled = (s) => transformation([0, 0, 0], null, 0, s);
+  const reelAngle = [3 * SLOT.FACE, 9 * SLOT.FACE, 13 * SLOT.FACE];
+  const blurred = [false, false, false];
+  const reels = [0, 1, 2].map((i) => {
+    const r = new ItemDisplay(at([SLOT.REEL_X[i], SLOT.AXIS_Y, 0], 180), "slot/reel" + (i + 1));
+    r.tr = { from: reelTr(reelAngle[i]), to: reelTr(reelAngle[i]), start: 0, dur: 0 };
+    return r;
+  });
+  const leverTr = (deg) => transformation([0, 0, 0], [1, 0, 0], -deg, 1);
+  const lever = new ItemDisplay(at([0.56, 1.0, 0.05], 180), "slot/lever");
+  const lamps = new ItemDisplay(at([0, 0.5, 0], 180), "slot/lamps_a");
+  const winline = new ItemDisplay(at([0, 0.5, 0], 180), "slot/winline");
+  winline.tr = { from: scaled(0), to: scaled(0), start: 0, dur: 0 };
+  const resultLabel = t.label([0, 2.1, 0.25], 0.8);
+  let state = "IDLE", bet = 10, celebrating = false, lampPhase = false;
+  const shower = [];
+  const seat = t.seats[YOU];
+  function status() {
+    t.setStatus([[[seat.name + "（1 回 " + bet + " 枚）", C.AQUA]], [["1 回 10 / 50 / 100 枚（練習用）", C.GRAY]]]);
+  }
+  status();
+  function lampTick() {
+    lampPhase = !lampPhase;
+    lamps.setItem(lampPhase ? "slot/lamps_b" : "slot/lamps_a");
+    sim.later(celebrating ? 2 : state === "SPINNING" ? 5 : 16, lampTick);
+  }
+  lampTick();
+  chat([["レバーをクリックすると回ります。台をクリックすると賭け金を変えられます", C.GRAY]]);
+
+  function pullLever() {
+    lever.interpolationDuration = 3;
+    lever.setTransformation(leverTr(55));
+    sim.later(4, () => { lever.interpolationDuration = 7; lever.setTransformation(leverTr(0)); });
+  }
+
+  function spin(stops) {
+    seat.chips -= bet;
+    state = "SPINNING";
+    resultLabel.text([]);
+    winline.interpolationDuration = 0;
+    winline.setTransformation(scaled(0));
+    status();
+    chat([["（あなたはレバーを引いた）", C.DARK_GRAY]]);
+    pullLever();
+    const line = stops.map((s, i) => SLOT.STRIPS[i][s]);
+    const reach = line[0] === line[1] && (line[0] === "SEVEN" || line[0] === "BAR");
+    const ends = SLOT.STOP_AT.slice();
+    if (reach) ends[2] += SLOT.REACH_EXTRA;
+    const paths = [0, 1, 2].map((i) => slotReelPath(reelAngle[i], stops[i], ends[i]));
+    stops.forEach((s, i) => { reelAngle[i] = s * SLOT.FACE; });
+    const lastTick = ends[2];
+    for (let tk = SLOT.STEP; tk <= lastTick; tk += SLOT.STEP) {
+      const tick = tk;
+      sim.later(tick, () => {
+        for (let i = 0; i < 3; i++) {
+          const path = paths[i];
+          if (tick >= path.length) continue;
+          const speed = Math.abs(path[tick] - path[tick - SLOT.STEP]) / SLOT.STEP;
+          const blur = speed > SLOT.BLUR_SPEED;
+          if (blur !== blurred[i]) { blurred[i] = blur; reels[i].setItem("slot/reel" + (i + 1) + (blur ? "_blur" : "")); }
+          reels[i].interpolationDuration = SLOT.STEP;
+          reels[i].setTransformation(reelTr(path[tick]));
+        }
+      });
+    }
+    if (reach) sim.later(ends[1], () => { celebrating = true; actionbar("リーチ！"); });
+    sim.later(lastTick + 4, () => reveal(stops, line));
+  }
+
+  function blinkWinline(ticks) {
+    for (let tk = 0; tk < ticks; tk += 4) {
+      const on = (tk / 4) % 2 === 0;
+      sim.later(Math.max(1, tk), () => { winline.interpolationDuration = 0; winline.setTransformation(scaled(on ? 1 : 0)); });
+    }
+  }
+
+  function chipShower(count) {
+    const models = ["chip/c10_1", "chip/c50_1", "chip/c100_1", "chip/c500_1", "chip/c1000_1"];
+    const rnd = seeded(99);
+    for (let n = 0; n < count; n++) {
+      const p = [0, 0.3, 0.5];
+      const v = [(rnd.nextInt(1000) / 1000 - 0.5) * 0.12, 0.16 + rnd.nextInt(1000) / 1000 * 0.1, 0.05 + rnd.nextInt(1000) / 1000 * 0.07];
+      const axis = rnd.nextInt(1000) / 1000;
+      const model = models[rnd.nextInt(models.length)];
+      sim.later(Math.max(1, n * 2), () => {
+        const chip = new ItemDisplay(at(p), model);
+        chip.teleportDuration = 2;
+        chip.interpolationDuration = 2;
+        chip.tr = { from: scaled(0.5), to: scaled(0.5), start: 0, dur: 0 };
+        shower.push(chip);
+        for (let tk = 2; tk <= 26; tk += 2) {
+          const tick = tk;
+          sim.later(tick, () => {
+            chip.teleport(at([p[0] + v[0] * tick, p[1] + v[1] * tick - 0.012 * tick * tick, p[2] + v[2] * tick]));
+            const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(axis, 1 - axis, 0.3).normalize(), tick * 0.6);
+            chip.setTransformation({ t: [0, 0, 0], q, s: [0.5, 0.5, 0.5] });
+          });
+        }
+        sim.later(28, () => chip.remove());
+      });
+    }
+  }
+
+  function reveal(stops, line) {
+    state = "SHOWING";
+    const win = slotEvaluate(line);
+    const payout = bet * win.times;
+    seat.chips += payout;
+    let wait;
+    if (win.times === 0) {
+      celebrating = false;
+      resultLabel.text([[["はずれ", C.GRAY]]]);
+      wait = 12;
+    } else if (!win.big) {
+      celebrating = true;
+      resultLabel.text([[["+" + payout + " 枚", C.GOLD]]]);
+      blinkWinline(32);
+      wait = 36;
+    } else {
+      celebrating = true;
+      resultLabel.text([[["大当たり！ +" + payout + " 枚", C.GOLD]]]);
+      blinkWinline(70);
+      chipShower(win.times >= 100 ? 18 : 10);
+      showTitle(["大当たり！", C.GOLD], [win.name + "  +" + payout + " 枚", C.YELLOW], 36);
+      wait = 76;
+    }
+    const head = win.times === 0 ? [["はずれ（手元 " + seat.chips + " 枚）", C.GRAY]] : [[win.name + "：" + payout + " 枚（手元 " + seat.chips + " 枚）", C.GOLD]];
+    chat([...head, ["  "], button("もう一度回す", C.GREEN), [" "], button("賭け金を変える", C.AQUA)]);
+    sim.later(wait, () => {
+      shower.forEach((c) => c.remove());
+      celebrating = false;
+      winline.interpolationDuration = 0;
+      winline.setTransformation(scaled(0));
+      state = "IDLE";
+      status();
+    });
+  }
+
+  // 台本: はずれ → チェリー 2 つ → 賭け金を 50 にして 7 7 7（リーチから大当たり）
+  sim.later(20, () => spin([3, 5, 1]));
+  sim.later(112, () => spin([1, 3, 2]));
+  sim.later(214, () => { bet = 50; status(); chat([["（あなたは賭け金を 1 回 50 枚にした）", C.DARK_GRAY]]); });
+  sim.later(236, () => spin([0, 0, 0]));
+  return { you: YOU, table: t, camera: slotCamera };
+}
+
+function slotCamera(kind) {
+  if (kind === "seat") {
+    camera.position.set(0, 1.48, 1.0);
+    controls.target.set(0, 1.25, 0);
+  } else if (kind === "high") {
+    camera.position.set(1.5, 2.3, 2.6);
+    controls.target.set(0, 1.15, 0);
+  } else {
+    camera.position.set(0.0, 1.32, 1.35);
+    controls.target.set(0, 1.3, 0);
+  }
+}
+
 // ================================================================ 画面の操作
 
 const GAMES = {
   blackjack: { make: blackjackScenario, length: 520 },
   roulette: { make: rouletteScenario, length: 480 },
   poker: { make: pokerScenario, length: 1500 },
+  slot: { make: slotScenario, length: 420 },
 };
 let game = "blackjack";
 let playing = true;
@@ -1656,7 +1900,9 @@ function cameraPreset(kind) {
   const seat = t.shape.seats[current.you];
   controls.enabled = true;
   (t.youParts || []).forEach((o) => { o.visible = kind !== "seat"; });
-  if (kind === "seat") {
+  if (current.camera) {
+    current.camera(kind);
+  } else if (kind === "seat") {
     camera.position.set(seat[0], 1.48, seat[2] - 0.05);
     controls.target.set(seat[0] * 0.35, TOP - 0.1, -0.5);
   } else if (kind === "high") {

@@ -44,6 +44,24 @@ poker:
   start-seconds: 5
   buy-ins: [200, 500, 1000, 2000]
 
+# スロットマシン（1 人用、リール 3 本・中央の 1 ライン）
+slot:
+  # 1 回に賭けられる額（最大 5 つ）
+  bets: [10, 50, 100]
+  buy-ins: [100, 500, 1000, 5000]
+  # 配当（賭け金の何倍が戻るか、賭け金を含む）。既定は還元率 96.0%、当たる確率 22.2%。
+  # 変えたときの還元率は起動時のログに出ます
+  paytable:
+    sevens: 300
+    bars: 50
+    bells: 20
+    melons: 15
+    lemons: 10
+    # チェリーは左のリールから数える
+    cherry1: 1
+    cherry2: 4
+    cherry3: 20
+
 # テーブルのクラフトレシピ。材料は素材名か、#planks のようなタグ名。使わないなら enabled: false
 recipes:
   blackjack:
@@ -77,6 +95,17 @@ recipes:
       C: green_carpet
       P: '#planks'
       E: emerald
+  slot:
+    enabled: true
+    shape:
+      - IGI
+      - RDR
+      - III
+    ingredients:
+      I: iron_ingot
+      G: glass_pane
+      R: redstone
+      D: gold_ingot
 
 # Geyser 拡張（統合版にカードを見せる）との通信
 bridge:
