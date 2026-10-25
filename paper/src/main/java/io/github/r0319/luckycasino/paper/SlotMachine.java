@@ -514,7 +514,9 @@ final class SlotMachine extends CasinoTable {
             if (best == null) {
                 player.sendMessage(Component.text("はずれ", NamedTextColor.GRAY));
             } else {
-                player.sendMessage(Component.text((spin.big() ? "大当たり" : "当たり") + "  +" + spin.payout() + " 枚", NamedTextColor.GOLD));
+                long net = spin.payout() - spin.bet();
+                player.sendMessage(Component.text((spin.big() ? "大当たり" : "当たり") + "  " + spin.payout() + " 枚もどり", NamedTextColor.GOLD)
+                        .append(Component.text("（差し引き " + (net >= 0 ? "+" : "−") + Math.abs(net) + " 枚）", net >= 0 ? NamedTextColor.GREEN : NamedTextColor.GRAY)));
                 long lineBet = spin.bet() / Line.COUNT;
                 for (Spin.LineWin w : spin.wins()) {
                     player.sendMessage(Component.text("  " + w.line().displayName() + "：" + w.win().name(), NamedTextColor.YELLOW)

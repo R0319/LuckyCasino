@@ -1912,7 +1912,8 @@ function slotScenario() {
     if (!result.best) {
       chat([["はずれ", C.GRAY]]);
     } else {
-      chat([[(result.big ? "大当たり" : "当たり") + "  +" + payout + " 枚", C.GOLD]]);
+      const net = payout - bet;
+      chat([[(result.big ? "大当たり" : "当たり") + "  " + payout + " 枚もどり", C.GOLD], ["（差し引き " + (net >= 0 ? "+" : "−") + Math.abs(net) + " 枚）", net >= 0 ? C.GREEN : C.GRAY]]);
       const lineBet = bet / SLOT.LINES.length;
       for (const w of result.wins) chat([["  " + SLOT.LINES[w.line].name + "：" + w.win.name, C.YELLOW], ["  +" + lineBet * w.win.times + " 枚", C.GRAY]]);
     }
