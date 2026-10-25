@@ -280,6 +280,22 @@ def sicbo_triple():
     return img
 
 
+def highlow_same():
+    """以心伝心: 基準と同じ数のカードがめくれたところ（上下の矢印の間に「=」）。"""
+    img = Image.new("RGBA", (SIZE, SIZE), (0, 0, 0, 0))
+    paste(img, card("club_7"), 6, 22)
+    paste(img, card("diamond_7"), 45, 22)
+    d = ImageDraw.Draw(img)
+    d.polygon([(36, 4), (29, 13), (43, 13)], fill=GREEN, outline=GREEN_DARK)
+    d.polygon([(36, 68), (29, 59), (43, 59)], fill=(60, 110, 200, 255), outline=(30, 60, 130, 255))
+    d.ellipse([27, 27, 45, 45], fill=GOLD, outline=GOLD_DARK)
+    d.rectangle([31, 32, 41, 34], fill=OUTLINE)
+    d.rectangle([31, 38, 41, 40], fill=OUTLINE)
+    sparkle(img, 64, 10, 3, GOLD)
+    sparkle(img, 8, 64, 2, GOLD)
+    return img
+
+
 ICONS = {
     "first_play": first_play,
     "blackjack": blackjack,
@@ -296,6 +312,7 @@ ICONS = {
     "baccarat_pair": baccarat_pair,
     "bigwheel_star": bigwheel_star,
     "sicbo_triple": sicbo_triple,
+    "highlow_same": highlow_same,
 }
 
 

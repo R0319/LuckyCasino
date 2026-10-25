@@ -477,3 +477,122 @@ function sicBoScenario() {
 }
 
 addGame("sicbo", "大小", { make: sicBoScenario, length: 300 });
+
+// ================================================================ ハイ＆ロー
+
+const HL = {
+  shape: { model: "table/highlow", seatRise: RAISED_SEAT, dealer: [0, 0, -1.55], seats: [0, 1, 2, 3, 4].map((i) => [1.6 - 0.8 * i, 0, 1.55]) },
+  shoe: [1.5, TOP + 0.05, -0.75],
+  base: [-0.3, TOP + 0.004, -0.4],
+  next: [0.3, TOP + 0.004, -0.4],
+  history: (i) => [-0.42 - 0.2 * i, TOP + 0.003, -0.8],
+  cardLabel: (next) => [next ? 0.3 : -0.3, TOP + 0.3, -0.4],
+  box: (bet) => [{ high: -1.15, same: 0, low: 1.15 }[bet], TOP + 0.001, 0.45],
+  oddsLabel: (bet) => [{ high: -1.15, same: 0, low: 1.15 }[bet], TOP + 0.08, 0.25],
+  croupier: [1.2, TOP + 0.001, -0.3],
+};
+const hlRank = (v) => ({ 1: "A", 11: "J", 12: "Q", 13: "K" })[v] || String(v);
+const hlValue = (c) => c.rank + 1;
+function hlPercent(bet, base) {
+  const wins = bet === "high" ? 13 - base : bet === "low" ? base - 1 : 1;
+  return wins === 0 ? 0 : Math.floor(1235 / wins);
+}
+const hlPercentText = (p) => Math.floor(p / 100) + "." + String(p % 100).padStart(2, "0") + " 倍";
+
+function highLowScenario() {
+  const t = new Table(HL.shape);
+  t.spawn();
+  const YOU = 2;
+  t.sit(0, "Bot1", 1000);
+  t.sit(YOU, "あなた", 1000, true);
+  t.sit(4, "Bot5", 1000);
+  // 基準 5 → 9（ハイ）、次の回は基準 9 → 9（同じ）
+  const draws = ["H9", "C9"];
+  const history = ["S2", "DQ", "H6"].map((c, i) => CardView.deal(at(HL.history(i)), [0, 0, 0], card(c).code, true));
+  let base = card("C5");
+  let baseView = CardView.deal(at(HL.base), delta(HL.shoe, HL.base), base.code, true);
+  let next = null, nextView = null;
+  const baseLabel = t.label(HL.cardLabel(false), 0.5);
+  const nextLabel = t.label(HL.cardLabel(true), 0.5);
+  const odds = {};
+  for (const bet of ["high", "same", "low"]) odds[bet] = t.label(HL.oddsLabel(bet), 0.45);
+  function showBase() {
+    const b = hlValue(base);
+    baseLabel.text([[["基準", C.GRAY]], [[hlRank(b), C.WHITE]]]);
+    nextLabel.text([[["次は？", C.YELLOW]]]);
+    for (const bet in odds) {
+      const p = hlPercent(bet, b);
+      odds[bet].text([[p === 0 ? ["なし", C.DARK_GRAY] : [hlPercentText(p), C.GOLD]]]);
+    }
+  }
+  showBase();
+  const verdict = () => {
+    const b = hlValue(base), n = hlValue(next);
+    return [[hlRank(n) + " ", C.WHITE], n > b ? ["ハイ", C.GREEN] : n < b ? ["ロー", C.AQUA] : ["同じ！", C.GOLD]];
+  };
+
+  // HighLowTable.play と同じ間合い
+  function play() {
+    next = card(draws.shift());
+    nextView = CardView.deal(at(HL.next), delta(HL.shoe, HL.next), next.code, false);
+    t.swing();
+    sim.later(14, () => t.broadcast([["めくります…", C.GRAY]]));
+    const shown = next;
+    sim.later(30, () => {
+      nextView.reveal(shown.code);
+      nextLabel.text([[["次", C.GRAY]], verdict()]);
+      sparkle(at(HL.cardLabel(true)), 0xffffff);
+    });
+    return 36;
+  }
+  function clearRound() {
+    history.unshift(baseView);
+    while (history.length > 7) history.pop().remove();
+    history.forEach((v, i) => v.moveTo(at(HL.history(i))));
+    nextView.moveTo(at(HL.base));
+    baseView = nextView;
+    base = next;
+    next = nextView = null;
+    showBase();
+  }
+  const flow = spotFlow({
+    table: t, you: YOU, bettingSeconds: 6, minBet: 10, maxBet: 500, maxTotal: 1500,
+    chipSpot: (spot, seat) => {
+      const c = HL.box(spot);
+      const d = (seat - 2) * 0.014;
+      return [c[0] + d, c[1] + seat * 0.0005, c[2] + d * 0.5];
+    },
+    croupier: HL.croupier,
+    spotName: (s) => ({ high: "ハイ", same: "同じ", low: "ロー" })[s] + "（" + hlPercentText(hlPercent(s, hlValue(base))) + "）",
+    play, clearRound,
+    payout: (spot, amount) => {
+      const b = hlValue(base), n = hlValue(next);
+      const won = spot === "high" ? n > b : spot === "low" ? n < b : n === b;
+      return won ? Math.floor(amount * hlPercent(spot, b) / 100) : 0;
+    },
+    resultText: () => [hlRank(hlValue(base)) + " → " + hlRank(hlValue(next)) + (hlValue(next) > hlValue(base) ? " ハイ" : hlValue(next) < hlValue(base) ? " ロー" : " 同じ！"), C.WHITE],
+  });
+  sim.later(14, () => flow.place(0, "low", 50));
+  sim.later(20, () => flow.place(4, "high", 30));
+  sim.later(34, () => flow.place(YOU, "high", 100));
+  sim.later(272, () => flow.place(4, "low", 50));
+  sim.later(280, () => flow.place(YOU, "same", 20));
+  sim.later(290, () => flow.place(0, "high", 10));
+  return {
+    you: YOU, table: t,
+    camera(kind) {
+      if (kind === "seat") {
+        camera.position.set(t.shape.seats[YOU][0], 1.48 + RAISED_SEAT, 1.5);
+        controls.target.set(0, 0.95, -0.4);
+      } else if (kind === "high") {
+        camera.position.set(0, 3.4, 3.2);
+        controls.target.set(0, 0.9, -0.1);
+      } else {
+        camera.position.set(-0.4, 1.9, 0.2);
+        controls.target.set(-0.4, TOP, -0.5);
+      }
+    },
+  };
+}
+
+addGame("highlow", "ハイ＆ロー", { make: highLowScenario, length: 540 });

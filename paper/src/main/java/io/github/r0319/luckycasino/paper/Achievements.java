@@ -48,7 +48,9 @@ final class Achievements implements Listener {
 
         BIGWHEEL_STAR("bigwheel/star", FIRST_PLAY, "achievement/bigwheel_star", "1/54 の奇跡", "ビッグホイールでジョーカーかロゴに賭けて当てる", Frame.CHALLENGE),
 
-        SICBO_TRIPLE("sicbo/triple", FIRST_PLAY, "achievement/sicbo_triple", "ゾロ目師", "大小で目を指定したゾロ目に賭けて当てる", Frame.CHALLENGE);
+        SICBO_TRIPLE("sicbo/triple", FIRST_PLAY, "achievement/sicbo_triple", "ゾロ目師", "大小で目を指定したゾロ目に賭けて当てる", Frame.CHALLENGE),
+
+        HIGHLOW_SAME("highlow/same", FIRST_PLAY, "achievement/highlow_same", "以心伝心", "ハイ＆ローで「同じ」に賭けて当てる", Frame.GOAL);
 
         final String path;
         final Achievement parent;

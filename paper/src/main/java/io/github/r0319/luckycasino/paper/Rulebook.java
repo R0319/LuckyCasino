@@ -30,6 +30,7 @@ final class Rulebook {
             case BACCARAT -> GameRules.baccarat();
             case BIGWHEEL -> GameRules.bigWheel();
             case SICBO -> GameRules.sicBo();
+            case HIGHLOW -> GameRules.highLow();
         });
         player.openBook(Book.book(Component.text(type.displayName() + "のルール"), Component.text("LuckyCasino"), pages));
     }

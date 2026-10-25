@@ -22,6 +22,7 @@ gt.GLYPHS.update({
     "x": ["...", "#.#", ".#.", "#.#", "..."],
     # gen_table の N は M と同じ形なので、4 列で描き直す
     "N": ["#..#", "##.#", "#.##", "#..#", "#..#"],
+    "=": ["...", "###", "...", "###", "..."],
 })
 
 PX = 48
@@ -351,6 +352,46 @@ def sicbo_felt():
     return img
 
 
+# ---- ハイ＆ロー（paper の HighLowLayout と合わせる） ----
+HL_CARD_Z, HL_BASE_X, HL_NEXT_X, HL_BOX_Z, HL_HISTORY_Z = -0.4, -0.3, 0.3, 0.45, -0.8
+GREEN = (60, 170, 80, 255)
+FELT_DARK_LINE = (10, 50, 30, 255)
+
+
+def arrow(d, cx, cy, up, color):
+    """縦 9 px の矢印（up なら上向き）。"""
+    s = -1 if up else 1
+    d.polygon([(cx, cy + s * 4), (cx - 4, cy), (cx + 4, cy)], fill=color)
+    d.rectangle([cx - 1, cy - (0 if up else 4), cx + 1, cy + (4 if up else 0)], fill=color)
+
+
+def highlow_felt():
+    img = felt_base(192, 96)
+    d = ImageDraw.Draw(img)
+    d.rectangle([2, 2, 189, 93], outline=GOLD)
+    # カード置き場
+    for x, name in ((HL_BASE_X, "BASE"), (HL_NEXT_X, "NEXT")):
+        d.rectangle([u(x - 0.13), v(HL_CARD_Z - 0.18), u(x + 0.13), v(HL_CARD_Z + 0.18)], outline=GOLD)
+        text(img, name, x, HL_CARD_Z + 0.26, GOLD)
+    text(img, "HIGH-LOW", -1.0, -0.42, GOLD)
+    text(img, "A=1 K=13", 1.2, -0.42, WHITE)
+    # 履歴
+    d.rectangle([u(-1.74), v(HL_HISTORY_Z - 0.17), u(-0.3), v(HL_HISTORY_Z + 0.17)], outline=tint(GOLD, 0.6), fill=tint(FELT_DARK_LINE, 0.5))
+    # 枠
+    for x, w, name, color in ((-1.15, 1.25, "HIGH", GREEN), (0, 0.8, "SAME", GOLD), (1.15, 1.25, "LOW", BLUE)):
+        box(d, x, HL_BOX_Z, w, 0.62, GOLD, tint(color, 0.3))
+        text(img, name, x, HL_BOX_Z + 0.04, WHITE)
+        if name == "HIGH":
+            arrow(d, u(x - 0.4), v(HL_BOX_Z + 0.04) + 1, True, WHITE)
+            arrow(d, u(x + 0.4), v(HL_BOX_Z + 0.04) + 1, True, WHITE)
+        elif name == "LOW":
+            arrow(d, u(x - 0.4), v(HL_BOX_Z + 0.04) + 1, False, WHITE)
+            arrow(d, u(x + 0.4), v(HL_BOX_Z + 0.04) + 1, False, WHITE)
+        else:
+            text(img, "=", x, HL_BOX_Z + 0.18, WHITE)
+    return img
+
+
 def item(path):
     write_json(JAVA / "items" / f"{path}.json", {"model": {"type": "minecraft:model", "model": f"luckycasino:item/{path}"}})
 
@@ -379,6 +420,10 @@ def main():
     write_json(JAVA / "models" / "item" / "sicbo" / "dome.json", sicbo_dome_model())
     for path in ("table/sicbo", "sicbo/die", "sicbo/base", "sicbo/dome"):
         item(path)
+
+    for_item_display(highlow_felt(), 96).save(tex / "highlow_felt.png")
+    write_json(JAVA / "models" / "item" / "table" / "highlow.json", table_model("highlow_felt"))
+    item("table/highlow")
 
 
 if __name__ == "__main__":

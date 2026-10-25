@@ -93,6 +93,15 @@ sicbo:
   buy-ins: [100, 500, 1000, 5000]
   standing-range: 8
 
+# ハイ＆ロー。基準のカードより次のカードが上か下か同じかに賭ける
+highlow:
+  min-bet: 10
+  max-bet: 500
+  max-total: 1500
+  betting-seconds: 12
+  buy-ins: [100, 500, 1000, 5000]
+  standing-range: 8
+
 # テーブルのクラフトレシピ。材料は素材名か、#planks のようなタグ名。使わないなら enabled: false
 recipes:
   blackjack:
@@ -173,6 +182,18 @@ recipes:
       R: red_carpet
       P: '#planks'
       S: bone_block
+  highlow:
+    enabled: true
+    shape:
+      - LPA
+      - WBW
+      - 'W W'
+    ingredients:
+      L: lime_carpet
+      P: paper
+      A: light_blue_carpet
+      W: '#planks'
+      B: book
 
 # Geyser 拡張（統合版にカードを見せる）との通信
 bridge:

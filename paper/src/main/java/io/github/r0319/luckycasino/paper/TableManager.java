@@ -157,6 +157,7 @@ final class TableManager implements Listener {
             case BACCARAT -> new BaccaratTable(plugin, id, frame, owner, bank, spot(type, selfTest));
             case BIGWHEEL -> new BigWheelTable(plugin, id, frame, owner, bank, spot(type, selfTest));
             case SICBO -> new SicBoTable(plugin, id, frame, owner, bank, spot(type, selfTest));
+            case HIGHLOW -> new HighLowTable(plugin, id, frame, owner, bank, spot(type, selfTest));
         };
     }
 
