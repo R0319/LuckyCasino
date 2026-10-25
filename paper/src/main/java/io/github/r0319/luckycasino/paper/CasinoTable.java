@@ -219,15 +219,7 @@ abstract class CasinoTable {
             entity.setViewRange(2f);
         }));
 
-        Location dealerAt = frame.at(shape.dealer());
-        dealer = dealerAt.getWorld().spawn(dealerAt, Mannequin.class, entity -> {
-            entity.setPersistent(false);
-            entity.setInvulnerable(true);
-            entity.setImmovable(true);
-            entity.setSilent(true);
-            entity.setDescription(Component.text("ディーラー", NamedTextColor.GOLD));
-            entity.setRotation(frame.yaw(), 0f);
-        });
+        dealer = spawnDealer();
         fixtures.add(dealer);
 
         Location statusAt = frame.at(shape.status());
@@ -256,10 +248,36 @@ abstract class CasinoTable {
         }
         onSpawn();
         ticker = plugin.getServer().getScheduler().runTaskTimer(plugin, () -> guarded(() -> {
+            checkDealer();
             checkStanding();
             tickSecond();
         }), 20L, 20L);
         updateStatus();
+    }
+
+    private Mannequin spawnDealer() {
+        Location dealerAt = frame.at(shape().dealer());
+        return dealerAt.getWorld().spawn(dealerAt, Mannequin.class, entity -> {
+            entity.setPersistent(false);
+            entity.setInvulnerable(true);
+            entity.setImmovable(true);
+            entity.setSilent(true);
+            entity.setDescription(Component.text("ディーラー", NamedTextColor.GOLD));
+            entity.setRotation(frame.yaw(), 0f);
+        });
+    }
+
+    boolean isDealer(Entity entity) {
+        return dealer != null && dealer.equals(entity);
+    }
+
+    /** /kill などでディーラーが消えていたら出し直す（ダメージは TableManager で止めている）。 */
+    private void checkDealer() {
+        if (dealer != null && !dealer.isValid() && frame.origin().isChunkLoaded()) {
+            fixtures.remove(dealer);
+            dealer = spawnDealer();
+            fixtures.add(dealer);
+        }
     }
 
     /** BlockDisplay はブロックの角が原点なので、中心に合わせて置く。 */

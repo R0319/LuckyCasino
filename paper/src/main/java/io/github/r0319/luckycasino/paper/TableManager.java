@@ -21,6 +21,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDismountEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
@@ -323,6 +324,17 @@ final class TableManager implements Listener {
     public void onBreak(BlockBreakEvent event) {
         if (event.getBlock().getType() == Material.BARRIER && tableAt(event.getBlock()) != null) {
             event.setCancelled(true);
+        }
+    }
+
+    /** ディーラーは無敵だが、クリエイティブの人は無敵でも倒せるので、ダメージそのものを止める。 */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onDamage(EntityDamageEvent event) {
+        for (CasinoTable table : tables.values()) {
+            if (table.isDealer(event.getEntity())) {
+                event.setCancelled(true);
+                return;
+            }
         }
     }
 
