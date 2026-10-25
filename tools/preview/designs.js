@@ -115,7 +115,7 @@ function chipsOn(x, y, z, amount) {
   v.show({ x, y, z }, amount, false, true);
   return v;
 }
-// 大小の目を上にする回転（SicBoTable.faceUp と同じ）
+// 大小の目を上にする回転（ChinchiroTable.faceUp と同じ）
 function dieQuat(face, yaw) {
   return new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw).multiply(sbFaceUp(face));
 }
@@ -257,7 +257,7 @@ function wheelTheater() {
 /** 器の中のサイコロ 3 個を振る（中心 (x, y, z)）。周期 120 tick、振って止まって出目を見せる。 */
 function rollingDice(cx, cy, cz, spread, scale, seed, hop = 0.25) {
   const r = rng(seed);
-  const dice = [0, 1, 2].map(() => mdl("sicbo/die", scale, cx, cy, cz));
+  const dice = [0, 1, 2].map(() => mdl("chinchiro/die", scale, cx, cy, cz));
   const rounds = [[2, 5, 5], [1, 1, 1], [3, 4, 6], [6, 2, 4]];
   const rest = [[-spread * 0.6, spread * 0.3], [spread * 0.6, spread * 0.4], [0, -spread * 0.6]];
   new Anim((now) => {
@@ -381,7 +381,7 @@ function diceTower() {
   blk(1.1, 0.06, 0.8, 0x8a6a48, tx, 1.08, tz + 0.65);
   blk(1.1, 0.12, 0.05, DARK_WOOD, tx, 1.08, tz + 1.05);
   // 落ちるサイコロ
-  const dice = [0, 1, 2].map(() => mdl("sicbo/die", 0.11, tx, 2.4, tz));
+  const dice = [0, 1, 2].map(() => mdl("chinchiro/die", 0.11, tx, 2.4, tz));
   const faces = [[2, 5, 5], [3, 4, 6], [1, 1, 1]];
   new Anim((now) => {
     const cyc = now % 120, k = Math.floor(now / 120);

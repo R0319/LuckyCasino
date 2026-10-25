@@ -20,6 +20,7 @@ import java.util.stream.Stream;
  * /casino hit|stand|double|split … ブラックジャックの行動（チャットのボタンから呼ばれる）
  * /casino fold|check|call|raise [合計]|allin … ポーカーの行動
  * /casino spin … スロットを回す（チャットのボタンから呼ばれる）
+ * /casino roll … チンチロで自分の番にサイコロを振る（チャットのボタンから呼ばれる）
  * /casino bet … 賭けのメニューを開き直す
  * /casino leave … 席を立つ
  * /casino rules [種類] … ルールブック
@@ -32,7 +33,7 @@ import java.util.stream.Stream;
 final class CasinoCommand implements BasicCommand {
 
     private static final List<String> PLAYER = List.of("hit", "stand", "double", "split", "fold", "check", "call", "raise", "allin",
-            "spin", "bet", "leave", "rules", "dealer");
+            "spin", "roll", "bet", "leave", "rules", "dealer");
     private static final List<String> ADMIN = List.of("give", "remove", "status", "selftest");
 
     private final LuckyCasinoPaper plugin;
@@ -79,6 +80,7 @@ final class CasinoCommand implements BasicCommand {
                     case BlackjackTable blackjack -> blackjack(player, blackjack, sub);
                     case PokerTable poker -> poker(player, poker, sub, args);
                     case SlotMachine slot when sub.equals("spin") -> slot.spin(player);
+                    case ChinchiroTable chinchiro when sub.equals("roll") -> chinchiro.roll(player);
                     default -> usage(player, table);
                 }
             }
@@ -160,7 +162,8 @@ final class CasinoCommand implements BasicCommand {
             case ROULETTE -> "/casino bet|leave|rules";
             case POKER -> "/casino fold|check|call|raise [合計]|allin|leave|rules";
             case SLOT -> "/casino spin|bet|leave|rules";
-            case BACCARAT, BIGWHEEL, SICBO, HIGHLOW, HORSERACE -> "/casino bet|leave|rules";
+            case BACCARAT, BIGWHEEL, HIGHLOW, HORSERACE -> "/casino bet|leave|rules";
+            case CHINCHIRO -> "/casino bet|roll|leave|rules";
         };
         player.sendMessage(Component.text("使い方: " + text, NamedTextColor.GRAY));
     }

@@ -84,11 +84,12 @@ bigwheel:
   buy-ins: [100, 500, 1000, 5000]
   standing-range: 8
 
-# 大小（シックボー、サイコロ 3 個）。大・小・合計・目・ゾロ目などに賭ける
-sicbo:
+# チンチロ（座敷）。子として張り、親と役の強さで勝負する。負けると最大 5 倍払うので、
+# 張ったあとも賭け金の 4 倍を手元に残す必要がある（max-bet と max-total は同じ値にする）
+chinchiro:
   min-bet: 10
-  max-bet: 500
-  max-total: 2000
+  max-bet: 200
+  max-total: 200
   betting-seconds: 15
   buy-ins: [100, 500, 1000, 5000]
   standing-range: 8
@@ -179,16 +180,15 @@ recipes:
       O: orange_carpet
       P: '#planks'
       C: clock
-  sicbo:
+  chinchiro:
     enabled: true
     shape:
-      - BGR
+      - CBC
       - PSP
       - 'P P'
     ingredients:
-      B: blue_carpet
-      G: glass
-      R: red_carpet
+      C: purple_carpet
+      B: bowl
       P: '#planks'
       S: bone_block
   highlow:

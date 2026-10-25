@@ -1,5 +1,5 @@
 {
-  "parent": "luckycasino:item/sicbo/bowl",
+  "parent": "luckycasino:item/chinchiro/bowl",
   "display": {
     "gui": {
       "rotation": [

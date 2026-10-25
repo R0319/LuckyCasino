@@ -29,7 +29,7 @@ final class Rulebook {
             case SLOT -> slot(pictures);
             case BACCARAT -> GameRules.baccarat();
             case BIGWHEEL -> GameRules.bigWheel();
-            case SICBO -> GameRules.sicBo();
+            case CHINCHIRO -> GameRules.chinchiro();
             case HIGHLOW -> GameRules.highLow();
             case HORSERACE -> GameRules.horseRace();
         });

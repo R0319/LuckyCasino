@@ -254,23 +254,19 @@ def bigwheel_star():
     return img
 
 
-def sicbo_triple():
-    """ゾロ目師: 6 のゾロ目のサイコロ 3 個（立体に見えるよう、上と横の面も少し描く）。"""
+def chinchiro_pinzoro():
+    """ピンゾロ: 1 の目のサイコロ 3 個（赤い大きな 1 つ目。立体に見えるよう、上と横の面も少し描く）。"""
     img = Image.new("RGBA", (SIZE, SIZE), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
-    pips = [(0, 0), (2, 0), (0, 1), (2, 1), (0, 2), (2, 2)]
-
     def die(x, y, s):
         side, top = (200, 196, 186, 255), (226, 224, 216, 255)
         k = s // 5
         d.polygon([(x, y), (x + k, y - k), (x + s + k, y - k), (x + s, y)], fill=top, outline=OUTLINE)
         d.polygon([(x + s, y), (x + s + k, y - k), (x + s + k, y + s - k), (x + s, y + s)], fill=side, outline=OUTLINE)
         d.rounded_rectangle([x, y, x + s, y + s], 3, fill=WHITE, outline=OUTLINE)
-        p = max(3, s // 6)
-        for cx, cy in pips:
-            px = x + 3 + cx * (s - 6 - p) / 2
-            py = y + 3 + cy * (s - 6 - p) / 2
-            d.rectangle([px, py, px + p - 1, py + p - 1], fill=BLACK)
+        r = s // 5
+        cx, cy = x + s / 2, y + s / 2
+        d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=(200, 30, 40, 255))
 
     die(4, 34, 26)
     die(38, 36, 26)
@@ -329,7 +325,7 @@ ICONS = {
     "baccarat_tie": baccarat_tie,
     "baccarat_pair": baccarat_pair,
     "bigwheel_star": bigwheel_star,
-    "sicbo_triple": sicbo_triple,
+    "chinchiro_pinzoro": chinchiro_pinzoro,
     "highlow_same": highlow_same,
     "horserace_longshot": horserace_longshot,
 }

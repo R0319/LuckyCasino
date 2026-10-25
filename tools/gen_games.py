@@ -260,8 +260,8 @@ def bigwheel_icon_model():
                         "firstperson_righthand": {"rotation": [0, 90, 0], "scale": [0.5, 0.5, 0.5]}}}
 
 
-# ---- 大小（paper の SicBoLayout・SicBoTable と合わせる） ----
-ZS_CENTER, ZS_SCALE = (0.0, 0.5, 0.0), 2.0   # 座敷のモデルを置く位置と倍率（SicBoLayout.modelAt・modelScale）
+# ---- チンチロ（paper の ChinchiroLayout・ChinchiroTable と合わせる） ----
+ZS_CENTER, ZS_SCALE = (0.0, 0.5, 0.0), 2.0   # 座敷のモデルを置く位置と倍率（ChinchiroLayout.modelAt・modelScale）
 ZS_RING = 1.55                                # 座布団の輪の半径
 ZS_MAT = 0.1                                  # 畳の表面の高さ
 
@@ -305,7 +305,7 @@ def die_texture(face):
 def die_model():
     t = lambda n: {"texture": f"#d{n}", "uv": [0, 0, 16, 16]}
     # ItemDisplay は Y 軸まわりに 180 度回して描くので、南に 2・北に 5・西に 3・東に 4 を置く
-    # （回したあとの向き: 2 が北、5 が南、3 が東、4 が西。paper の SicBoTable.faceUp と合わせる）
+    # （回したあとの向き: 2 が北、5 が南、3 が東、4 が西。paper の ChinchiroTable.faceUp と合わせる）
     return {
         "textures": {**{f"d{n}": f"luckycasino:block/die_{n}" for n in range(1, 7)}, "particle": "luckycasino:block/die_1"},
         "elements": [{"from": [0, 0, 0], "to": [16, 16, 16],
@@ -330,7 +330,7 @@ def zs_box(lo, hi, tex, faces=("north", "south", "east", "west", "up", "down")):
     return world_box(lo, hi, tex, ZS_CENTER, ZS_SCALE, faces)
 
 
-def sicbo_zashiki_model():
+def chinchiro_zashiki_model():
     """4 x 4 の畳（2 x 1 の畳 8 枚）と、輪に並べた座布団 6 枚（5 枚は客、奥の赤い 1 枚は親）。"""
     import math
     els = zs_box((-2.05, 0, -2.05), (2.05, 0.04, 2.05), "#wood")
@@ -350,7 +350,7 @@ def sicbo_zashiki_model():
     }
 
 
-def sicbo_bowl_model():
+def chinchiro_bowl_model():
     """どんぶり（白に青い縁）。モデルの中心（8, 8, 8）が底の中心。16 角形の壁は要素の回転（22.5 度刻み）で作る。"""
     import math
     r, t, w = 6.0, 0.9, 2 * 6.0 * math.tan(math.radians(11.25)) + 0.3
@@ -383,9 +383,9 @@ def sicbo_bowl_model():
                          "particle": "minecraft:block/white_concrete"}, "elements": els}
 
 
-def sicbo_icon_model():
+def chinchiro_icon_model():
     """手に持つ・メニューのアイコン（どんぶり）。"""
-    return {"parent": "luckycasino:item/sicbo/bowl",
+    return {"parent": "luckycasino:item/chinchiro/bowl",
             "display": {"gui": {"rotation": [30, 45, 0], "scale": [1.4, 1.4, 1.4]},
                         "ground": {"scale": [0.6, 0.6, 0.6]}, "fixed": {"scale": [1.2, 1.2, 1.2]},
                         "thirdperson_righthand": {"scale": [0.6, 0.6, 0.6]},
@@ -588,11 +588,11 @@ def main():
     for n in range(1, 7):
         die_texture(n).save(tex / f"die_{n}.png")
     tatami_texture().save(tex / "tatami.png")
-    write_json(JAVA / "models" / "item" / "table" / "sicbo.json", sicbo_icon_model())
-    write_json(JAVA / "models" / "item" / "sicbo" / "die.json", die_model())
-    write_json(JAVA / "models" / "item" / "sicbo" / "zashiki.json", sicbo_zashiki_model())
-    write_json(JAVA / "models" / "item" / "sicbo" / "bowl.json", sicbo_bowl_model())
-    for path in ("table/sicbo", "sicbo/die", "sicbo/zashiki", "sicbo/bowl"):
+    write_json(JAVA / "models" / "item" / "table" / "chinchiro.json", chinchiro_icon_model())
+    write_json(JAVA / "models" / "item" / "chinchiro" / "die.json", die_model())
+    write_json(JAVA / "models" / "item" / "chinchiro" / "zashiki.json", chinchiro_zashiki_model())
+    write_json(JAVA / "models" / "item" / "chinchiro" / "bowl.json", chinchiro_bowl_model())
+    for path in ("table/chinchiro", "chinchiro/die", "chinchiro/zashiki", "chinchiro/bowl"):
         item(path)
 
     for_item_display(highlow_felt(), 96).save(tex / "highlow_felt.png")

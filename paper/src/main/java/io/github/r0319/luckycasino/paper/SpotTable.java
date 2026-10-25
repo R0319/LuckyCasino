@@ -67,11 +67,31 @@ abstract class SpotTable extends CasinoTable {
     /** 負けたチップを集める場所・払い出すチップが出てくる場所。 */
     protected abstract double[] croupierChips();
 
-    /** 結果を決めて演出を始め、結果が見えるまでの tick を返す。 */
+    /** play が返すと、結果が見えるまでの長さが決まっていないことを表す（あとで playFinished を呼ぶ）。 */
+    protected static final int UNTIL_FINISHED = -1;
+
+    /** 結果を決めて演出を始め、結果が見えるまでの tick を返す（客が振る番があるなど、長さが決まらなければ UNTIL_FINISHED）。 */
     protected abstract int play();
+
+    /** UNTIL_FINISHED を返した play の勝負が終わった。払い戻しに進む。 */
+    protected void playFinished() {
+        if (state == State.PLAYING) {
+            later(10, this::payoutAll);
+        }
+    }
 
     /** 賭け場所 spot に amount 賭けていたときに戻るチップ（賭け金を含む。負けは 0）。 */
     protected abstract long payout(String spot, long amount);
+
+    /** 席 seat の賭けの払い戻し。席ごとに勝ち負けが違う卓が書き換える（賭け金より多く負けるときは負）。 */
+    protected long payout(int seat, String spot, long amount) {
+        return payout(spot, amount);
+    }
+
+    /** 賭けの合計が total のとき、賭けたあとも手元に残しておく必要があるチップ（賭け金より多く負けることがある卓）。 */
+    protected long reserve(long total) {
+        return 0;
+    }
 
     /** 結果の短い文（タイトルとチャットに出す）。 */
     protected abstract Component resultText();
@@ -208,6 +228,13 @@ abstract class SpotTable extends CasinoTable {
             }
             return "1 か所 " + settings.minBet() + "〜" + settings.maxBet() + " 枚、1 回の合計 " + settings.maxTotal() + " 枚までです";
         }
+        long keep = reserve(total(index) + amount);
+        if (seat.chips - amount < keep) {
+            if (mine.isEmpty()) {
+                bets.remove(index);
+            }
+            return "負けたときの支払いに備えて、賭けたあとも手元に " + keep + " 枚必要です";
+        }
         mine.put(spotId, here);
         seat.chips -= amount;
         seat.atRisk += amount;
@@ -292,7 +319,9 @@ abstract class SpotTable extends CasinoTable {
         plugin.spotMenu().close(this);
         broadcast(Component.text("ノーモアベット", NamedTextColor.AQUA));
         int ticks = play();
-        later(ticks + 10, this::payoutAll);
+        if (ticks != UNTIL_FINISHED) {
+            later(ticks + 10, this::payoutAll);
+        }
         updateStatus();
     }
 
@@ -306,7 +335,7 @@ abstract class SpotTable extends CasinoTable {
             long sumBack = 0;
             for (Map.Entry<String, Long> bet : entry.getValue().entrySet()) {
                 long amount = bet.getValue();
-                long back = payout(bet.getKey(), amount);
+                long back = payout(index, bet.getKey(), amount);
                 sumBet += amount;
                 sumBack += back;
                 if (seat != null) {
@@ -334,7 +363,8 @@ abstract class SpotTable extends CasinoTable {
                     player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1f, 1.2f);
                 }
                 player.sendMessage(Component.text("結果 ", NamedTextColor.WHITE).append(result)
-                        .append(Component.text("：払い戻し " + sumBack + " 枚（手元 " + seat.chips + " 枚）", NamedTextColor.GRAY)));
+                        .append(Component.text((sumBack < 0 ? "：追加の支払い " + -sumBack : "：払い戻し " + sumBack)
+                                + " 枚（手元 " + seat.chips + " 枚）", NamedTextColor.GRAY)));
             }
         }
         updateStatus();
@@ -346,7 +376,7 @@ abstract class SpotTable extends CasinoTable {
         if (view == null || back == amount) {
             return;
         }
-        if (back == 0) {
+        if (back <= 0) {
             view.slideTo(frame.at(croupierChips()));
             return;
         }

@@ -77,13 +77,13 @@ function spotFlow(opts) {
       let sum = 0, back = 0;
       for (const spot in bets[seat]) {
         const amount = bets[seat][spot];
-        const pay = opts.payout(spot, amount);
+        const pay = opts.payout(spot, amount, Number(seat));
         sum += amount;
         back += pay;
         t.seats[seat].chips += pay;
         const view = chipViews[seat][spot];
         if (pay === amount) continue;
-        if (pay === 0) view.slideTo(at(opts.croupier));
+        if (pay <= 0) view.slideTo(at(opts.croupier));
         else {
           const w = new ChipView();
           w.show(at(opts.croupier), pay - amount, false);
@@ -95,7 +95,7 @@ function spotFlow(opts) {
       if (Number(seat) === opts.you) {
         const net = back - sum;
         showTitle(result, [net > 0 ? "+" + net + " 枚" : net === 0 ? "±0" : net + " 枚", net > 0 ? C.GREEN : net === 0 ? C.YELLOW : C.RED], 40);
-        chat([["結果 ", C.WHITE], result, ["：払い戻し " + back + " 枚（手元 " + t.seats[seat].chips + " 枚）", C.GRAY]]);
+        chat([["結果 ", C.WHITE], result, [(back < 0 ? "：追加の支払い " + -back : "：払い戻し " + back) + " 枚（手元 " + t.seats[seat].chips + " 枚）", C.GRAY]]);
       }
     }
     status();
@@ -357,41 +357,37 @@ function bigWheelScenario() {
 
 addGame("bigwheel", "ビッグホイール", { make: bigWheelScenario, length: 400 });
 
-// ================================================================ 大小（シックボー）
+// ================================================================ チンチロ（座敷）
 
-// SicBoLayout と同じ数字（畳・座布団・どんぶりはモデル）
-const SB_ANGLE = (seat) => ((120 - 60 * seat) * Math.PI) / 180;
-const SB = {
+// ChinchiroLayout と同じ数字（畳・座布団・どんぶりはモデル）
+const CC_ANGLE = (seat) => ((120 - 60 * seat) * Math.PI) / 180;
+const CC = {
   shape: {
-    model: "sicbo/zashiki", modelAt: [0, 0.5, 0], modelScale: 2, seatRise: 0.1 - 0.38,
+    model: "chinchiro/zashiki", modelAt: [0, 0.5, 0], modelScale: 2, seatRise: 0.1 - 0.38,
     dealer: [0, 0, -1.55], dealerSeated: true, status: [0, 1.95, -1.8],
-    seats: [0, 1, 2, 3, 4].map((i) => [1.55 * Math.sin(SB_ANGLE(i)), 0, 1.55 * Math.cos(SB_ANGLE(i))]),
+    seats: [0, 1, 2, 3, 4].map((i) => [1.55 * Math.sin(CC_ANGLE(i)), 0, 1.55 * Math.cos(CC_ANGLE(i))]),
     // 座布団の輪の真ん中（どんぶり）を向く
-    seatYaw: (i) => 180 - (SB_ANGLE(i) * 180) / Math.PI,
+    seatYaw: (i) => 180 - (CC_ANGLE(i) * 180) / Math.PI,
   },
-  DIE_SCALE: 0.12, MAT: 0.1,
+  DIE_SCALE: 0.12,
   bowl: [0, 0.1, 0],
   dice: [0, 0.1 + 0.04 + 0.06, 0],
   resultLabel: [0, 0.75, 0],
   croupier: [0, 0.101, -0.72],
-  HAND: [0, 0.5, -1.0],
   REST: [[-0.09, 0.05], [0.09, 0.06], [0, -0.09]],
-  group(id) {
-    const fixed = { small: [0, 0], big: [1, 0], odd: [2, 0], even: [3, 0], any_triple: [7, 0] };
-    if (id in fixed) return fixed[id];
-    const n = Number(id.slice(id.lastIndexOf("_") + 1));
-    return { single: [4, n - 1], total: [5, n - 4], double: [6, n - 1], triple: [7, n] }[id.slice(0, id.lastIndexOf("_"))];
+  chip: (seat) => [0.7 * Math.sin(CC_ANGLE(seat)), 0.101 + seat * 0.0005, 0.7 * Math.cos(CC_ANGLE(seat))],
+  hand(seat) {
+    const a = seat < 0 ? Math.PI : CC_ANGLE(seat);
+    return [Math.sin(a), 0.4, Math.cos(a)];
   },
-  chip(seat, group, k) {
-    const a = SB_ANGLE(seat);
-    const col = ((group % 4) - 1.5) * 0.12 + k * 0.012;
-    const row = 0.72 - Math.floor(group / 4) * 0.12;
-    return [row * Math.sin(a) + col * Math.cos(a), 0.101 + seat * 0.0005, row * Math.cos(a) - col * Math.sin(a)];
+  handLabel(seat) {
+    const a = CC_ANGLE(seat);
+    return [0.7 * Math.sin(a), 0.45, 0.7 * Math.cos(a)];
   },
 };
 
 function sbQuat(axis, rad) { return new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(...axis), rad); }
-/** SicBoTable.faceUp と同じ。 */
+/** ChinchiroTable.faceUp と同じ。 */
 function sbFaceUp(face) {
   const q = Math.PI / 2;
   return {
@@ -399,99 +395,136 @@ function sbFaceUp(face) {
     4: sbQuat([0, 0, 1], -q), 5: sbQuat([1, 0, 0], -q), 6: sbQuat([1, 0, 0], 2 * q),
   }[face];
 }
-function sbPayout(dice, bet, amount) {
-  const total = dice[0] + dice[1] + dice[2];
-  const triple = dice[0] === dice[1] && dice[1] === dice[2];
-  const count = (n) => dice.filter((d) => d === n).length;
-  const pays = { 4: 60, 5: 30, 6: 17, 7: 12, 8: 8, 9: 6, 10: 6, 11: 6, 12: 6, 13: 8, 14: 12, 15: 17, 16: 30, 17: 60 };
-  if (bet === "small") return !triple && total <= 10 ? amount * 2 : 0;
-  if (bet === "big") return !triple && total >= 11 ? amount * 2 : 0;
-  if (bet === "odd") return !triple && total % 2 === 1 ? amount * 2 : 0;
-  if (bet === "even") return !triple && total % 2 === 0 ? amount * 2 : 0;
-  if (bet === "any_triple") return triple ? amount * 31 : 0;
-  const n = Number(bet.slice(bet.lastIndexOf("_") + 1));
-  if (bet.startsWith("total_")) return total === n ? amount * (pays[n] + 1) : 0;
-  if (bet.startsWith("triple_")) return count(n) === 3 ? amount * 181 : 0;
-  if (bet.startsWith("double_")) return count(n) >= 2 ? amount * 11 : 0;
-  return count(n) > 0 ? amount * (1 + count(n)) : 0;
-}
-function sbName(id) {
-  const fixed = { small: "小", big: "大", odd: "奇数", even: "偶数", any_triple: "ゾロ目どれでも" };
-  if (id in fixed) return fixed[id];
-  const n = id.slice(id.lastIndexOf("_") + 1);
-  return { total: "合計 ", single: "目 ", double: "ダブル ", triple: "ゾロ目 " }[id.slice(0, id.lastIndexOf("_"))] + n;
-}
 
-function sicBoScenario() {
-  const t = new Table(SB.shape);
+/** common の Chinchiro.hand と同じ。強さ rank（大きいほど強い）と倍率も返す。 */
+function ccHand(d) {
+  const s = [...d].sort((a, b) => a - b);
+  if (s[0] === s[2]) return s[0] === 1 ? { label: "ピンゾロ", rank: 50, mult: 5, color: C.GOLD } : { label: s[0] + " のゾロ目", rank: 40 + s[0], mult: 3, color: C.GOLD };
+  if (s.join() === "4,5,6") return { label: "シゴロ", rank: 30, mult: 2, color: C.LIGHT_PURPLE };
+  if (s.join() === "1,2,3") return { label: "ヒフミ", rank: 0, mult: 2, color: C.RED, hifumi: true };
+  if (s[0] === s[1]) return { label: s[2] + " の目", rank: 20 + s[2], mult: 1, color: C.WHITE };
+  if (s[1] === s[2]) return { label: s[0] + " の目", rank: 20 + s[0], mult: 1, color: C.WHITE };
+  return { label: "目なし", rank: 10, mult: 1, color: C.GRAY, none: true };
+}
+const ccVersus = (o, k) => (k.rank > o.rank ? k.mult : k.rank === o.rank ? 0 : -(k.hifumi ? 2 : o.mult));
+const ccOutcome = (m) => (m > 0 ? ["勝ち +" + m + " 倍", C.GREEN] : m === 0 ? ["引き分け", C.YELLOW] : ["負け " + m + " 倍", C.RED]);
+
+function chinchiroScenario() {
+  const t = new Table(CC.shape);
   t.spawn();
   const YOU = 2;
+  const names = ["Bot1", "Bot2", "あなた", "Bot4"];
   t.sit(0, "Bot1", 1000);
   t.sit(1, "Bot2", 1000);
   t.sit(YOU, "あなた", 1000, true);
   t.sit(3, "Bot4", 1000);
-  const DICE = [2, 5, 5];
+  // 振る順と出目（親は目なしのあと 4 の目。子はそれぞれ勝ち・負け・シゴロ・ヒフミ）
+  const SCRIPT = [
+    [-1, [[1, 3, 6], [3, 4, 3]]],
+    [0, [[5, 2, 2]]],
+    [1, [[2, 4, 6], [1, 1, 3]]],
+    [YOU, [[6, 4, 5]]],
+    [3, [[2, 3, 1]]],
+  ];
   const random = seeded(4242);
   const rnd = () => random.nextInt(10000) / 10000;
-  const TOSS_TICKS = 10, TOSS_STEP = 2, BOUNCE_TICKS = 30, BOUNCE_STEP = 3, SETTLE = 6;
-  const SHOW_AT = TOSS_TICKS + BOUNCE_TICKS + SETTLE + 8;
+  const TOSS_TICKS = 10, TOSS_STEP = 2, BOUNCE_TICKS = 24, BOUNCE_STEP = 3, SETTLE = 6;
+  const ROLL_TICKS = TOSS_TICKS + BOUNCE_TICKS + SETTLE + 6, PAUSE = 30, AUTO_DELAY = 20;
   const tr = (t3, q, s) => ({ t: t3, q, s: [s, s, s] });
-  const bowl = new ItemDisplay(at(SB.bowl), "sicbo/bowl");
-  const dieAt = (i, face, yaw) => tr([SB.REST[i][0], 0, SB.REST[i][1]], sbQuat([0, 1, 0], yaw).multiply(sbFaceUp(face)), SB.DIE_SCALE);
+  new ItemDisplay(at(CC.bowl), "chinchiro/bowl");
+  const dieAt = (i, face, yaw) => tr([CC.REST[i][0], 0, CC.REST[i][1]], sbQuat([0, 1, 0], yaw).multiply(sbFaceUp(face)), CC.DIE_SCALE);
   const dice = [4, 5, 6].map((face, i) => {
-    const d = new ItemDisplay(at(SB.dice), "sicbo/die");
+    const d = new ItemDisplay(at(CC.dice), "chinchiro/die");
     d.tr = { from: dieAt(i, face, 0.4 * i), to: dieAt(i, face, 0.4 * i), start: 0, dur: 0 };
     return d;
   });
   const move = (e, to, ticks) => { e.interpolationDuration = ticks; e.setTransformation(to); };
   const spin = () => new THREE.Quaternion().setFromEuler(new THREE.Euler(rnd() * 6.3, rnd() * 6.3, rnd() * 6.3, "XYZ"));
   let resultLabel = null;
-  const total = DICE[0] + DICE[1] + DICE[2];
-  const resultText = () => [DICE.join("・") + " 合計 " + total + " " + (total <= 10 ? "小" : "大") + (total % 2 ? "・奇数" : "・偶数"), total <= 10 ? C.AQUA : C.RED];
+  const handLabels = [];
+  let dealerHand = null;
+  const results = {};
 
-  // SicBoTable.play と同じ順番・間合い
-  function play() {
-    resultLabel = t.label(SB.resultLabel, 0.8);
-    t.swing();
-    t.broadcast([["親がサイコロを投げます", C.GRAY]]);
+  // ChinchiroTable.animateRoll と同じ動き（at は振り始める tick）
+  function animateRoll(start, seat, faces) {
+    const h = CC.hand(seat);
     dice.forEach((d, i) => {
-      const hand = [SB.HAND[0] + (i - 1) * 0.06, SB.HAND[1], SB.HAND[2]];
+      const from = [h[0] + (i - 1) * 0.06, h[1], h[2]];
       const land = [(rnd() - 0.5) * 0.25, 0.08, (rnd() - 0.5) * 0.25];
-      move(d, tr(hand, spin(), SB.DIE_SCALE), 0);
+      const first = tr(from, spin(), CC.DIE_SCALE);
+      sim.later(start, () => move(d, first, 0));
       for (let tt = TOSS_STEP; tt <= TOSS_TICKS; tt += TOSS_STEP) {
         const u = tt / TOSS_TICKS;
-        const p = [0, 1, 2].map((k) => lerp(hand[k], land[k], u) + (k === 1 ? 0.35 * 4 * u * (1 - u) : 0));
-        const pose = tr(p, spin(), SB.DIE_SCALE);
-        sim.later(tt, () => move(d, pose, TOSS_STEP));
+        const p = [0, 1, 2].map((k) => lerp(from[k], land[k], u) + (k === 1 ? 0.35 * 4 * u * (1 - u) : 0));
+        const pose = tr(p, spin(), CC.DIE_SCALE);
+        sim.later(start + tt, () => move(d, pose, TOSS_STEP));
       }
     });
     for (let tt = TOSS_TICKS + BOUNCE_STEP; tt <= TOSS_TICKS + BOUNCE_TICKS; tt += BOUNCE_STEP) {
       const left = 1 - (tt - TOSS_TICKS) / BOUNCE_TICKS;
       const hop = [0, 1, 2].map(() => {
         const a = rnd() * 2 * Math.PI, r = 0.08 + rnd() * 0.12;
-        return tr([Math.sin(a) * r, rnd() * 0.14 * left, Math.cos(a) * r], spin(), SB.DIE_SCALE);
+        return tr([Math.sin(a) * r, rnd() * 0.14 * left, Math.cos(a) * r], spin(), CC.DIE_SCALE);
       });
-      sim.later(tt, () => dice.forEach((d, i) => move(d, hop[i], BOUNCE_STEP)));
+      sim.later(start + tt, () => dice.forEach((d, i) => move(d, hop[i], BOUNCE_STEP)));
     }
-    const rest = DICE.map((face, i) => dieAt(i, face, (rnd() - 0.5) * 1.2));
-    sim.later(TOSS_TICKS + BOUNCE_TICKS + BOUNCE_STEP, () => dice.forEach((d, i) => move(d, rest[i], SETTLE)));
-    sim.later(SHOW_AT, () => { resultLabel.text([[resultText()]]); sparkle(at(SB.resultLabel), 0xffffff); });
-    return SHOW_AT + 2;
+    const rest = faces.map((face, i) => dieAt(i, face, (rnd() - 0.5) * 1.2));
+    sim.later(start + TOSS_TICKS + BOUNCE_TICKS + BOUNCE_STEP, () => dice.forEach((d, i) => move(d, rest[i], SETTLE)));
+  }
+
+  // ChinchiroTable の進行（親 → 子の順）を、決めた出目でなぞる。返すのは払い戻しまでの tick
+  function play() {
+    resultLabel = t.label(CC.resultLabel, 0.7);
+    t.swing();
+    t.broadcast([["親が振ります", C.GRAY]]);
+    let now = 10;
+    for (const [seat, rolls] of SCRIPT) {
+      const who = seat < 0 ? "親" : names[seat];
+      if (seat === YOU) sim.later(now, () => chat([["あなたの番です ", C.AQUA], ["[振る]", C.GOLD], [" かどんぶりをクリック", C.GRAY]]));
+      rolls.forEach((faces, k) => {
+        if (seat >= 0) now += AUTO_DELAY;
+        animateRoll(now, seat, faces);
+        now += ROLL_TICKS;
+        const hand = ccHand(faces);
+        sim.later(now, () => {
+          resultLabel.text([[[who + " ", C.AQUA], [faces.join("・") + " ", C.GRAY], [hand.label, hand.color]]]);
+          t.broadcast([[who + "（" + (k + 1) + " 回目）: ", C.GRAY], [faces.join("・") + " ", C.GRAY], [hand.label, hand.color]]);
+          if (hand.rank >= 30) sparkle(at(CC.resultLabel), 0xffffff);
+          if (k < rolls.length - 1) return;
+          if (seat < 0) {
+            dealerHand = hand;
+            t.broadcast([["親は " + hand.label + "。子が順に振ります", C.YELLOW]]);
+          } else {
+            const m = ccVersus(dealerHand, hand);
+            results[seat] = m;
+            const l = t.label(CC.handLabel(seat), 0.45);
+            l.text([[[hand.label + " ", hand.color], ccOutcome(m)]]);
+            handLabels.push(l);
+          }
+        });
+        if (k < rolls.length - 1) now += PAUSE / 2;
+      });
+      now += PAUSE;
+    }
+    return now;
   }
 
   const flow = spotFlow({
-    table: t, you: YOU, bettingSeconds: 6, minBet: 10, maxBet: 500, maxTotal: 2000,
-    chipSpot: (spot, seat) => SB.chip(seat, ...SB.group(spot)),
-    croupier: SB.croupier, spotName: sbName,
-    play, payout: (spot, amount) => sbPayout(DICE, spot, amount), resultText,
+    table: t, you: YOU, bettingSeconds: 6, minBet: 10, maxBet: 200, maxTotal: 200,
+    chipSpot: (spot, seat) => CC.chip(seat),
+    croupier: CC.croupier, spotName: () => "子として張る",
+    play,
+    payout: (spot, amount, seat) => amount * (1 + (results[seat] ?? 0)),
+    resultText: () => ["親 " + dealerHand.label, C.WHITE],
     clearRound() {
       if (resultLabel) resultLabel.remove();
+      handLabels.forEach((l) => l.remove());
     },
   });
-  sim.later(14, () => flow.place(0, "small", 50));
-  sim.later(18, () => { flow.place(3, "total_12", 10); flow.place(3, "triple_6", 10); });
-  sim.later(30, () => flow.place(YOU, "big", 100));
-  sim.later(42, () => flow.place(YOU, "single_5", 20));
+  sim.later(14, () => flow.place(0, "bet", 50));
+  sim.later(18, () => flow.place(1, "bet", 30));
+  sim.later(22, () => flow.place(3, "bet", 20));
+  sim.later(30, () => flow.place(YOU, "bet", 100));
   return {
     you: YOU, table: t,
     camera(kind) {
@@ -510,7 +543,7 @@ function sicBoScenario() {
   };
 }
 
-addGame("sicbo", "大小", { make: sicBoScenario, length: 300 });
+addGame("chinchiro", "チンチロ", { make: chinchiroScenario, length: 760 });
 
 // ================================================================ ハイ＆ロー
 

@@ -8,7 +8,7 @@ enum GameType {
     SLOT("slot", "スロット", "スロットマシン", true),
     BACCARAT("baccarat", "バカラ", "バカラテーブル", false),
     BIGWHEEL("bigwheel", "ビッグホイール", "ビッグホイールテーブル", false),
-    SICBO("sicbo", "大小", "大小（シックボー）テーブル", false),
+    CHINCHIRO("chinchiro", "チンチロ", "チンチロの座敷", false),
     HIGHLOW("highlow", "ハイ＆ロー", "ハイ＆ローテーブル", false),
     HORSERACE("horserace", "競馬", "競馬テーブル", false);
 
@@ -31,7 +31,7 @@ enum GameType {
 
     /** 賭け場所を選んで賭ける卓（SpotTable）か。設定は config.yml の同じ名前の節（SpotSettings）。 */
     boolean spotBets() {
-        return this == BACCARAT || this == BIGWHEEL || this == SICBO || this == HIGHLOW || this == HORSERACE;
+        return this == BACCARAT || this == BIGWHEEL || this == CHINCHIRO || this == HIGHLOW || this == HORSERACE;
     }
 
     /** 1 ブロックの台（ブロックの中心に置く）か。 */
