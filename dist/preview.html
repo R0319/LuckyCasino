@@ -1229,7 +1229,7 @@ const RB = {
 const RL = {
   PX: 48, MAT_U: 58, MAT_V: 30, CELL: 9, WHEEL_U: 28, WHEEL_V: 48,
   BALL_TRACK: 0.44, BALL_POCKET: 0.32,
-  shape: { model: "table/roulette", dealer: [-1.2, 0, -1.55], seats: [0, 1, 2, 3, 4, 5].map((i) => [1.75 - 0.7 * i, 0, 1.55]) },
+  shape: { model: "table/roulette", dealer: [-1.2, 0, -1.55], seats: [0, 1, 2, 3, 4].map((i) => [1.7 - 0.85 * i, 0, 1.55]) },
   wheel() { return [RL.WHEEL_U / RL.PX - 2, TOP + 0.002, RL.WHEEL_V / RL.PX - 1]; },
   aroundWheel(angle, radius, height) {
     const c = RL.wheel(), r = angle * DEG;
@@ -1338,7 +1338,7 @@ function rouletteScenario() {
 
   const key = (b) => b.type + ":" + b.anchor;
   const offset = (spot, seat) => {
-    const d = (seat - 2.5) * 0.012;
+    const d = (seat - 2) * 0.012;
     return [spot[0] + d, spot[1] + seat * 0.0005, spot[2] + d * 0.5];
   };
 

@@ -9,7 +9,7 @@ import io.github.r0319.luckycasino.roulette.RouletteBet;
  */
 final class RouletteLayout implements TableShape {
 
-    static final int SEATS = 6;
+    static final int SEATS = 5;
     private static final double PX = 48;
     private static final int MAT_U = 58;
     private static final int MAT_V = 30;
@@ -29,7 +29,7 @@ final class RouletteLayout implements TableShape {
 
     @Override
     public double[] seat(int index) {
-        return new double[]{1.75 - 0.7 * index, 0, 1.55};
+        return new double[]{1.7 - 0.85 * index, 0, 1.55};
     }
 
     @Override

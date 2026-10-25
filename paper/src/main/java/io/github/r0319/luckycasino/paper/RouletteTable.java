@@ -447,7 +447,7 @@ final class RouletteTable extends CasinoTable {
 
     /** 席ごとに少しずらして、同じ場所の他の人のチップと重ならないようにする。 */
     private static double[] offset(double[] spot, int seat) {
-        double d = (seat - 2.5) * 0.012;
+        double d = (seat - 2) * 0.012;
         return new double[]{spot[0] + d, spot[1] + seat * 0.0005, spot[2] + d * 0.5};
     }
 
