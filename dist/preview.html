@@ -622,7 +622,7 @@ class Table {
       const name = new TextDisplay(at([d[0], 2.05, d[2]]), 0.5);
       name.text([[["ディーラー", C.GOLD]]]);
     }
-    this.status = new TextDisplay(at(sh.status || [d[0], 2.45, d[2]]), 1);
+    this.status = new TextDisplay(at(sh.status || [d[0], 2.45, d[2]]), sh.statusScale || 1);
     for (let i = 0; i < this.shape.seats.length; i++) {
       const p = this.shape.seats[i];
       new BlockDisplay(at([p[0], 0, p[2]]), 0x42291a, [1, 0.38, 1], "post");
@@ -1814,7 +1814,7 @@ const SLOT = {
   ],
   ROW: 2.4 / 16, LINE_Z: (14.55 - 8) / 16, DIAGONAL_DEGREES: Math.atan2(2.4, 12.1 - 8) / DEG,
   STEP: 2, SPEED: 67.5, FACE: 360 / 16, STOP_AT: [32, 44, 56], REACH_EXTRA: 26, OVERSHOOT: 6, BLUR_SPEED: 25,
-  shape: { model: "table/slot", seats: [[0, 0, 1.0]], dealer: null, status: [0, 2.45, 0], modelAt: [0, 0.5, 0], modelScale: 1, modelYaw: 180 },
+  shape: { model: "table/slot", seats: [[0, 0, 1.0]], dealer: null, status: [0, 2.04, 0.32], statusScale: 0.4, modelAt: [0, 0.5, 0], modelScale: 1, modelYaw: 180 },
 };
 
 /** Paytable.evaluate と同じ。 */
@@ -1925,12 +1925,12 @@ function slotScenario() {
   });
   const showLines = (lines, on) => lines.forEach((i) => { winlines[i].interpolationDuration = 0; winlines[i].setTransformation(slotLineTransform(i, on)); });
   const hideLines = () => showLines([0, 1, 2, 3, 4], false);
-  const resultLabel = t.label([0, 2.1, 0.25], 0.8);
+  const resultLabel = t.label([0, 2.42, 0.32], 0.4);
   let state = "IDLE", bet = 10, celebrating = false, lampPhase = false;
   const shower = [];
   const seat = t.seats[YOU];
   function status() {
-    t.setStatus([[[seat.name + "（1 回 " + bet + " 枚）", C.AQUA]], [["1 回 10 / 50 / 100 枚（練習用）", C.GRAY]]]);
+    t.setStatus([[[seat.name, C.AQUA]], [["1 回 " + bet + " 枚", C.GRAY]]]);
   }
   status();
   function lampTick() {

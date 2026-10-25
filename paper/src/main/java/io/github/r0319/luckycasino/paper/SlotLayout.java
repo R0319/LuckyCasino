@@ -36,7 +36,8 @@ final class SlotLayout implements TableShape {
 
     @Override
     public double[] status() {
-        return new double[]{0, 2.45, 0};
+        // 看板の上、正面寄り（文字は台の正面に向けて小さく出す。横に並べた台と重ならないように）
+        return new double[]{0, 2.04, 0.32};
     }
 
     @Override
@@ -94,7 +95,8 @@ final class SlotLayout implements TableShape {
         return new double[]{0, 0.3, 0.5};
     }
 
+    /** 結果の文字（状況の文字の上）。 */
     double[] resultLabel() {
-        return new double[]{0, 2.1, 0.25};
+        return new double[]{0, 2.42, 0.32};
     }
 }

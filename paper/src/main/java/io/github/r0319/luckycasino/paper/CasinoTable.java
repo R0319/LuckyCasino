@@ -253,6 +253,7 @@ abstract class CasinoTable {
             entity.setPersistent(false);
             entity.setBillboard(Display.Billboard.CENTER);
             entity.text(Component.empty());
+            styleStatus(entity);
         });
         fixtures.add(status);
 
@@ -568,6 +569,10 @@ abstract class CasinoTable {
         if (status != null) {
             status.text(statusText());
         }
+    }
+
+    /** 状況の文字の見た目を台ごとに変える（並べて置く台で、文字が隣と重ならないようにするなど）。 */
+    protected void styleStatus(TextDisplay status) {
     }
 
     protected TextDisplay label(double[] local, float scale) {

@@ -134,9 +134,22 @@ final class SlotMachine extends CasinoTable {
             entity.setResponsive(true);
         });
         fixtures().add(leverHit);
-        resultLabel = label(LAYOUT.resultLabel(), 0.8f);
+        resultLabel = label(LAYOUT.resultLabel(), 0.4f);
+        faceFront(resultLabel);
         fixtures().add(resultLabel);
         lampTick();
+    }
+
+    /** 状況の文字は小さく、台の正面に向けて出す（いつもこちらを向く文字だと、横に並べた台どうしで重なる）。 */
+    @Override
+    protected void styleStatus(TextDisplay status) {
+        faceFront(status);
+        status.setLineWidth(120);
+        status.setTransformation(scaled(0.4f));
+    }
+
+    private static void faceFront(TextDisplay text) {
+        text.setBillboard(Display.Billboard.FIXED);
     }
 
     private ItemDisplay display(double[] local, String model, Transformation transform) {
@@ -617,10 +630,13 @@ final class SlotMachine extends CasinoTable {
     @Override
     protected Component statusText() {
         Seat seat = seats[0];
-        Component head = seat == null
-                ? Component.text("スロット", NamedTextColor.GOLD).append(Component.newline())
-                .append(Component.text("椅子をクリックして座る", NamedTextColor.GRAY))
-                : Component.text(seat.name + "（1 回 " + bet + " 枚）", NamedTextColor.AQUA);
-        return head.append(limitsLine("1 回 " + String.join(" / ", settings.bets().stream().map(String::valueOf).toList()) + " 枚"));
+        if (seat != null) {
+            return Component.text(seat.name, NamedTextColor.AQUA).append(Component.newline())
+                    .append(Component.text("1 回 " + bet + " 枚", NamedTextColor.GRAY));
+        }
+        return Component.text("スロット", NamedTextColor.GOLD).append(Component.newline())
+                .append(Component.text("椅子で座る", NamedTextColor.GRAY)).append(Component.newline())
+                .append(Component.text("1 回 " + String.join("・", settings.bets().stream().map(String::valueOf).toList()) + " 枚",
+                        NamedTextColor.GRAY));
     }
 }
