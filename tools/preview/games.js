@@ -335,3 +335,145 @@ function bigWheelScenario() {
 }
 
 addGame("bigwheel", "ビッグホイール", { make: bigWheelScenario, length: 400 });
+
+// ================================================================ 大小（シックボー）
+
+const SB = {
+  shape: { model: "table/sicbo", seatRise: RAISED_SEAT, dealer: [0, 0, -1.55], seats: [0, 1, 2, 3, 4].map((i) => [1.6 - 0.8 * i, 0, 1.55]) },
+  TRAY_SCALE: 0.56, DIE_SCALE: 0.13,
+  tray: [0.75, TOP + 0.28, -0.68],
+  dice: [0.75, TOP + 0.56 / 16 + 0.065, -0.68],
+  resultLabel: [0.05, TOP + 0.45, -0.68],
+  croupier: [-1.5, TOP + 0.001, -0.72],
+  REST: [[-0.1, 0.06], [0.1, 0.07], [0, -0.1]],
+  spot(id) {
+    const front = { small: 0, odd: 1, even: 2, big: 3 };
+    if (id in front) return [-1.44 + 0.96 * front[id], TOP + 0.001, 0.73];
+    if (id === "any_triple") return [-1.74 + 0.29 * 6, TOP + 0.001, -0.26];
+    const n = Number(id.slice(id.lastIndexOf("_") + 1));
+    if (id.startsWith("total_")) return [-1.783 + 0.2743 * (n - 4), TOP + 0.001, 0.06];
+    if (id.startsWith("single_")) return [-1.6 + 0.64 * (n - 1), TOP + 0.001, 0.38];
+    return [-1.74 + 0.29 * (id.startsWith("double_") ? n - 1 : n + 6), TOP + 0.001, -0.26];
+  },
+};
+
+function sbQuat(axis, rad) { return new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(...axis), rad); }
+/** SicBoTable.faceUp と同じ。 */
+function sbFaceUp(face) {
+  const q = Math.PI / 2;
+  return {
+    1: new THREE.Quaternion(), 2: sbQuat([1, 0, 0], q), 3: sbQuat([0, 0, 1], q),
+    4: sbQuat([0, 0, 1], -q), 5: sbQuat([1, 0, 0], -q), 6: sbQuat([1, 0, 0], 2 * q),
+  }[face];
+}
+function sbPayout(dice, bet, amount) {
+  const total = dice[0] + dice[1] + dice[2];
+  const triple = dice[0] === dice[1] && dice[1] === dice[2];
+  const count = (n) => dice.filter((d) => d === n).length;
+  const pays = { 4: 60, 5: 30, 6: 17, 7: 12, 8: 8, 9: 6, 10: 6, 11: 6, 12: 6, 13: 8, 14: 12, 15: 17, 16: 30, 17: 60 };
+  if (bet === "small") return !triple && total <= 10 ? amount * 2 : 0;
+  if (bet === "big") return !triple && total >= 11 ? amount * 2 : 0;
+  if (bet === "odd") return !triple && total % 2 === 1 ? amount * 2 : 0;
+  if (bet === "even") return !triple && total % 2 === 0 ? amount * 2 : 0;
+  if (bet === "any_triple") return triple ? amount * 31 : 0;
+  const n = Number(bet.slice(bet.lastIndexOf("_") + 1));
+  if (bet.startsWith("total_")) return total === n ? amount * (pays[n] + 1) : 0;
+  if (bet.startsWith("triple_")) return count(n) === 3 ? amount * 181 : 0;
+  if (bet.startsWith("double_")) return count(n) >= 2 ? amount * 11 : 0;
+  return count(n) > 0 ? amount * (1 + count(n)) : 0;
+}
+function sbName(id) {
+  const fixed = { small: "小", big: "大", odd: "奇数", even: "偶数", any_triple: "ゾロ目どれでも" };
+  if (id in fixed) return fixed[id];
+  const n = id.slice(id.lastIndexOf("_") + 1);
+  return { total: "合計 ", single: "目 ", double: "ダブル ", triple: "ゾロ目 " }[id.slice(0, id.lastIndexOf("_"))] + n;
+}
+
+function sicBoScenario() {
+  const t = new Table(SB.shape);
+  t.spawn();
+  const YOU = 2;
+  t.sit(0, "Bot1", 1000);
+  t.sit(YOU, "あなた", 1000, true);
+  t.sit(3, "Bot4", 1000);
+  const DICE = [2, 5, 5];
+  const random = seeded(4242);
+  const rnd = () => random.nextInt(10000) / 10000;
+  const SHAKE_TICKS = 42, SHAKE_STEP = 3, SETTLE = 6, LIFT_AT = 42 + 6 + 10, LIFT_TICKS = 14;
+  const tr = (t3, q, s) => ({ t: t3, q, s: [s, s, s] });
+  const still = (d) => { d.tr = { from: d.tr.to, to: d.tr.to, start: 0, dur: 0 }; };
+  const base = new ItemDisplay(at(SB.tray), "sicbo/base");
+  base.tr = { from: tr([0, 0, 0], new THREE.Quaternion(), SB.TRAY_SCALE), to: tr([0, 0, 0], new THREE.Quaternion(), SB.TRAY_SCALE), start: 0, dur: 0 };
+  const dome = new ItemDisplay(at(SB.tray), "sicbo/dome");
+  dome.tr = { ...base.tr };
+  const dieAt = (i, face, yaw) => tr([SB.REST[i][0], 0, SB.REST[i][1]], sbQuat([0, 1, 0], yaw).multiply(sbFaceUp(face)), SB.DIE_SCALE);
+  const dice = [4, 5, 6].map((face, i) => {
+    const d = new ItemDisplay(at(SB.dice), "sicbo/die");
+    d.tr = { from: dieAt(i, face, 0.4 * i), to: dieAt(i, face, 0.4 * i), start: 0, dur: 0 };
+    return d;
+  });
+  const move = (e, to, ticks) => { e.interpolationDuration = ticks; e.setTransformation(to); };
+  let resultLabel = null;
+  const total = DICE[0] + DICE[1] + DICE[2];
+  const resultText = () => [DICE.join("・") + " 合計 " + total + " " + (total <= 10 ? "小" : "大") + (total % 2 ? "・奇数" : "・偶数"), total <= 10 ? C.AQUA : C.RED];
+
+  // SicBoTable.play と同じ順番・間合い
+  function play() {
+    resultLabel = t.label(SB.resultLabel, 0.8);
+    t.swing();
+    t.broadcast([["サイコロを振ります", C.GRAY]]);
+    for (let tt = 0; tt <= SHAKE_TICKS; tt += SHAKE_STEP) {
+      const hop = [0, 1, 2].map(() => {
+        const e = new THREE.Euler(rnd() * 6.3, rnd() * 6.3, rnd() * 6.3, "XYZ");
+        return tr([(rnd() - 0.5) * 0.3, rnd() * 0.2, (rnd() - 0.5) * 0.3], new THREE.Quaternion().setFromEuler(e), SB.DIE_SCALE);
+      });
+      const shake = tr([(rnd() - 0.5) * 0.02, 0, (rnd() - 0.5) * 0.02], new THREE.Quaternion(), SB.TRAY_SCALE);
+      sim.later(Math.max(1, tt), () => { dice.forEach((d, i) => move(d, hop[i], SHAKE_STEP)); move(dome, shake, SHAKE_STEP); });
+    }
+    const rest = DICE.map((face, i) => dieAt(i, face, (rnd() - 0.5) * 1.2));
+    sim.later(SHAKE_TICKS + SHAKE_STEP, () => {
+      dice.forEach((d, i) => move(d, rest[i], SETTLE));
+      move(dome, tr([0, 0, 0], new THREE.Quaternion(), SB.TRAY_SCALE), SETTLE);
+    });
+    sim.later(LIFT_AT, () => move(dome, tr([0, 0.5, -0.35], new THREE.Quaternion(), SB.TRAY_SCALE), LIFT_TICKS));
+    const shown = LIFT_AT + LIFT_TICKS;
+    sim.later(shown, () => { resultLabel.text([[resultText()]]); sparkle(at(SB.resultLabel), 0xffffff); });
+    return shown + 2;
+  }
+
+  const flow = spotFlow({
+    table: t, you: YOU, bettingSeconds: 6, minBet: 10, maxBet: 500, maxTotal: 2000,
+    chipSpot: (spot, seat) => {
+      const c = SB.spot(spot);
+      const d = (seat - 2) * 0.008;
+      return [c[0] + d, c[1] + seat * 0.0005, c[2] + d * 0.5];
+    },
+    croupier: SB.croupier, spotName: sbName,
+    play, payout: (spot, amount) => sbPayout(DICE, spot, amount), resultText,
+    clearRound() {
+      move(dome, tr([0, 0, 0], new THREE.Quaternion(), SB.TRAY_SCALE), 10);
+      if (resultLabel) resultLabel.remove();
+    },
+  });
+  sim.later(14, () => flow.place(0, "small", 50));
+  sim.later(18, () => { flow.place(3, "total_12", 10); flow.place(3, "triple_6", 10); });
+  sim.later(30, () => flow.place(YOU, "big", 100));
+  sim.later(42, () => flow.place(YOU, "single_5", 20));
+  return {
+    you: YOU, table: t,
+    camera(kind) {
+      if (kind === "seat") {
+        camera.position.set(t.shape.seats[YOU][0], 1.48 + RAISED_SEAT, 1.5);
+        controls.target.set(0.4, 0.95, -0.6);
+      } else if (kind === "high") {
+        camera.position.set(0.3, 3.4, 3.2);
+        controls.target.set(0.1, 0.9, -0.1);
+      } else {
+        camera.position.set(0.75, 1.6, -0.35);
+        controls.target.set(0.75, TOP, -0.68);
+      }
+    },
+  };
+}
+
+addGame("sicbo", "大小", { make: sicBoScenario, length: 300 });

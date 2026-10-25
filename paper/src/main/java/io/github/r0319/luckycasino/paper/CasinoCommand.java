@@ -160,7 +160,7 @@ final class CasinoCommand implements BasicCommand {
             case ROULETTE -> "/casino bet|leave|rules";
             case POKER -> "/casino fold|check|call|raise [合計]|allin|leave|rules";
             case SLOT -> "/casino spin|bet|leave|rules";
-            case BACCARAT, BIGWHEEL -> "/casino bet|leave|rules";
+            case BACCARAT, BIGWHEEL, SICBO -> "/casino bet|leave|rules";
         };
         player.sendMessage(Component.text("使い方: " + text, NamedTextColor.GRAY));
     }

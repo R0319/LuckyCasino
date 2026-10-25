@@ -84,6 +84,15 @@ bigwheel:
   buy-ins: [100, 500, 1000, 5000]
   standing-range: 8
 
+# 大小（シックボー、サイコロ 3 個）。大・小・合計・目・ゾロ目などに賭ける
+sicbo:
+  min-bet: 10
+  max-bet: 500
+  max-total: 2000
+  betting-seconds: 15
+  buy-ins: [100, 500, 1000, 5000]
+  standing-range: 8
+
 # テーブルのクラフトレシピ。材料は素材名か、#planks のようなタグ名。使わないなら enabled: false
 recipes:
   blackjack:
@@ -152,6 +161,18 @@ recipes:
       O: orange_carpet
       P: '#planks'
       C: clock
+  sicbo:
+    enabled: true
+    shape:
+      - BGR
+      - PSP
+      - 'P P'
+    ingredients:
+      B: blue_carpet
+      G: glass
+      R: red_carpet
+      P: '#planks'
+      S: bone_block
 
 # Geyser 拡張（統合版にカードを見せる）との通信
 bridge:

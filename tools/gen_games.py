@@ -209,6 +209,148 @@ def bigwheel_felt():
     return img
 
 
+# ---- 大小（paper の SicBoLayout・SicBoTable と合わせる） ----
+SB_FRONT_Z, SB_SINGLE_Z, SB_TOTAL_Z, SB_COMBO_Z = 0.73, 0.38, 0.06, -0.26
+SB_TRAY = (0.75, -0.68)
+
+
+def sb_front_x(i):
+    """手前の段: small, odd, even, big。"""
+    return -1.44 + 0.96 * i
+
+
+def sb_single_x(i):
+    """目 i + 1 に賭けるマス。"""
+    return -1.6 + 0.64 * i
+
+
+def sb_total_x(i):
+    """合計 i + 4。"""
+    return -1.783 + 0.2743 * i
+
+
+def sb_combo_x(i):
+    """0〜5 はダブル 1〜6、6 はゾロ目どれでも、7〜12 はゾロ目 1〜6。"""
+    return -1.74 + 0.29 * i
+
+
+PIPS = {1: [(1, 1)], 2: [(0, 0), (2, 2)], 3: [(0, 0), (1, 1), (2, 2)], 4: [(0, 0), (2, 0), (0, 2), (2, 2)],
+        5: [(0, 0), (2, 0), (1, 1), (0, 2), (2, 2)], 6: [(0, 0), (2, 0), (0, 1), (2, 1), (0, 2), (2, 2)]}
+DIE_WHITE = (244, 242, 236, 255)
+PIP_BLACK = (28, 28, 34, 255)
+PIP_RED = (200, 30, 40, 255)
+
+
+def draw_die(d, x0, y0, size, face, pip):
+    """size x size の目を (x0, y0) に描く（pip は目の 1 辺の px）。"""
+    d.rectangle([x0, y0, x0 + size - 1, y0 + size - 1], fill=DIE_WHITE)
+    color = PIP_RED if face in (1, 4) else PIP_BLACK
+    for cx, cy in PIPS[face]:
+        px = x0 + 1 + pip // 2 + round(cx * (size - 2 - 2 * pip) / 2)
+        py = y0 + 1 + pip // 2 + round(cy * (size - 2 - 2 * pip) / 2)
+        d.rectangle([px, py, px + pip - 1, py + pip - 1], fill=color)
+
+
+def die_texture(face):
+    img = gt.Image.new("RGBA", (16, 16), DIE_WHITE)
+    d = ImageDraw.Draw(img)
+    d.rectangle([0, 0, 15, 15], outline=(210, 206, 196, 255))
+    color = PIP_RED if face in (1, 4) else PIP_BLACK
+    for cx, cy in PIPS[face]:
+        x, y = 3 + cx * 4, 3 + cy * 4
+        if face == 1:
+            d.rectangle([6, 6, 9, 9], fill=color)
+        else:
+            d.rectangle([x, y, x + 1, y + 1], fill=color)
+    return img
+
+
+def die_model():
+    t = lambda n: {"texture": f"#d{n}", "uv": [0, 0, 16, 16]}
+    # ItemDisplay は Y 軸まわりに 180 度回して描くので、南に 2・北に 5・西に 3・東に 4 を置く
+    # （回したあとの向き: 2 が北、5 が南、3 が東、4 が西。paper の SicBoTable.faceUp と合わせる）
+    return {
+        "textures": {**{f"d{n}": f"luckycasino:block/die_{n}" for n in range(1, 7)}, "particle": "luckycasino:block/die_1"},
+        "elements": [{"from": [0, 0, 0], "to": [16, 16, 16],
+                      "faces": {"up": t(1), "down": t(6), "south": t(2), "north": t(5), "west": t(3), "east": t(4)}}],
+    }
+
+
+def glass_texture():
+    """ふた（ガラスの箱）。半透明はアイテムの描き方次第で不透明になるので、縁と光の筋だけ描いて中は透明にする。"""
+    img = gt.Image.new("RGBA", (16, 16), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    d.rectangle([0, 0, 15, 15], outline=(220, 236, 244, 255))
+    for i in range(4):
+        img.putpixel((3 + i, 9 - i * 2), (255, 255, 255, 255))
+        img.putpixel((3 + i, 10 - i * 2), (255, 255, 255, 255))
+    img.putpixel((12, 3), (255, 255, 255, 255))
+    return img
+
+
+def sicbo_base_model():
+    wood, gold = "#wood", "#gold"
+
+    def el(frm, to, t):
+        return {"from": frm, "to": to, "faces": {f: {"texture": t, "uv": [0, 0, 16, 16]}
+                                                 for f in ("north", "south", "east", "west", "up", "down")}}
+    return {
+        "textures": {"wood": "minecraft:block/dark_oak_planks", "gold": "minecraft:block/gold_block",
+                     "particle": "minecraft:block/dark_oak_planks"},
+        "elements": [el([0.5, 0, 0.5], [15.5, 0.5, 15.5], gold), el([1, 0.5, 1], [15, 1, 15], wood)],
+    }
+
+
+def sicbo_dome_model():
+    g = {"texture": "#glass", "uv": [0, 0, 16, 16]}
+    return {
+        "textures": {"glass": "luckycasino:block/sicbo_glass", "particle": "luckycasino:block/sicbo_glass"},
+        "elements": [{"from": [1.5, 1, 1.5], "to": [14.5, 12, 14.5],
+                      "faces": {f: g for f in ("north", "south", "east", "west", "up")}}],
+    }
+
+
+def sicbo_felt():
+    img = felt_base(192, 96)
+    d = ImageDraw.Draw(img)
+    d.rectangle([2, 2, 189, 93], outline=GOLD)
+    text(img, "SIC BO", -0.75, -0.8, GOLD)
+    text(img, "DAI SIU", -0.75, -0.64, GOLD)
+    # サイコロの皿
+    cx, cy, r = u(SB_TRAY[0]), v(SB_TRAY[1]), 13
+    d.ellipse([cx - r, cy - r, cx + r, cy + r], outline=GOLD, fill=tint(GOLD, 0.2))
+    # 手前: SMALL ODD EVEN BIG
+    for i, (name, sub, color) in enumerate((("SMALL", "4-10", BLUE), ("ODD", "", None), ("EVEN", "", None), ("BIG", "11-17", RED))):
+        x = sb_front_x(i)
+        box(d, x, SB_FRONT_Z, 0.9, 0.3, GOLD, tint(color) if color else None)
+        text(img, (name + " " + sub).strip(), x, SB_FRONT_Z - 0.06, WHITE)
+        text(img, "1:1", x, SB_FRONT_Z + 0.08, GOLD)
+    # 1 つの目（出た個数ぶん配当）
+    for i in range(6):
+        x = sb_single_x(i)
+        box(d, x, SB_SINGLE_Z, 0.6, 0.28, GOLD)
+        draw_die(d, u(x) - 6, v(SB_SINGLE_Z) - 6, 12, i + 1, 2)
+    # 合計
+    pays = {4: 60, 5: 30, 6: 17, 7: 12, 8: 8, 9: 6, 10: 6, 11: 6, 12: 6, 13: 8, 14: 12, 15: 17, 16: 30, 17: 60}
+    for i in range(14):
+        x = sb_total_x(i)
+        box(d, x, SB_TOTAL_Z, 0.26, 0.28, GOLD)
+        gt.text(img, str(i + 4), u(x) + 1, v(SB_TOTAL_Z) - 5, WHITE)
+        gt.text(img, str(pays[i + 4]), u(x) + 1, v(SB_TOTAL_Z) + 1, GOLD)
+    # ダブル・ゾロ目
+    for i in range(13):
+        x = sb_combo_x(i)
+        if i < 6:
+            label, color = str(i + 1) * 2, None
+        elif i == 6:
+            label, color = "ANY", GOLD
+        else:
+            label, color = str(i - 6) * 3, RED
+        box(d, x, SB_COMBO_Z, 0.27, 0.28, GOLD, tint(color, 0.3) if color else None)
+        gt.text(img, label, u(x) + 1, v(SB_COMBO_Z) - 2, WHITE)
+    return img
+
+
 def item(path):
     write_json(JAVA / "items" / f"{path}.json", {"model": {"type": "minecraft:model", "model": f"luckycasino:item/{path}"}})
 
@@ -225,6 +367,17 @@ def main():
     write_json(JAVA / "models" / "item" / "bigwheel" / "wheel.json", bigwheel_model())
     write_json(JAVA / "models" / "item" / "bigwheel" / "stand.json", bigwheel_stand_model())
     for path in ("table/bigwheel", "bigwheel/wheel", "bigwheel/stand"):
+        item(path)
+
+    for n in range(1, 7):
+        die_texture(n).save(tex / f"die_{n}.png")
+    glass_texture().save(tex / "sicbo_glass.png")
+    for_item_display(sicbo_felt(), 96).save(tex / "sicbo_felt.png")
+    write_json(JAVA / "models" / "item" / "table" / "sicbo.json", table_model("sicbo_felt"))
+    write_json(JAVA / "models" / "item" / "sicbo" / "die.json", die_model())
+    write_json(JAVA / "models" / "item" / "sicbo" / "base.json", sicbo_base_model())
+    write_json(JAVA / "models" / "item" / "sicbo" / "dome.json", sicbo_dome_model())
+    for path in ("table/sicbo", "sicbo/die", "sicbo/base", "sicbo/dome"):
         item(path)
 
 
