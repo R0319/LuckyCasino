@@ -27,21 +27,21 @@ final class Achievements implements Listener {
 
     /** 実績の一覧。parent が null のものがタブの根。 */
     enum Achievement {
-        FIRST_PLAY("first_play", null, "chip/c100_5", "カジノデビュー", "初めてカジノで勝負をする", Frame.TASK),
+        FIRST_PLAY("first_play", null, "achievement/first_play", "カジノデビュー", "初めてカジノで勝負をする", Frame.TASK),
 
-        BLACKJACK("blackjack/natural", FIRST_PLAY, "card/spade_a", "ブラックジャック！", "最初の 2 枚で 21 を作って勝つ", Frame.TASK),
-        TRIPLE_SEVEN_21("blackjack/triple_seven", BLACKJACK, "card/heart_7", "セブン・セブン・セブン", "7 を 3 枚だけで 21 を作る", Frame.CHALLENGE),
-        FIVE_CARD_21("blackjack/five_card", BLACKJACK, "card/club_5", "ちりも積もれば 21", "5 枚以上のカードで 21 を作って勝つ", Frame.GOAL),
+        BLACKJACK("blackjack/natural", FIRST_PLAY, "achievement/blackjack", "ブラックジャック！", "最初の 2 枚で 21 を作って勝つ", Frame.TASK),
+        TRIPLE_SEVEN_21("blackjack/triple_seven", BLACKJACK, "achievement/triple_seven", "セブン・セブン・セブン", "7 を 3 枚だけで 21 を作る", Frame.CHALLENGE),
+        FIVE_CARD_21("blackjack/five_card", BLACKJACK, "achievement/five_card", "ちりも積もれば 21", "5 枚以上のカードで 21 を作って勝つ", Frame.GOAL),
 
-        STRAIGHT_UP("roulette/straight_up", FIRST_PLAY, "roulette/ball", "狙い撃ち", "ルーレットで数字 1 つだけの賭け（ストレートアップ）を当てる", Frame.TASK),
-        GREEN_ZERO("roulette/zero", STRAIGHT_UP, "roulette/wheel", "緑の奇跡", "ルーレットで 0 に賭けて当てる", Frame.GOAL),
+        STRAIGHT_UP("roulette/straight_up", FIRST_PLAY, "achievement/straight_up", "狙い撃ち", "ルーレットで数字 1 つだけの賭け（ストレートアップ）を当てる", Frame.TASK),
+        GREEN_ZERO("roulette/zero", STRAIGHT_UP, "achievement/green_zero", "緑の奇跡", "ルーレットで 0 に賭けて当てる", Frame.GOAL),
 
-        FOUR_OF_A_KIND("poker/four_of_a_kind", FIRST_PLAY, "card/diamond_k", "フォーカード", "ポーカーのショーダウンでフォーカードを見せる", Frame.GOAL),
-        STRAIGHT_FLUSH("poker/straight_flush", FOUR_OF_A_KIND, "card/club_9", "ストレートフラッシュ", "ポーカーのショーダウンでストレートフラッシュを見せる", Frame.CHALLENGE),
-        ROYAL_FLUSH("poker/royal_flush", STRAIGHT_FLUSH, "card/heart_a", "ロイヤルストレートフラッシュ", "ポーカーのショーダウンでロイヤルストレートフラッシュを見せる", Frame.CHALLENGE),
+        FOUR_OF_A_KIND("poker/four_of_a_kind", FIRST_PLAY, "achievement/four_of_a_kind", "フォーカード", "ポーカーのショーダウンでフォーカードを見せる", Frame.GOAL),
+        STRAIGHT_FLUSH("poker/straight_flush", FOUR_OF_A_KIND, "achievement/straight_flush", "ストレートフラッシュ", "ポーカーのショーダウンでストレートフラッシュを見せる", Frame.CHALLENGE),
+        ROYAL_FLUSH("poker/royal_flush", STRAIGHT_FLUSH, "achievement/royal_flush", "ロイヤルストレートフラッシュ", "ポーカーのショーダウンでロイヤルストレートフラッシュを見せる", Frame.CHALLENGE),
 
-        SLOT_BARS("slot/bars", FIRST_PLAY, "slot/reel2", "BAR そろい", "スロットで BAR を 3 つそろえる", Frame.GOAL),
-        SLOT_SEVENS("slot/sevens", SLOT_BARS, "slot/reel1", "ラッキー 777", "スロットで 7 を 3 つそろえる", Frame.CHALLENGE);
+        SLOT_BARS("slot/bars", FIRST_PLAY, "achievement/slot_bars", "BAR そろい", "スロットで BAR を 3 つそろえる", Frame.GOAL),
+        SLOT_SEVENS("slot/sevens", SLOT_BARS, "achievement/slot_sevens", "ラッキー 777", "スロットで 7 を 3 つそろえる", Frame.CHALLENGE);
 
         final String path;
         final Achievement parent;
