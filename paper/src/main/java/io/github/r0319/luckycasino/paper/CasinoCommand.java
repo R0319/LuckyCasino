@@ -23,7 +23,7 @@ import java.util.Locale;
  * /casino leave … 席を立つ
  * /casino rules [種類] … ルールブック
  * /casino give &lt;種類&gt; [プレイヤー] … テーブルアイテムを渡す（管理者）
- * /casino remove … 近くのテーブルを片付ける（管理者、座っている人は精算）
+ * /casino remove [force] … 近くのテーブルを片付ける（管理者。座っている人がいるときは force を付けたときだけ、精算してから）
  * /casino status … 通貨と Geyser 拡張との通信状態（管理者）
  * /casino selftest &lt;種類&gt; [回数] … ボットだけで卓を回して確かめる（管理者、コンソールからも可）
  */
@@ -146,6 +146,10 @@ final class CasinoCommand implements BasicCommand {
                 CasinoTable table = plugin.tables().nearest(player.getLocation(), 6);
                 if (table == null) {
                     player.sendMessage(Component.text("6 ブロック以内にテーブルがありません", NamedTextColor.RED));
+                    return;
+                }
+                if (!table.empty() && !(args.length > 1 && args[1].equalsIgnoreCase("force"))) {
+                    player.sendMessage(Component.text("座っている人がいるので片付けません。精算して片付けるなら /casino remove force", NamedTextColor.RED));
                     return;
                 }
                 plugin.tables().remove(table, false);
