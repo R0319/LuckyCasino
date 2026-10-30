@@ -24,7 +24,7 @@ jobs:
       - name: 版番号を確かめる
         run: grep -q "version = \"${{ inputs.version }}\"" build.gradle.kts
       - name: ビルドとテスト
-        run: ./gradlew build --no-daemon
+        run: bash ./gradlew build --no-daemon
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ inputs.version }}
