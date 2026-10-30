@@ -116,9 +116,9 @@ abstract class CasinoTable {
     /** 1 秒ごと。 */
     protected abstract void tickSecond();
 
-    /** 今スニークしても精算せず、席を残したまま立って歩いてよいか（ルーレットで賭けたあとなど）。 */
+    /** 今スニークしても精算せず、席を残したまま立って歩いてよいか。どの卓もいつでも立って歩ける。 */
     protected boolean canStand(int seat) {
-        return false;
+        return true;
     }
 
     /** 立って歩いている人がこれより卓から離れたら精算する（ブロック）。 */
@@ -463,7 +463,7 @@ abstract class CasinoTable {
         mounts[index].addPassenger(player);
         player.sendMessage(Component.text(bank.practice()
                 ? "練習用のチップ " + chips + " 枚を受け取りました。お金は使いません。"
-                : "チップ " + chips + " 枚に両替しました。席を立つと（スニーク）お金に戻ります。", NamedTextColor.GREEN));
+                : "チップ " + chips + " 枚に両替しました。メニューの「席を立つ」か /casino leave でお金に戻ります。", NamedTextColor.GREEN));
         playSound(Sound.BLOCK_WOODEN_BUTTON_CLICK_ON, 1f);
         onSeated(index, player);
         updateStatus();
@@ -493,7 +493,7 @@ abstract class CasinoTable {
         }
         seat.standing = true;
         send(seat, Component.text("席とチップはそのままです。卓から " + (int) standingRange()
-                + " ブロック以内なら自由に歩けます。テーブルのクリックで賭けのメニュー、自分の椅子のクリックで座り直し。離れすぎると精算します", NamedTextColor.YELLOW));
+                + " ブロック以内なら自由に歩けます。テーブルのクリックでメニュー、自分の椅子のクリックで座り直し。精算はメニューの「席を立つ」か /casino leave（離れすぎても精算します）", NamedTextColor.YELLOW));
         updateStatus();
     }
 

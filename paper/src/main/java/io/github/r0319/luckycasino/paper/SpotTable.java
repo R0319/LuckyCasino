@@ -206,11 +206,6 @@ abstract class SpotTable extends CasinoTable {
         return seat.atRisk == 0;
     }
 
-    @Override
-    protected boolean canStand(int seat) {
-        return state == State.PLAYING || state == State.PAYING || (canBet() && total(seat) > 0);
-    }
-
     /** 賭けを置く。置けなければ理由を返す（null なら成功）。 */
     String place(int index, String spotId, long amount) {
         Seat seat = seats[index];

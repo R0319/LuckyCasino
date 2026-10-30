@@ -78,10 +78,14 @@ final class PictureRules {
                 row(pic(Pic.CHAIR), " 椅子をクリックで座る"),
                 row(pic(Pic.ARROW), pic(Pic.CHIP), " チップに両替"),
                 BLANK,
-                row(pic(Pic.SNEAK), " スニークで席を立つ"),
-                row(pic(Pic.ARROW), pic(Pic.COIN), " 残りはお金に戻る"),
+                row(pic(Pic.SNEAK), " スニークで立って"),
+                row("   歩ける（8 ブロック）"),
+                row(pic(Pic.CHAIR), " 椅子のクリックで戻る"),
                 BLANK,
-                note("勝負の途中で立ったときは、勝負が終わってから精算します（手番は自動で進みます）。"));
+                row(pic(Pic.COIN), " メニューの「席を立つ」"),
+                row("   でお金に戻る"),
+                BLANK,
+                note("勝負の途中なら、終わってから精算します"));
     }
 
     /** 賭け場所を選ぶゲームの共通のページ。 */
@@ -92,8 +96,8 @@ final class PictureRules {
                 row(pic(Pic.CHIP), " 何か所にも置ける"),
                 row(pic(Pic.CLOCK), " 締め切りで勝負"),
                 BLANK,
-                row(pic(Pic.SNEAK), " 賭けたあとは立って"),
-                row("   歩いても精算しない"),
+                row(pic(Pic.SNEAK), " 立って歩いても"),
+                row("   精算しない"),
                 row(pic(Pic.CHAIR), " 椅子のクリックで"),
                 row("   座り直す"),
                 BLANK,
@@ -152,8 +156,8 @@ final class PictureRules {
                         row(pic(Pic.CHIP), " 何か所にも置ける"),
                         row(pic(Pic.CLOCK), " 締め切りで回る"),
                         BLANK,
-                        row(pic(Pic.SNEAK), " 賭けたあとは立って"),
-                        row("   ホイールを見に行ける"),
+                        row(pic(Pic.SNEAK), " 立ってホイールを"),
+                        row("   見に行ける"),
                         note("8 ブロック以内なら歩ける"),
                         note("椅子のクリックで座り直す")),
                 page("配当 1（賭け金は別）",
