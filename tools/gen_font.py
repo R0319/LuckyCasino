@@ -5,12 +5,13 @@
 文字の割り当て（私用領域）は paper の Glyphs と同じにすること。
 
 - luckycasino:icons … ルールブックの絵。スロットの絵柄 6 つ（U+E000〜）と、小さなトランプ 52 枚（U+E100〜、
-  番号 = スート × 13 + ランク、並びは gen_cards.py の SUITS・RANKS と同じ）
+  番号 = スート × 13 + ランク、並びは gen_cards.py の SUITS・RANKS と同じ）と、ほかのゲームの絵（gen_rule_art.py）
 - luckycasino:menu … チェストのメニューの背景（3 段 U+E200、6 段 U+E201）と、文字送りを戻す空白（U+F001・U+F002）。
   タイトルの先頭で左へ 8 戻して背景を描き、また戻してからタイトルの文字を書く
 """
 from PIL import Image, ImageDraw
 
+import gen_rule_art
 from gen_cards import FONT, OUTLINE, RANKS, SMALL, SUITS, plot, rank_bitmap
 from gen_slot import CELL_H, CELL_W, symbol_cell, SYMBOLS
 from gen_table import GOLD, JAVA, write_json
@@ -133,6 +134,7 @@ def main():
     sheet.save(TEX / "cards.png")
     icons.append({"type": "bitmap", "file": "luckycasino:font/cards.png", "ascent": 8, "height": CARD_H,
                   "chars": ["".join(char(ICON_CARD + s * 13 + r) for r in range(13)) for s in range(4)]})
+    icons += gen_rule_art.providers(TEX)
     write_json(JAVA / "font" / "icons.json", {"providers": icons})
 
     menu_background(3).save(TEX / "menu_27.png")

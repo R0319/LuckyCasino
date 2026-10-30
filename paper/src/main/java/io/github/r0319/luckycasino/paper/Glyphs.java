@@ -1,5 +1,6 @@
 package io.github.r0319.luckycasino.paper;
 
+import io.github.r0319.luckycasino.bigwheel.BigWheel;
 import io.github.r0319.luckycasino.card.Card;
 import io.github.r0319.luckycasino.slot.Symbol;
 import net.kyori.adventure.key.Key;
@@ -63,6 +64,39 @@ final class Glyphs {
 
     static Component card(Card card) {
         return icon((char) (ICON_CARD + card.code() - 1));
+    }
+
+    /** ルールブックの小さな絵（tools/gen_rule_art.py）。 */
+    enum Pic {
+        BOWL(0xE016), R_STRAIGHT(0xE040), R_SPLIT(0xE041), R_STREET(0xE042), R_CORNER(0xE043), R_LINE(0xE044),
+        R_DOZEN(0xE045), R_COLUMN(0xE046), R_RED(0xE047), R_ZERO(0xE048), PLAYER(0xE050), BANKER(0xE051), TIE(0xE052),
+        HIGH(0xE058), LOW(0xE059), SAME(0xE05A), CHAIR(0xE060), CHIP(0xE061), COIN(0xE062), SNEAK(0xE063),
+        CLICK(0xE064), CLOCK(0xE065), HIT(0xE066), STAND(0xE067), DOUBLE(0xE068), SPLIT(0xE069), ARROW(0xE06A),
+        CARD_BACK(0xE140);
+
+        private final char code;
+
+        Pic(int code) {
+            this.code = (char) code;
+        }
+    }
+
+    static Component pic(Pic pic) {
+        return icon(pic.code);
+    }
+
+    /** サイコロの目（1〜6）。 */
+    static Component die(int face) {
+        return icon((char) (0xE010 + face - 1));
+    }
+
+    static Component wheel(BigWheel.Segment segment) {
+        return icon((char) (0xE020 + segment.ordinal()));
+    }
+
+    /** 競馬の枠（0〜5）。 */
+    static Component silk(int horse) {
+        return icon((char) (0xE030 + horse));
     }
 
     private static Component icon(char c) {

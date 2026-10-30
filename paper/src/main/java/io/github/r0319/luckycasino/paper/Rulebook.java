@@ -1,8 +1,5 @@
 package io.github.r0319.luckycasino.paper;
 
-import io.github.r0319.luckycasino.card.Card;
-import io.github.r0319.luckycasino.card.Rank;
-import io.github.r0319.luckycasino.card.Suit;
 import io.github.r0319.luckycasino.slot.Symbol;
 import net.kyori.adventure.inventory.Book;
 import net.kyori.adventure.text.Component;
@@ -20,20 +17,26 @@ final class Rulebook {
     }
 
     static void open(Player player, GameType type) {
-        boolean pictures = Glyphs.enabled(player);
-        List<Component> pages = new ArrayList<>(common());
+        player.openBook(Book.book(Component.text(type.displayName() + "のルール"), Component.text("LuckyCasino"),
+                pages(type, Glyphs.enabled(player))));
+    }
+
+    /** ルールブックのページ。pictures はリソースパックの絵を出せる人（PictureRules）。 */
+    static List<Component> pages(GameType type, boolean pictures) {
+        List<Component> pages = new ArrayList<>();
+        pages.add(pictures ? PictureRules.seats() : common());
         pages.addAll(switch (type) {
-            case BLACKJACK -> blackjack();
-            case ROULETTE -> roulette();
+            case BLACKJACK -> pictures ? PictureRules.blackjack() : blackjack();
+            case ROULETTE -> pictures ? PictureRules.roulette() : roulette();
             case POKER -> poker(pictures);
             case SLOT -> slot(pictures);
-            case BACCARAT -> GameRules.baccarat();
-            case BIGWHEEL -> GameRules.bigWheel();
-            case CHINCHIRO -> GameRules.chinchiro();
-            case HIGHLOW -> GameRules.highLow();
-            case HORSERACE -> GameRules.horseRace();
+            case BACCARAT -> pictures ? PictureRules.baccarat() : GameRules.baccarat();
+            case BIGWHEEL -> pictures ? PictureRules.bigWheel() : GameRules.bigWheel();
+            case CHINCHIRO -> pictures ? PictureRules.chinchiro() : GameRules.chinchiro();
+            case HIGHLOW -> pictures ? PictureRules.highLow() : GameRules.highLow();
+            case HORSERACE -> pictures ? PictureRules.horseRace() : GameRules.horseRace();
         });
-        player.openBook(Book.book(Component.text(type.displayName() + "のルール"), Component.text("LuckyCasino"), pages));
+        return pages;
     }
 
     static Component page(String title, String... lines) {
@@ -44,13 +47,13 @@ final class Rulebook {
         return page;
     }
 
-    private static List<Component> common() {
-        return List.of(page("席とチップ",
+    private static Component common() {
+        return page("席とチップ",
                 "椅子をクリックして座り、チップに両替します。",
                 "",
                 "スニークで席を立つと、残りのチップはお金に戻ります。",
                 "",
-                "勝負の途中で立った場合は、その勝負が終わってから精算します（手番は自動で進みます）。"));
+                "勝負の途中で立った場合は、その勝負が終わってから精算します（手番は自動で進みます）。");
     }
 
     private static List<Component> blackjack() {
@@ -142,7 +145,21 @@ final class Rulebook {
                         "テキサスホールデム（ノーリミット）。ディーラーは配るだけで、チップはプレイヤーの間で動きます。",
                         "",
                         "手札 2 枚と場の 5 枚から、一番強い 5 枚で勝負します。"),
-                page("流れ",
+                pictures ? PictureRules.page("流れ（毎回賭ける）",
+                        PictureRules.row("手札（自分だけ見える）"),
+                        PictureRules.cards("AS KD"),
+                        PictureRules.BLANK,
+                        PictureRules.row("フロップ（場に 3 枚）"),
+                        PictureRules.cards("QH 7C 2S"),
+                        PictureRules.BLANK,
+                        PictureRules.row("ターン（もう 1 枚）"),
+                        PictureRules.cards("QH 7C 2S JD"),
+                        PictureRules.BLANK,
+                        PictureRules.row("リバー（最後の 1 枚）"),
+                        PictureRules.cards("QH 7C 2S JD TH"),
+                        PictureRules.BLANK,
+                        PictureRules.note("強い役の人がポットを取る"))
+                        : page("流れ",
                         "ブラインド → 手札 2 枚",
                         "→ フロップ（場に 3 枚）",
                         "→ ターン（1 枚）",
@@ -209,12 +226,7 @@ final class Rulebook {
 
     /** ポーカーの役の名前と、その例の 5 枚（"AS KH TD" のように、ランク + スート S/H/D/C）。 */
     private static Component hand(String name, String hint, String cards) {
-        Component row = Component.text(name, NamedTextColor.BLACK).append(Component.newline());
-        for (String code : cards.split(" ")) {
-            Rank rank = Rank.values()["A23456789TJQK".indexOf(code.charAt(0))];
-            Suit suit = Suit.values()["SHDC".indexOf(code.charAt(1))];
-            row = row.append(Glyphs.card(new Card(suit, rank)));
-        }
+        Component row = Component.text(name, NamedTextColor.BLACK).append(Component.newline()).append(PictureRules.cards(cards));
         // 本の 1 行は 114 px。カード 5 枚（1 枚 10 px）と短い説明が収まるように詰める
         return row.append(Component.text(" " + hint, NamedTextColor.DARK_GRAY));
     }

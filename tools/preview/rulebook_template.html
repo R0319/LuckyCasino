@@ -1,0 +1,37 @@
+<title>LuckyCasino ルールブック</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+  :root { --bg: #f3ede2; --fg: #2b2420; --muted: #7a6c5f; --accent: #8a1c24; --tab: #e6dccb; --tab-on: #8a1c24; --tab-on-fg: #fff8ec; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #1d1916; --fg: #eee4d4; --muted: #a8998a; --accent: #e0a24a; --tab: #2f2823; --tab-on: #e0a24a; --tab-on-fg: #1d1916; color-scheme: dark } }
+  :root[data-theme="dark"] { --bg: #1d1916; --fg: #eee4d4; --muted: #a8998a; --accent: #e0a24a; --tab: #2f2823; --tab-on: #e0a24a; --tab-on-fg: #1d1916; color-scheme: dark }
+  body { background: var(--bg); color: var(--fg); font-family: "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
+         padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 20px 40px; }
+  h1 { font-size: 20px; margin: 0 0 4px; text-wrap: balance; }
+  p.lead { color: var(--muted); margin: 0 0 16px; max-width: 65ch; line-height: 1.6; }
+  nav { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  nav button, .kind button { border: 0; border-radius: 999px; padding: 6px 12px; background: var(--tab); color: var(--fg); font: inherit; cursor: pointer; }
+  nav button.on, .kind button.on { background: var(--tab-on); color: var(--tab-on-fg); }
+  .kind { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+  h2 { font-size: 16px; margin: 0 0 10px; }
+  h2 small { font-weight: normal; color: var(--muted); margin-left: 8px; font-size: 13px; }
+  .pages { display: flex; flex-wrap: wrap; gap: 14px; }
+  .pages img { image-rendering: pixelated; max-width: 100%; height: auto; }
+</style>
+<h1>LuckyCasino ルールブック</h1>
+<p class="lead">ゲーム内の本と同じ大きさ（1 行 114 px・14 行）で描いた見本です。文字の形はマインクラフトの Unifont に近いものですが、細かい位置は実機と少しずれることがあります。</p>
+<nav><!--TABS--></nav>
+<div class="kind"><button data-kind="pic" class="on">Java 版（絵）</button><button data-kind="text">統合版・パックなし（文字だけ）</button></div>
+<main><!--PAGES--></main>
+<script>
+  let game = "blackjack", kind = "pic";
+  const ids = [...document.querySelectorAll("nav button")].map(b => b.dataset.game);
+  try { if (ids.includes(location.hash.slice(1))) game = location.hash.slice(1); } catch (e) {}
+  function show() {
+    document.querySelectorAll("section").forEach(s => s.hidden = !(s.dataset.game === game && s.dataset.kind === kind));
+    document.querySelectorAll("nav button").forEach(b => b.classList.toggle("on", b.dataset.game === game));
+    document.querySelectorAll(".kind button").forEach(b => b.classList.toggle("on", b.dataset.kind === kind));
+  }
+  document.querySelectorAll("nav button").forEach(b => b.onclick = () => { game = b.dataset.game; show(); });
+  document.querySelectorAll(".kind button").forEach(b => b.onclick = () => { kind = b.dataset.kind; show(); });
+  show();
+</script>
