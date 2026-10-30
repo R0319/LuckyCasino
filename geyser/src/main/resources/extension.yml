@@ -1,0 +1,6 @@
+id: luckycasino
+name: LuckyCasino
+main: io.github.r0319.luckycasino.geyser.LuckyCasinoGeyser
+api: 2.11.0
+version: ${version}
+authors: [R0319]

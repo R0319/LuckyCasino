@@ -1,0 +1,84 @@
+{
+  "format_version": "1.10.0",
+  "minecraft:client_entity": {
+    "description": {
+      "identifier": "luckycasino:card",
+      "materials": {
+        "default": "entity_alphatest"
+      },
+      "textures": {
+        "c0": "textures/entity/luckycasino/card/hidden",
+        "c1": "textures/entity/luckycasino/card/spade_a",
+        "c2": "textures/entity/luckycasino/card/spade_2",
+        "c3": "textures/entity/luckycasino/card/spade_3",
+        "c4": "textures/entity/luckycasino/card/spade_4",
+        "c5": "textures/entity/luckycasino/card/spade_5",
+        "c6": "textures/entity/luckycasino/card/spade_6",
+        "c7": "textures/entity/luckycasino/card/spade_7",
+        "c8": "textures/entity/luckycasino/card/spade_8",
+        "c9": "textures/entity/luckycasino/card/spade_9",
+        "c10": "textures/entity/luckycasino/card/spade_10",
+        "c11": "textures/entity/luckycasino/card/spade_j",
+        "c12": "textures/entity/luckycasino/card/spade_q",
+        "c13": "textures/entity/luckycasino/card/spade_k",
+        "c14": "textures/entity/luckycasino/card/heart_a",
+        "c15": "textures/entity/luckycasino/card/heart_2",
+        "c16": "textures/entity/luckycasino/card/heart_3",
+        "c17": "textures/entity/luckycasino/card/heart_4",
+        "c18": "textures/entity/luckycasino/card/heart_5",
+        "c19": "textures/entity/luckycasino/card/heart_6",
+        "c20": "textures/entity/luckycasino/card/heart_7",
+        "c21": "textures/entity/luckycasino/card/heart_8",
+        "c22": "textures/entity/luckycasino/card/heart_9",
+        "c23": "textures/entity/luckycasino/card/heart_10",
+        "c24": "textures/entity/luckycasino/card/heart_j",
+        "c25": "textures/entity/luckycasino/card/heart_q",
+        "c26": "textures/entity/luckycasino/card/heart_k",
+        "c27": "textures/entity/luckycasino/card/diamond_a",
+        "c28": "textures/entity/luckycasino/card/diamond_2",
+        "c29": "textures/entity/luckycasino/card/diamond_3",
+        "c30": "textures/entity/luckycasino/card/diamond_4",
+        "c31": "textures/entity/luckycasino/card/diamond_5",
+        "c32": "textures/entity/luckycasino/card/diamond_6",
+        "c33": "textures/entity/luckycasino/card/diamond_7",
+        "c34": "textures/entity/luckycasino/card/diamond_8",
+        "c35": "textures/entity/luckycasino/card/diamond_9",
+        "c36": "textures/entity/luckycasino/card/diamond_10",
+        "c37": "textures/entity/luckycasino/card/diamond_j",
+        "c38": "textures/entity/luckycasino/card/diamond_q",
+        "c39": "textures/entity/luckycasino/card/diamond_k",
+        "c40": "textures/entity/luckycasino/card/club_a",
+        "c41": "textures/entity/luckycasino/card/club_2",
+        "c42": "textures/entity/luckycasino/card/club_3",
+        "c43": "textures/entity/luckycasino/card/club_4",
+        "c44": "textures/entity/luckycasino/card/club_5",
+        "c45": "textures/entity/luckycasino/card/club_6",
+        "c46": "textures/entity/luckycasino/card/club_7",
+        "c47": "textures/entity/luckycasino/card/club_8",
+        "c48": "textures/entity/luckycasino/card/club_9",
+        "c49": "textures/entity/luckycasino/card/club_10",
+        "c50": "textures/entity/luckycasino/card/club_j",
+        "c51": "textures/entity/luckycasino/card/club_q",
+        "c52": "textures/entity/luckycasino/card/club_k"
+      },
+      "geometry": {
+        "default": "geometry.luckycasino.card"
+      },
+      "animations": {
+        "deal": "animation.luckycasino.card.deal",
+        "flip_up": "animation.luckycasino.card.flip_up",
+        "flip_down": "animation.luckycasino.card.flip_down",
+        "pose_up": "animation.luckycasino.card.pose_up",
+        "ctrl": "controller.animation.luckycasino.card"
+      },
+      "scripts": {
+        "animate": [
+          "ctrl"
+        ]
+      },
+      "render_controllers": [
+        "controller.render.luckycasino.card"
+      ]
+    }
+  }
+}

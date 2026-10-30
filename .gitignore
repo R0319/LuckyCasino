@@ -19,3 +19,9 @@ hs_err_pid*
 
 # Common working directory
 run
+
+# Python
+__pycache__/
+
+# Preview screenshots (local only)
+tools/preview/shots/

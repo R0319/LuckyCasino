@@ -1,0 +1,160 @@
+"""アニメーションのプレビュー（ブラウザで再生する 1 枚の HTML）を作る。
+
+リソースパックのモデルとテクスチャを埋め込み、preview.js（プラグインと同じ位置・タイミングで
+動きを再生する）と合わせて dist/preview.html に書き出す。
+
+    cd tools/preview && python3 build.py
+"""
+import base64
+import io
+import json
+import sys
+from pathlib import Path
+
+from PIL import Image, ImageDraw
+
+HERE = Path(__file__).parent
+PACK = HERE.parent.parent / "resourcepacks" / "java" / "assets" / "luckycasino"
+OUT = HERE.parent.parent / "dist" / "preview.html"
+
+
+def data_uri(img):
+    buf = io.BytesIO()
+    img.save(buf, "PNG")
+    return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
+
+
+def vanilla(name):
+    """バニラのテクスチャは同梱できないので、色の近い代わりを描く。"""
+    img = Image.new("RGBA", (16, 16))
+    d = ImageDraw.Draw(img)
+    if name == "block/dark_oak_planks":
+        d.rectangle([0, 0, 15, 15], fill=(66, 43, 20, 255))
+        for y in (3, 7, 11, 15):
+            d.line([0, y, 15, y], fill=(48, 31, 14, 255))
+        for x, y in ((5, 0), (12, 4), (3, 8), (9, 12)):
+            d.line([x, y, x, y + 2], fill=(48, 31, 14, 255))
+    elif name == "block/gold_block":
+        d.rectangle([0, 0, 15, 15], fill=(246, 208, 61, 255))
+        d.rectangle([0, 0, 15, 15], outline=(255, 236, 140, 255))
+        d.line([15, 0, 15, 15], fill=(200, 160, 30, 255))
+        d.line([0, 15, 15, 15], fill=(200, 160, 30, 255))
+    elif name == "block/white_concrete":
+        d.rectangle([0, 0, 15, 15], fill=(207, 213, 214, 255))
+    elif name == "block/black_concrete":
+        d.rectangle([0, 0, 15, 15], fill=(8, 10, 15, 255))
+    elif name == "block/red_concrete":
+        d.rectangle([0, 0, 15, 15], fill=(142, 33, 33, 255))
+    elif name == "block/iron_block":
+        d.rectangle([0, 0, 15, 15], fill=(220, 220, 220, 255))
+        d.rectangle([0, 0, 15, 15], outline=(240, 240, 240, 255))
+        d.line([0, 15, 15, 15], fill=(170, 170, 170, 255))
+    elif name == "block/glowstone":
+        d.rectangle([0, 0, 15, 15], fill=(250, 210, 120, 255))
+        for x, y in ((3, 3), (10, 5), (6, 11), (12, 12)):
+            d.rectangle([x, y, x + 1, y + 1], fill=(255, 245, 200, 255))
+    elif name == "block/brown_terracotta":
+        d.rectangle([0, 0, 15, 15], fill=(77, 51, 36, 255))
+    elif name == "block/shroomlight":
+        d.rectangle([0, 0, 15, 15], fill=(240, 146, 70, 255))
+        for x, y in ((2, 4), (9, 2), (5, 10), (12, 11)):
+            d.rectangle([x, y, x + 1, y + 1], fill=(255, 220, 150, 255))
+    elif name == "block/red_wool":
+        d.rectangle([0, 0, 15, 15], fill=(160, 39, 34, 255))
+        for x, y in ((2, 3), (9, 1), (5, 9), (13, 7), (11, 13)):
+            d.point([x, y], fill=(125, 28, 25, 255))
+    elif name == "block/green_wool":
+        d.rectangle([0, 0, 15, 15], fill=(84, 109, 27, 255))
+        for x, y in ((3, 2), (10, 5), (6, 12), (13, 10)):
+            d.point([x, y], fill=(64, 86, 20, 255))
+    elif name == "block/blue_concrete":
+        d.rectangle([0, 0, 15, 15], fill=(45, 47, 143, 255))
+    elif name == "block/purple_wool":
+        d.rectangle([0, 0, 15, 15], fill=(122, 42, 172, 255))
+        for x, y in ((2, 3), (9, 1), (5, 9), (13, 7), (11, 13)):
+            d.point([x, y], fill=(100, 32, 145, 255))
+    elif name == "block/smooth_stone":
+        d.rectangle([0, 0, 15, 15], fill=(158, 158, 158, 255))
+        d.rectangle([0, 0, 15, 15], outline=(120, 120, 120, 255))
+    elif name == "block/redstone_lamp":
+        d.rectangle([0, 0, 15, 15], fill=(95, 54, 30, 255))
+        d.rectangle([3, 3, 12, 12], fill=(140, 80, 45, 255))
+    else:
+        d.rectangle([0, 0, 15, 15], fill=(255, 0, 255, 255))
+    return img
+
+
+def load_model(name, cache):
+    """luckycasino:item/... を親までたどって、textures と elements をまとめる。"""
+    if name in cache:
+        return cache[name]
+    ns, path = name.split(":") if ":" in name else ("minecraft", name)
+    data = json.loads((PACK / "models" / (path + ".json")).read_text())
+    textures, elements = {}, None
+    if "parent" in data:
+        parent = load_model(data["parent"], cache)
+        textures.update(parent["textures"])
+        elements = parent["elements"]
+    textures.update(data.get("textures", {}))
+    elements = data.get("elements", elements)
+    cache[name] = {"textures": textures, "elements": elements}
+    return cache[name]
+
+
+def main():
+    cache = {}
+    models = {}
+    for item in sorted((PACK / "items").rglob("*.json")):
+        key = str(item.relative_to(PACK / "items"))[:-5]
+        ref = json.loads(item.read_text())["model"]["model"]
+        if key.startswith("achievement/"):
+            # 実績のアイコンは平らな絵（item/generated）で、卓の上には出さない
+            continue
+        model = load_model(ref, cache)
+        # テクスチャの参照（#front など）を実際の名前に
+        def resolve(t):
+            seen = 0
+            while t.startswith("#") and seen < 8:
+                t = model["textures"].get(t[1:], t)
+                seen += 1
+            return t
+        elements = []
+        for el in model["elements"]:
+            faces = {f: {"uv": v.get("uv", [0, 0, 16, 16]), "texture": resolve(v["texture"])} for f, v in el["faces"].items()}
+            element = {"from": el["from"], "to": el["to"], "faces": faces}
+            if "rotation" in el:
+                element["rotation"] = el["rotation"]
+            elements.append(element)
+        models[key] = elements
+
+    textures = {}
+    for elements in models.values():
+        for el in elements:
+            for face in el["faces"].values():
+                name = face["texture"]
+                if name in textures:
+                    continue
+                ns, path = name.split(":") if ":" in name else ("minecraft", name)
+                if ns == "luckycasino":
+                    textures[name] = data_uri(Image.open(PACK / "textures" / (path + ".png")).convert("RGBA"))
+                else:
+                    textures[name] = data_uri(vanilla(path))
+
+    assets = json.dumps({"models": models, "textures": textures}, separators=(",", ":"))
+    html = (HERE / "template.html").read_text()
+    html = html.replace("/*ASSETS*/", "const ASSETS = " + assets + ";")
+    # games.js（賭け場所を選ぶ卓）は preview.js の後ろにつなげる（GAMES とタブに足す）
+    js = (HERE / "preview.js").read_text() + "\n" + (HERE / "games.js").read_text()
+    out = OUT
+    if "designs" in sys.argv[1:]:
+        # デザイン案のページ（designs.js がタブを差し替える）
+        js += "\n" + (HERE / "designs.js").read_text()
+        out = OUT.with_name("designs.html")
+        html = html.replace("<title>LuckyCasino プレビュー</title>", "<title>LuckyCasino デザイン案</title>")
+    html = html.replace("/*PREVIEW_JS*/", js)
+    out.write_text(html)
+    print(out, len(html) // 1024, "KB,", len(models), "models,", len(textures), "textures")
+
+
+if __name__ == "__main__":
+    main()
