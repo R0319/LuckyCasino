@@ -7,6 +7,7 @@ import java.util.Random;
 
 /**
  * 何組かのトランプを混ぜた山（シュー）。残りが一定の割合を切ったら、勝負と勝負の間で切り直す。
+ * {@link #everyRound} の山は勝負ごとに必ず切り直す（出たカードを数えて有利になる遊び方を防ぐ）。
  */
 public final class Shoe {
 
@@ -15,6 +16,7 @@ public final class Shoe {
     private final Random random;
     private final List<Card> cards = new ArrayList<>();
     private final boolean stacked;
+    private boolean everyRound;
 
     /**
      * @param penetration 全体のうち配ったら切り直す割合（例: 0.75）
@@ -42,6 +44,13 @@ public final class Shoe {
         this.cards.addAll(topFirst.reversed());
     }
 
+    /** 勝負ごとに必ず切り直す山。 */
+    public static Shoe everyRound(int decks, Random random) {
+        Shoe shoe = new Shoe(decks, 0.5, random);
+        shoe.everyRound = true;
+        return shoe;
+    }
+
     /** 上から順に決まったカードが出る山（テスト用）。切り直しはしない。 */
     public static Shoe stacked(List<Card> topFirst) {
         return new Shoe(topFirst);
@@ -61,7 +70,7 @@ public final class Shoe {
 
     /** 勝負の前に呼ぶ。切り直しの目安を過ぎていたら混ぜ直して true を返す。 */
     public boolean shuffleIfNeeded() {
-        if (!stacked && remaining() < decks * 52 * (1 - penetration)) {
+        if (!stacked && (everyRound || remaining() < decks * 52 * (1 - penetration))) {
             shuffle();
             return true;
         }

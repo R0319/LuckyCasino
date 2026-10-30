@@ -72,7 +72,7 @@ final class BlackjackTable extends CasinoTable {
     BlackjackTable(LuckyCasinoPaper plugin, String id, Frame frame, UUID owner, Bank bank, BlackjackSettings settings) {
         super(plugin, id, GameType.BLACKJACK, frame, owner, bank);
         this.settings = settings;
-        this.shoe = new Shoe(settings.rules().decks(), settings.rules().penetration(), new SecureRandom());
+        this.shoe = Shoe.everyRound(settings.rules().decks(), new SecureRandom());
         for (int i = 0; i < BlackjackLayout.SEATS; i++) {
             handCards.add(new ArrayList<>());
             handViews.add(new ArrayList<>());

@@ -56,6 +56,9 @@ public final class LuckyCasinoPaper extends JavaPlugin {
         }
         getLogger().info(String.format("スロットの還元率 %.1f%%、何か戻る確率 %.1f%%（5 ライン）",
                 slotSettings.paytable().returnRate() * 100, slotSettings.paytable().hitRate() * 100));
+        if (slotSettings.paytable().returnRate() >= 1) {
+            getLogger().warning("スロットの還元率が 100% 以上です。回し続けるほどチップが増えるので、config.yml の slot の配当を下げてください");
+        }
         tableItem = new TableItem(this);
         tableItem.registerRecipes(getConfig().getConfigurationSection("recipes"), getLogger());
         achievements = new Achievements(getLogger());

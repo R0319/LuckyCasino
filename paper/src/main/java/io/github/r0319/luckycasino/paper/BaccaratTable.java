@@ -44,7 +44,7 @@ final class BaccaratTable extends SpotTable {
 
     BaccaratTable(LuckyCasinoPaper plugin, String id, Frame frame, UUID owner, Bank bank, SpotSettings settings) {
         super(plugin, id, GameType.BACCARAT, frame, owner, bank, settings);
-        this.shoe = new Shoe(8, 0.8, random);
+        this.shoe = Shoe.everyRound(8, random);
     }
 
     @Override

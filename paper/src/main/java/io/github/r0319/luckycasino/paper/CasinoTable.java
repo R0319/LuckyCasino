@@ -6,6 +6,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Sound;
+import org.bukkit.World;
 import org.bukkit.entity.BlockDisplay;
 import org.bukkit.entity.Display;
 import org.bukkit.entity.Entity;
@@ -20,7 +21,9 @@ import org.joml.AxisAngle4f;
 import org.joml.Vector3f;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.logging.Level;
 
@@ -66,6 +69,8 @@ abstract class CasinoTable {
     private ItemDisplay dealerSeat;
     private DealerLook dealerLook = DealerLook.DEFAULT;
     private boolean spawned;
+    /** 席に人がいる間、卓のまわりのチャンクを読み込んだままにしている（チケットを付けている）か。 */
+    private boolean holdingChunks;
     private TextDisplay status;
     private BukkitTask ticker;
     private final List<BukkitTask> pending = new ArrayList<>();
@@ -409,6 +414,7 @@ abstract class CasinoTable {
         fixtures.forEach(Entity::remove);
         fixtures.clear();
         spawned = false;
+        holdChunks(false);
         dealer = null;
         dealerSeat = null;
         status = null;
@@ -624,8 +630,32 @@ abstract class CasinoTable {
     // ---- 表示の小物 ----
 
     protected void updateStatus() {
+        holdChunks(spawned && Arrays.stream(seats).anyMatch(Objects::nonNull));
         if (status != null) {
             status.text(statusText());
+        }
+    }
+
+    /**
+     * 席に人がいる間は卓のまわりのチャンクを読み込んだままにする。勝負の途中でチャンクが読み込み解除されると卓を片付けて
+     * 賭け金を戻すので、負けが見えてから遠くへ移動して賭け金を取り戻す、ということができないようにする。
+     */
+    private void holdChunks(boolean hold) {
+        if (hold == holdingChunks) {
+            return;
+        }
+        holdingChunks = hold;
+        Location origin = frame.origin();
+        World world = origin.getWorld();
+        int reach = 4;
+        for (int cx = (origin.getBlockX() - reach) >> 4; cx <= (origin.getBlockX() + reach) >> 4; cx++) {
+            for (int cz = (origin.getBlockZ() - reach) >> 4; cz <= (origin.getBlockZ() + reach) >> 4; cz++) {
+                if (hold) {
+                    world.addPluginChunkTicket(cx, cz, plugin);
+                } else {
+                    world.removePluginChunkTicket(cx, cz, plugin);
+                }
+            }
         }
     }
 
