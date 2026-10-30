@@ -1,0 +1,37 @@
+# リリースを作る。Actions の画面（または API）から版番号を指定して動かすと、master の最新をビルドし、
+# タグ v<版番号> を付けて jar とリソースパックを添えたリリースを公開する。説明は docs/releases/v<版番号>.md。
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "版番号（例: 0.2.0。build.gradle.kts の version と同じにする）"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+      - name: 版番号を確かめる
+        run: grep -q "version = \"${{ inputs.version }}\"" build.gradle.kts
+      - name: ビルドとテスト
+        run: ./gradlew build --no-daemon
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ inputs.version }}
+          target_commitish: ${{ github.sha }}
+          name: v${{ inputs.version }}
+          body_path: docs/releases/v${{ inputs.version }}.md
+          files: |
+            paper/build/libs/LuckyCasino-Paper-${{ inputs.version }}.jar
+            geyser/build/libs/LuckyCasino-Geyser-${{ inputs.version }}.jar
+            paper/build/resourcepack/LuckyCasino-java-pack.zip
