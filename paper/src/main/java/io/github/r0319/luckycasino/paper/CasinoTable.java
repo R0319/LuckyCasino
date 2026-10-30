@@ -233,6 +233,17 @@ abstract class CasinoTable {
         return -1;
     }
 
+    /** その椅子を置いた床の高さ（降りた人がこれより下にいたら引き上げる）。椅子でなければ NaN。 */
+    double floorUnder(Entity mount) {
+        for (int i = 0; i < mounts.length; i++) {
+            if (mounts[i] != null && mounts[i].equals(mount)) {
+                double[] p = shape().seat(i);
+                return frame.at(p[0], p[1], p[2]).getY();
+            }
+        }
+        return Double.NaN;
+    }
+
     boolean isMount(Entity entity) {
         for (ItemDisplay mount : mounts) {
             if (mount != null && mount.equals(entity)) {

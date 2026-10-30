@@ -354,7 +354,8 @@ def chinchiro_bowl_model():
     """どんぶり（白に青い縁）。モデルの中心（8, 8, 8）が底の中心。16 角形の壁は要素の回転（22.5 度刻み）で作る。"""
     import math
     r, t, w = 6.0, 0.9, 2 * 6.0 * math.tan(math.radians(11.25)) + 0.3
-    bottom, wall, rim = 8.0, 8.0 + 4.0, 8.0 + 5.0
+    # 壁は低め（座った目の高さから中のサイコロが見えるように）
+    bottom, wall, rim = 8.0, 8.0 + 1.6, 8.0 + 2.4
     els = []
 
     def box(frm, to, tex, angle=0.0):

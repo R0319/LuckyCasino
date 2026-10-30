@@ -461,7 +461,16 @@ final class TableManager implements Listener {
         }
         for (CasinoTable table : tables.values()) {
             if (table.isMount(event.getDismounted())) {
+                double floor = table.floorUnder(event.getDismounted());
                 table.dismounted(player.getUniqueId());
+                // 床に座る卓（座敷など）は椅子が床より下にあるので、降りた次の tick に床の上へ上げる（埋まらないように）
+                plugin.getServer().getScheduler().runTask(plugin, () -> {
+                    if (player.isOnline() && player.getVehicle() == null && player.getLocation().getY() < floor) {
+                        Location at = player.getLocation();
+                        at.setY(floor);
+                        player.teleport(at);
+                    }
+                });
                 return;
             }
         }
