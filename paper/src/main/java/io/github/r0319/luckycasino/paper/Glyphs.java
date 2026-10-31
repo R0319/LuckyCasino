@@ -31,6 +31,8 @@ final class Glyphs {
 
     /** ResourcePackListener が、パックを読み込めた人を入れる。 */
     private static final Set<UUID> LOADED = ConcurrentHashMap.newKeySet();
+    /** パックをほかの仕組み（Nexo・プロキシ）が必ず配るので、Java 版の人は全員読み込めているとみなす。 */
+    private static volatile boolean external;
 
     private Glyphs() {
     }
@@ -44,8 +46,12 @@ final class Glyphs {
     }
 
     /** この人に絵の文字を出せるか（パックを読み込めた Java 版の人）。 */
+    static void external(boolean value) {
+        external = value;
+    }
+
     static boolean enabled(Player player) {
-        return LOADED.contains(player.getUniqueId()) && !Bedrock.is(player);
+        return (external || LOADED.contains(player.getUniqueId())) && !Bedrock.is(player);
     }
 
     /** メニューのタイトル。絵を出せる人には背景を重ね、文字は背景の札の上に書く。 */

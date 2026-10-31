@@ -206,7 +206,11 @@ Java 25 が必要です（Paper 26.2 の API が Java 25 向けのため）。
 
 ## リソースパック
 
-`config.yml` の `resource-pack.url` と `resource-pack.sha1` を設定すると、参加した Java 版プレイヤーにパックを送ります。試験用に、ビルド済みの zip を `dist/` に置いています（GitHub の raw URL をコミット固定で指定して配信）。パックを変えたら `tools/` で `python3 gen_table.py`（カードは `gen_cards.py`、スロットは `gen_slot.py`、バカラ以降の卓は `gen_games.py`、実績のアイコンは `gen_icons.py`）を実行し、`./gradlew build` のあと zip を `dist/` へコピーして SHA-1 を更新してください。
+`config.yml` の `resource-pack.url` と `resource-pack.sha1` を設定すると、Java 版プレイヤーにパックを送ります。送るのは参加の前（読み込み画面）で、読み込みが終わってからワールドに入るので、プレイ中に画面が止まりません。
+
+Nexo などのパックに `LuckyCasino-java-pack.zip` を混ぜて配るときや、プロキシ（Velocity）のプラグインでネットワーク全体に 1 回だけ配るときは、`resource-pack.mode: external` にしてください。このプラグインはパックを送らず、Java 版の人には全員カードの絵を出します（配る側でパックを必須にしておいてください）。`mode` が空のとき（既定）は、`url` があれば送り、無ければ送りません。
+
+試験用に、ビルド済みの zip を `dist/` に置いています（GitHub の raw URL をコミット固定で指定して配信）。パックを変えたら `tools/` で `python3 gen_table.py`（カードは `gen_cards.py`、スロットは `gen_slot.py`、バカラ以降の卓は `gen_games.py`、実績のアイコンは `gen_icons.py`）を実行し、`./gradlew build` のあと zip を `dist/` へコピーして SHA-1 を更新してください。
 
 ## 言語（日本語・英語）
 
@@ -278,7 +282,7 @@ In-game text (menus, chat, floating table text, rule books and achievements) is 
 ### Installation
 
 1. Put `LuckyCasino-Paper-<version>.jar` in `plugins/` and start the server.
-2. Host `LuckyCasino-java-pack.zip` somewhere reachable over HTTPS and set `resource-pack.url` and `resource-pack.sha1` in `plugins/LuckyCasino/config.yml`. Without the pack, tables and cards are not displayed correctly.
+2. Host `LuckyCasino-java-pack.zip` somewhere reachable over HTTPS and set `resource-pack.url` and `resource-pack.sha1` in `plugins/LuckyCasino/config.yml`. Without the pack, tables and cards are not displayed correctly. The pack is sent during the configuration phase (loading screen), so the game does not freeze after joining. If another plugin (e.g. Nexo) or a proxy plugin already delivers a pack that includes LuckyCasino's, set `resource-pack.mode: external`: LuckyCasino then sends nothing and shows the card glyphs to every Java player (make that pack mandatory).
 3. Get a table by crafting it or with `/casino give <type>` (`blackjack`, `roulette`, `poker`, `slot`, `baccarat`, `bigwheel`, `chinchiro`, `highlow`, `horserace`, `holdem`), then right-click the top of a block to place it.
 
 ### Commands and permissions
