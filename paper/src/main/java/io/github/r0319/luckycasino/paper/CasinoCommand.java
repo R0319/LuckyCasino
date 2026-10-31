@@ -29,7 +29,7 @@ import java.util.stream.Stream;
  * /casino give &lt;種類&gt; [プレイヤー] … テーブルアイテムを渡す（管理者）
  * /casino remove [force] … 近くのテーブルを片付ける（管理者。座っている人がいるときは force を付けたときだけ、精算してから）
  * /casino status … 通貨と Geyser 拡張との通信状態（管理者）
- * /casino selftest &lt;種類&gt; [回数] … ボットだけで卓を回して確かめる（管理者、コンソールからも可）
+ * /casino selftest &lt;種類&gt; [回数] [leave] … ボットだけで卓を回して確かめる（leave で勝負の途中に席を立つ場面も）（管理者、コンソールからも可）
  */
 final class CasinoCommand implements BasicCommand {
 
@@ -213,7 +213,7 @@ final class CasinoCommand implements BasicCommand {
             case "selftest" -> {
                 GameType type = args.length > 1 ? GameType.byId(args[1].toLowerCase(Locale.ROOT)) : null;
                 if (type == null) {
-                    sender.sendMessage(L10n.tr("使い方: /casino selftest <%s> [回数]", typeIds()).color(NamedTextColor.RED));
+                    sender.sendMessage(L10n.tr("使い方: /casino selftest <%s> [回数] [leave]", typeIds()).color(NamedTextColor.RED));
                     return;
                 }
                 int rounds = 10;
@@ -225,7 +225,8 @@ final class CasinoCommand implements BasicCommand {
                         return;
                     }
                 }
-                SelfTest.start(plugin, type, rounds, sender);
+                boolean leave = args.length > 3 && args[3].equalsIgnoreCase("leave");
+                SelfTest.start(plugin, type, rounds, sender, leave);
             }
             default -> {
             }
