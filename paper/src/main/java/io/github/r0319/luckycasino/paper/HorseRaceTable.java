@@ -57,16 +57,17 @@ final class HorseRaceTable extends SpotTable {
     }
 
     static Component horseName(int horse) {
-        return Component.text((horse + 1) + " 番（" + COLORS[horse] + "）", INKS[horse]);
+        return L10n.tr("%s 番（%s）", (horse + 1), L10n.tr(COLORS[horse])).color(INKS[horse]);
     }
 
     @Override
     List<Spot> spots() {
         List<Spot> out = new ArrayList<>();
         for (int h = 0; h < HorseRace.HORSES; h++) {
-            String odds = race == null ? "" : "当たると " + HorseRace.percentText(race.percent(h)) + "が戻る（勝つ確率 約 "
-                    + Math.round(race.chance(h) * 100) + "%）";
-            out.add(new Spot("horse_" + (h + 1), (h + 1) + " 番（" + COLORS[h] + "）", (h + 1) + " 番の馬が 1 着なら当たり。" + odds, ICONS[h], 19 + h));
+            Component help = race == null ? L10n.tr("%s 番の馬が 1 着なら当たり。", h + 1)
+                    : L10n.tr("%s 番の馬が 1 着なら当たり。当たると %sが戻る（勝つ確率 約 %s%%）", h + 1, L10n.times(race.percent(h)),
+                    Math.round(race.chance(h) * 100));
+            out.add(new Spot("horse_" + (h + 1), horseName(h), help, ICONS[h], 19 + h));
         }
         return out;
     }
@@ -128,16 +129,16 @@ final class HorseRaceTable extends SpotTable {
         race = HorseRace.card(random);
         order = null;
         if (odds != null) {
-            Component text = Component.text("単勝オッズ", NamedTextColor.GOLD);
+            Component text = L10n.tr("単勝オッズ").color(NamedTextColor.GOLD);
             for (int h = 0; h < HorseRace.HORSES; h++) {
                 text = text.append(Component.newline()).append(horseName(h))
-                        .append(Component.text("  " + HorseRace.percentText(race.percent(h)), NamedTextColor.WHITE));
+                        .append(Component.text("  ", NamedTextColor.WHITE).append(L10n.times(race.percent(h))));
             }
             odds.text(text);
         }
         if (board != null) {
-            board.text(Component.text("次のレースの", NamedTextColor.AQUA).append(Component.newline())
-                    .append(Component.text("単勝を受付中", NamedTextColor.AQUA)));
+            board.text(L10n.tr("次のレースの").color(NamedTextColor.AQUA).append(Component.newline())
+                    .append(L10n.tr("単勝を受付中").color(NamedTextColor.AQUA)));
         }
     }
 
@@ -196,7 +197,7 @@ final class HorseRaceTable extends SpotTable {
         swing();
         moveGates(true);
         playSound(Sound.BLOCK_IRON_DOOR_OPEN, 1.2f);
-        broadcast(Component.text("スタートしました！", NamedTextColor.GOLD));
+        broadcast(L10n.tr("スタートしました！").color(NamedTextColor.GOLD));
         playSound(Sound.BLOCK_NOTE_BLOCK_BELL, 1.6f);
         for (int tick = STEP; tick <= last + 10; tick += STEP) {
             double[] x = new double[HorseRace.HORSES];
@@ -222,7 +223,7 @@ final class HorseRaceTable extends SpotTable {
                     move(horses[h], pose[h], STEP);
                 }
                 if (now < finish[order[0]] && now % 10 == 0 && board != null) {
-                    board.text(Component.text("先頭 ", NamedTextColor.GRAY).append(horseName(lead)));
+                    board.text(L10n.tr("先頭 ").color(NamedTextColor.GRAY).append(horseName(lead)));
                 }
                 if (now % 6 == 0 && now < last) {
                     playSound(Sound.ENTITY_HORSE_GALLOP, 1.0f, 0.4f);
@@ -230,11 +231,11 @@ final class HorseRaceTable extends SpotTable {
             });
         }
         int winnerAt = finish[order[0]];
-        later(winnerAt / 2, () -> broadcast(Component.text("中間地点、先頭は ", NamedTextColor.GRAY).append(horseName(leaderAt(winnerAt / 2, finish, pace, phase, length)))));
-        later(winnerAt - 30, () -> broadcast(Component.text("最後の直線！", NamedTextColor.YELLOW)));
+        later(winnerAt / 2, () -> broadcast(L10n.tr("中間地点、先頭は ").color(NamedTextColor.GRAY).append(horseName(leaderAt(winnerAt / 2, finish, pace, phase, length)))));
+        later(winnerAt - 30, () -> broadcast(L10n.tr("最後の直線！").color(NamedTextColor.YELLOW)));
         later(winnerAt, () -> {
             if (board != null) {
-                board.text(Component.text("1 着 ", NamedTextColor.GOLD).append(horseName(order[0])));
+                board.text(L10n.tr("1 着 ").color(NamedTextColor.GOLD).append(horseName(order[0])));
             }
             Location at = frame.at(HorseRaceLayout.FINISH_X, HorseRaceLayout.DIRT + 0.6, HorseRaceLayout.laneZ(order[0]));
             at.getWorld().spawnParticle(Particle.END_ROD, at, 15, 0.1, 0.15, 0.1, 0.03);
@@ -242,9 +243,9 @@ final class HorseRaceTable extends SpotTable {
         });
         later(last + 6, () -> {
             if (board != null) {
-                board.text(Component.text("1 着 ", NamedTextColor.GOLD).append(horseName(order[0])).append(Component.newline())
-                        .append(Component.text("2 着 ", NamedTextColor.GRAY)).append(horseName(order[1])).append(Component.newline())
-                        .append(Component.text("3 着 ", NamedTextColor.GRAY)).append(horseName(order[2])));
+                board.text(L10n.tr("1 着 ").color(NamedTextColor.GOLD).append(horseName(order[0])).append(Component.newline())
+                        .append(L10n.tr("2 着 ").color(NamedTextColor.GRAY)).append(horseName(order[1])).append(Component.newline())
+                        .append(L10n.tr("3 着 ").color(NamedTextColor.GRAY)).append(horseName(order[2])));
             }
         });
         return last + 8;
@@ -265,8 +266,8 @@ final class HorseRaceTable extends SpotTable {
 
     @Override
     protected Component resultText() {
-        return Component.text("1 着 ", NamedTextColor.GOLD).append(horseName(order[0]))
-                .append(Component.text("（" + HorseRace.percentText(race.percent(order[0])) + "）", NamedTextColor.WHITE));
+        return L10n.tr("1 着 ").color(NamedTextColor.GOLD).append(horseName(order[0]))
+                .append(L10n.tr("（%s）", L10n.times(race.percent(order[0]))).color(NamedTextColor.WHITE));
     }
 
     @Override

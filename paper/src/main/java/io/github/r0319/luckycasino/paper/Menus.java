@@ -68,16 +68,16 @@ final class Menus implements Listener {
         BuyIn holder = new BuyIn(table, seat);
         Bank bank = table.bank();
         Inventory inventory = Bukkit.createInventory(holder, 27,
-                Component.text(table.type().displayName() + "：" + (bank.practice() ? "練習用チップを受け取る" : "チップに両替する")));
+                L10n.tr("%s：", L10n.tr(table.type().displayName())).append(L10n.tr(bank.practice() ? "練習用チップを受け取る" : "チップに両替する")));
         holder.inventory = inventory;
         long min = table.minChips();
         if (bank.practice()) {
             long chips = bank.affordable(player);
             holder.options.add(chips);
             holder.first = 13;
-            inventory.setItem(13, named(Items.model("chip/c100_5"), Component.text("チップ " + chips + " 枚を受け取る", NamedTextColor.GOLD),
-                    List.of(Component.text("練習用なのでお金は使いません", NamedTextColor.GRAY),
-                            Component.text("席を立つと回収します", NamedTextColor.GRAY))));
+            inventory.setItem(13, named(Items.model("chip/c100_5"), L10n.tr("チップ %s 枚を受け取る", chips).color(NamedTextColor.GOLD),
+                    List.of(L10n.tr("練習用なのでお金は使いません").color(NamedTextColor.GRAY),
+                            L10n.tr("席を立つと回収します").color(NamedTextColor.GRAY))));
         } else {
             long affordable = bank.affordable(player);
             List<Long> buyIns = table.buyIns();
@@ -89,10 +89,10 @@ final class Menus implements Listener {
                 holder.options.add(chips);
                 inventory.setItem(holder.first + i, named(
                         ok ? Items.model("chip/" + icon(chips)) : ItemStack.of(Material.GRAY_DYE),
-                        Component.text("チップ " + chips + " 枚", ok ? NamedTextColor.GOLD : NamedTextColor.DARK_GRAY),
-                        List.of(Component.text(ok ? "クリックで両替して座る" : chips < min ? "この卓には少なすぎます" : "お金が足りません",
-                                        ok ? NamedTextColor.GREEN : NamedTextColor.RED),
-                                Component.text("両替できる上限: " + affordable + " 枚", NamedTextColor.GRAY))));
+                        L10n.tr("チップ %s 枚", chips).color(ok ? NamedTextColor.GOLD : NamedTextColor.DARK_GRAY),
+                        List.of(L10n.tr(ok ? "クリックで両替して座る" : chips < min ? "この卓には少なすぎます" : "お金が足りません")
+                                        .color(ok ? NamedTextColor.GREEN : NamedTextColor.RED),
+                                L10n.tr("両替できる上限: %s 枚", affordable).color(NamedTextColor.GRAY))));
             }
         }
         inventory.setItem(26, rulesItem());
@@ -136,32 +136,32 @@ final class Menus implements Listener {
         }
         Bet holder = new Bet(table);
         holder.amount = Math.min(table.settings().rules().minBet(), table.seat(seat).chips);
-        Inventory inventory = Bukkit.createInventory(holder, 27, Glyphs.menuTitle(player, 27, Component.text("賭け金を決める")));
+        Inventory inventory = Bukkit.createInventory(holder, 27, Glyphs.menuTitle(player, 27, L10n.tr("賭け金を決める")));
         holder.inventory = inventory;
         for (int i = 0; i < BET_CHIP_SLOTS.length; i++) {
             inventory.setItem(BET_CHIP_SLOTS[i], named(Items.model("chip/c" + CHIP_VALUES[i] + "_1"),
-                    Component.text(CHIP_VALUES[i] + " 枚チップ", NamedTextColor.GOLD),
-                    List.of(Component.text("左クリック: 足す / 右クリック: 減らす", NamedTextColor.GRAY))));
+                    L10n.tr("%s 枚チップ", CHIP_VALUES[i]).color(NamedTextColor.GOLD),
+                    List.of(L10n.tr("左クリック: 足す / 右クリック: 減らす").color(NamedTextColor.GRAY))));
         }
-        inventory.setItem(BET_CLEAR, named(ItemStack.of(Material.BARRIER), Component.text("最低額に戻す", NamedTextColor.RED), List.of()));
+        inventory.setItem(BET_CLEAR, named(ItemStack.of(Material.BARRIER), L10n.tr("最低額に戻す").color(NamedTextColor.RED), List.of()));
         inventory.setItem(BET_RULES, rulesItem());
         inventory.setItem(LEAVE_27, leaveItem());
         renderBet(holder, player);
         player.openInventory(inventory);
-        player.sendMessage(Component.text("閉じてしまったら ", NamedTextColor.GRAY)
-                .append(Component.text("[賭ける]", NamedTextColor.AQUA).clickEvent(ClickEvent.runCommand("/casino bet")))
-                .append(Component.text(" で開き直せます", NamedTextColor.GRAY)));
+        player.sendMessage(L10n.tr("閉じてしまったら ").color(NamedTextColor.GRAY)
+                .append(L10n.tr("[賭ける]").color(NamedTextColor.AQUA).clickEvent(ClickEvent.runCommand("/casino bet")))
+                .append(L10n.tr(" で開き直せます").color(NamedTextColor.GRAY)));
     }
 
     private void renderBet(Bet holder, Player player) {
         BlackjackTable table = holder.blackjack();
         int seat = table.seatOf(player.getUniqueId());
         long chips = seat < 0 ? 0 : table.seat(seat).chips;
-        holder.inventory.setItem(BET_INFO, named(ItemStack.of(Material.PAPER), Component.text("賭け金 " + holder.amount + " 枚", NamedTextColor.YELLOW),
-                List.of(Component.text("手元のチップ: " + chips + " 枚", NamedTextColor.GRAY),
-                        Component.text("この卓の賭け金: " + table.settings().rules().minBet() + "〜" + table.settings().rules().maxBet() + " 枚", NamedTextColor.GRAY))));
-        holder.inventory.setItem(BET_CONFIRM, named(ItemStack.of(Material.LIME_WOOL), Component.text(holder.amount + " 枚で決定", NamedTextColor.GREEN),
-                List.of(Component.text("全員が決めるか、締め切りで配り始めます", NamedTextColor.GRAY))));
+        holder.inventory.setItem(BET_INFO, named(ItemStack.of(Material.PAPER), L10n.tr("賭け金 %s 枚", holder.amount).color(NamedTextColor.YELLOW),
+                List.of(L10n.tr("手元のチップ: %s 枚", chips).color(NamedTextColor.GRAY),
+                        L10n.tr("この卓の賭け金: %s〜%s 枚", table.settings().rules().minBet(), table.settings().rules().maxBet()).color(NamedTextColor.GRAY))));
+        holder.inventory.setItem(BET_CONFIRM, named(ItemStack.of(Material.LIME_WOOL), L10n.tr("%s 枚で決定", holder.amount).color(NamedTextColor.GREEN),
+                List.of(L10n.tr("全員が決めるか、締め切りで配り始めます").color(NamedTextColor.GRAY))));
     }
 
     private void clickBet(Bet bet, Player player, int slot, ClickType click) {
@@ -262,9 +262,9 @@ final class Menus implements Listener {
         holder.inventory = Bukkit.createInventory(holder, 54, Glyphs.menuTitle(player, 54, Component.text(holder.title)));
         renderRoulette(holder, player);
         player.openInventory(holder.inventory);
-        player.sendMessage(Component.text("閉じてしまったら ", NamedTextColor.GRAY)
-                .append(Component.text("[賭ける]", NamedTextColor.AQUA).clickEvent(ClickEvent.runCommand("/casino bet")))
-                .append(Component.text(" で開き直せます", NamedTextColor.GRAY)));
+        player.sendMessage(L10n.tr("閉じてしまったら ").color(NamedTextColor.GRAY)
+                .append(L10n.tr("[賭ける]").color(NamedTextColor.AQUA).clickEvent(ClickEvent.runCommand("/casino bet")))
+                .append(L10n.tr(" で開き直せます").color(NamedTextColor.GRAY)));
     }
 
     /** 盤のタイトル。手元と賭けた合計がいつも見えるように出す。 */
@@ -272,7 +272,7 @@ final class Menus implements Listener {
         int seat = table.seatOf(player.getUniqueId());
         long chips = seat < 0 ? 0 : table.seat(seat).chips;
         long total = seat < 0 ? 0 : table.round().total(seat);
-        return "手元 " + chips + " 枚・賭け " + total + " 枚";
+        return L10n.text(L10n.of(player), "手元 %s 枚・賭け %s 枚", chips, total);
     }
 
     /** 回し始めたら、この卓のルーレットの盤を閉じる。 */
@@ -293,13 +293,13 @@ final class Menus implements Listener {
         if (menu.outside) {
             for (int d = 1; d <= 3; d++) {
                 RouletteBet bet = RouletteBet.dozen(d, menu.chip);
-                inv.setItem(DOZEN_SLOTS[d - 1], betItem(Material.PURPLE_CONCRETE, (d - 1) * 12 + 1 + "〜" + d * 12 + "（ダズン）",
-                        "12 個。配当 2:1（当たると 3 倍が戻る）", bet, mine, 1));
+                inv.setItem(DOZEN_SLOTS[d - 1], betItem(Material.PURPLE_CONCRETE, L10n.tr("%s〜%s（ダズン）", (d - 1) * 12 + 1, d * 12),
+                        L10n.tr("12 個。配当 2:1（当たると 3 倍が戻る）"), bet, mine, 1));
             }
             for (int c = 1; c <= 3; c++) {
                 RouletteBet bet = RouletteBet.column(c, menu.chip);
-                inv.setItem(COLUMN_SLOTS[c - 1], betItem(Material.BLUE_CONCRETE, "縦の段 " + c + "（" + c + ", " + (c + 3) + ", " + (c + 6) + " …）",
-                        "12 個。配当 2:1（当たると 3 倍が戻る）", bet, mine, 1));
+                inv.setItem(COLUMN_SLOTS[c - 1], betItem(Material.BLUE_CONCRETE, L10n.tr("縦の段 %s（%s, %s, %s …）", c, c, c + 3, c + 6),
+                        L10n.tr("12 個。配当 2:1（当たると 3 倍が戻る）"), bet, mine, 1));
             }
             for (int i = 0; i < RouletteLayout.OUTSIDE.length; i++) {
                 BetType type = RouletteLayout.OUTSIDE[i];
@@ -308,7 +308,7 @@ final class Menus implements Listener {
                     case BLACK -> Material.BLACK_CONCRETE;
                     default -> Material.LIGHT_GRAY_CONCRETE;
                 };
-                inv.setItem(OUTSIDE_SLOTS[i], betItem(icon, type.displayName(), "18 個。配当 1:1（当たると 2 倍が戻る。0 は負け）",
+                inv.setItem(OUTSIDE_SLOTS[i], betItem(icon, L10n.tr(type.displayName()), L10n.tr("18 個。配当 1:1（当たると 2 倍が戻る。0 は負け）"),
                         RouletteBet.outside(type, menu.chip), mine, 1));
             }
         } else {
@@ -319,9 +319,9 @@ final class Menus implements Listener {
             RouletteMode[] modes = RouletteMode.values();
             for (int i = 0; i < modes.length; i++) {
                 RouletteMode mode = modes[i];
-                ItemStack item = named(ItemStack.of(mode.icon), Component.text(mode.label, mode == menu.mode ? NamedTextColor.GREEN : NamedTextColor.WHITE),
-                        List.of(Component.text(mode.help, NamedTextColor.GRAY),
-                                Component.text(mode == menu.mode ? "選択中" : "クリックで切り替え", mode == menu.mode ? NamedTextColor.GREEN : NamedTextColor.YELLOW)));
+                ItemStack item = named(ItemStack.of(mode.icon), L10n.tr(mode.label).color(mode == menu.mode ? NamedTextColor.GREEN : NamedTextColor.WHITE),
+                        List.of(L10n.tr(mode.help).color(NamedTextColor.GRAY),
+                                L10n.tr(mode == menu.mode ? "選択中" : "クリックで切り替え").color(mode == menu.mode ? NamedTextColor.GREEN : NamedTextColor.YELLOW)));
                 if (mode == menu.mode) {
                     item.editMeta(meta -> meta.setEnchantmentGlintOverride(true));
                 }
@@ -329,7 +329,7 @@ final class Menus implements Listener {
             }
         }
         inv.setItem(R_PAGE, named(ItemStack.of(menu.outside ? Material.MAP : Material.BOOK),
-                Component.text(menu.outside ? "数字に賭ける（1 つ・スプリットなど）" : "外側の賭け（赤黒・偶奇・ダズンなど）に戻る", NamedTextColor.AQUA), List.of()));
+                L10n.tr(menu.outside ? "数字に賭ける（1 つ・スプリットなど）" : "外側の賭け（赤黒・偶奇・ダズンなど）に戻る").color(NamedTextColor.AQUA), List.of()));
         long maxBet = table.settings().maxBet();
         int slot = R_CHIP_FIRST;
         for (long value : CHIP_VALUES) {
@@ -337,8 +337,8 @@ final class Menus implements Listener {
                 continue;
             }
             ItemStack item = named(Items.model("chip/c" + value + "_" + (value == menu.chip ? 3 : 1)),
-                    Component.text(value + " 枚ずつ置く", value == menu.chip ? NamedTextColor.GREEN : NamedTextColor.GOLD),
-                    List.of(Component.text(value == menu.chip ? "選択中" : "クリックで切り替え", NamedTextColor.GRAY)));
+                    L10n.tr("%s 枚ずつ置く", value).color(value == menu.chip ? NamedTextColor.GREEN : NamedTextColor.GOLD),
+                    List.of(L10n.tr(value == menu.chip ? "選択中" : "クリックで切り替え").color(NamedTextColor.GRAY)));
             inv.setItem(slot++, item);
             if (slot >= R_INFO) {
                 break;
@@ -346,11 +346,11 @@ final class Menus implements Listener {
         }
         long chips = seat < 0 ? 0 : table.seat(seat).chips;
         long total = seat < 0 ? 0 : table.round().total(seat);
-        inv.setItem(R_INFO, named(ItemStack.of(Material.PAPER), Component.text("賭けた合計 " + total + " 枚", NamedTextColor.YELLOW),
-                List.of(Component.text("手元のチップ: " + chips + " 枚", NamedTextColor.GRAY),
-                        Component.text("1 か所 " + table.settings().minBet() + "〜" + maxBet + " 枚、合計 " + table.settings().maxTotal() + " 枚まで", NamedTextColor.GRAY),
-                        Component.text("同じ場所をもう一度クリックすると積み増します", NamedTextColor.GRAY))));
-        inv.setItem(R_CLEAR, named(ItemStack.of(Material.BARRIER), Component.text("賭けを全部取り消す", NamedTextColor.RED), List.of()));
+        inv.setItem(R_INFO, named(ItemStack.of(Material.PAPER), L10n.tr("賭けた合計 %s 枚", total).color(NamedTextColor.YELLOW),
+                List.of(L10n.tr("手元のチップ: %s 枚", chips).color(NamedTextColor.GRAY),
+                        L10n.tr("1 か所 %s〜%s 枚、合計 %s 枚まで", table.settings().minBet(), maxBet, table.settings().maxTotal()).color(NamedTextColor.GRAY),
+                        L10n.tr("同じ場所をもう一度クリックすると積み増します").color(NamedTextColor.GRAY))));
+        inv.setItem(R_CLEAR, named(ItemStack.of(Material.BARRIER), L10n.tr("賭けを全部取り消す").color(NamedTextColor.RED), List.of()));
         inv.setItem(R_RULES, rulesItem());
         inv.setItem(R_LEAVE, leaveItem());
     }
@@ -358,8 +358,9 @@ final class Menus implements Listener {
     private static ItemStack numberItem(int n, RouletteMenu menu, List<RouletteBet> mine) {
         Material material = n == 0 ? Material.LIME_CONCRETE : Wheel.red(n) ? Material.RED_CONCRETE : Material.BLACK_CONCRETE;
         RouletteBet bet = rouletteBet(n, menu.mode, menu.chip);
-        String covers = bet == null ? "この賭け方ではここに置けません" : bet.type().displayName() + "：" + numbers(bet);
-        ItemStack item = betItem(material, n + " " + (n == 0 ? "緑" : Wheel.red(n) ? "赤" : "黒"), covers, bet, mine, Math.max(1, n));
+        Component covers = bet == null ? L10n.tr("この賭け方ではここに置けません")
+                : L10n.tr("%s：", L10n.tr(bet.type().displayName())).append(Component.text(numbers(bet)));
+        ItemStack item = betItem(material, RouletteTable.numberText(n).color(NamedTextColor.WHITE), covers, bet, mine, Math.max(1, n));
         long onThis = 0;
         for (RouletteBet b : mine) {
             if (b.type() == BetType.STRAIGHT && b.anchor() == n) {
@@ -372,24 +373,24 @@ final class Menus implements Listener {
         return item;
     }
 
-    private static ItemStack betItem(Material material, String name, String help, RouletteBet bet, List<RouletteBet> mine, int count) {
+    private static ItemStack betItem(Material material, Component name, Component help, RouletteBet bet, List<RouletteBet> mine, int count) {
         List<Component> lore = new ArrayList<>();
-        lore.add(Component.text(help, NamedTextColor.GRAY));
+        lore.add(help.color(NamedTextColor.GRAY));
         if (bet != null) {
             for (RouletteBet b : mine) {
                 if (b.samePlace(bet)) {
-                    lore.add(Component.text("ここに " + b.amount() + " 枚賭けています", NamedTextColor.GREEN));
+                    lore.add(L10n.tr("ここに %s 枚賭けています", b.amount()).color(NamedTextColor.GREEN));
                 }
             }
-            lore.add(Component.text("クリックで " + bet.amount() + " 枚置く", NamedTextColor.YELLOW));
+            lore.add(L10n.tr("クリックで %s 枚置く", bet.amount()).color(NamedTextColor.YELLOW));
         }
-        ItemStack item = named(ItemStack.of(material), Component.text(name, NamedTextColor.WHITE), lore);
+        ItemStack item = named(ItemStack.of(material), name.colorIfAbsent(NamedTextColor.WHITE), lore);
         item.setAmount(Math.min(count, 64));
         return item;
     }
 
     private static String numbers(RouletteBet bet) {
-        return String.join("・", bet.numbers().stream().sorted().map(String::valueOf).toList());
+        return String.join(", ", bet.numbers().stream().sorted().map(String::valueOf).toList());
     }
 
     /** 数字のマスとモードから賭けを作る。置けない組み合わせなら null。 */
@@ -460,15 +461,15 @@ final class Menus implements Listener {
             int n = slot == R_ZERO ? 0 : slot + 1;
             bet = rouletteBet(n, menu.mode, menu.chip);
             if (bet == null) {
-                player.sendMessage(Component.text("その数字には「" + menu.mode.label + "」で置けません", NamedTextColor.RED));
+                player.sendMessage(L10n.tr("その数字には「%s」で置けません", L10n.tr(menu.mode.label)).color(NamedTextColor.RED));
             }
         } else if (slot >= R_MODE_FIRST && slot < R_MODE_FIRST + RouletteMode.values().length) {
             menu.mode = RouletteMode.values()[slot - R_MODE_FIRST];
         }
         if (bet != null) {
-            String error = table.place(seat, bet);
+            Component error = table.place(seat, bet);
             if (error != null) {
-                player.sendMessage(Component.text(error, NamedTextColor.RED));
+                player.sendMessage(error.color(NamedTextColor.RED));
             }
         }
         if (!table.canBet()) {
@@ -508,32 +509,32 @@ final class Menus implements Listener {
         Legal legal = table.legalFor(player);
         if (legal == null || !legal.canRaise()) {
             if (legal != null) {
-                player.sendMessage(Component.text("今はレイズできません", NamedTextColor.RED));
+                player.sendMessage(L10n.tr("今はレイズできません").color(NamedTextColor.RED));
             }
             return;
         }
         Raise holder = new Raise(table);
         holder.amount = legal.minRaiseTo();
-        holder.inventory = Bukkit.createInventory(holder, 27, Glyphs.menuTitle(player, 27, Component.text(legal.streetBet() + legal.toCall() == 0 ? "ベットする額" : "レイズする額")));
+        holder.inventory = Bukkit.createInventory(holder, 27, Glyphs.menuTitle(player, 27, L10n.tr(legal.streetBet() + legal.toCall() == 0 ? "ベットする額" : "レイズする額")));
         for (int i = 0; i < RAISE_CHIP_SLOTS.length; i++) {
             holder.inventory.setItem(RAISE_CHIP_SLOTS[i], named(Items.model("chip/c" + CHIP_VALUES[i] + "_1"),
-                    Component.text(CHIP_VALUES[i] + " 枚", NamedTextColor.GOLD),
-                    List.of(Component.text("左クリック: 足す / 右クリック: 減らす", NamedTextColor.GRAY))));
+                    L10n.tr("%s 枚", CHIP_VALUES[i]).color(NamedTextColor.GOLD),
+                    List.of(L10n.tr("左クリック: 足す / 右クリック: 減らす").color(NamedTextColor.GRAY))));
         }
-        holder.inventory.setItem(RAISE_MIN, named(ItemStack.of(Material.IRON_NUGGET), Component.text("最低額 " + legal.minRaiseTo(), NamedTextColor.WHITE), List.of()));
-        holder.inventory.setItem(RAISE_POT, named(ItemStack.of(Material.GOLD_NUGGET), Component.text("ポット " + table.potRaise(legal), NamedTextColor.GOLD), List.of()));
-        holder.inventory.setItem(RAISE_ALLIN, named(ItemStack.of(Material.TNT), Component.text("オールイン（" + (legal.maxRaiseTo() - legal.streetBet()) + " 枚）", NamedTextColor.DARK_RED), List.of()));
+        holder.inventory.setItem(RAISE_MIN, named(ItemStack.of(Material.IRON_NUGGET), L10n.tr("最低額 %s", legal.minRaiseTo()).color(NamedTextColor.WHITE), List.of()));
+        holder.inventory.setItem(RAISE_POT, named(ItemStack.of(Material.GOLD_NUGGET), L10n.tr("ポット %s", table.potRaise(legal)).color(NamedTextColor.GOLD), List.of()));
+        holder.inventory.setItem(RAISE_ALLIN, named(ItemStack.of(Material.TNT), L10n.tr("オールイン（%s 枚）", (legal.maxRaiseTo() - legal.streetBet())).color(NamedTextColor.DARK_RED), List.of()));
         holder.inventory.setItem(18, rulesItem());
         renderRaise(holder, legal, table);
         player.openInventory(holder.inventory);
     }
 
     private void renderRaise(Raise holder, Legal legal, PokerTable table) {
-        holder.inventory.setItem(RAISE_INFO, named(ItemStack.of(Material.PAPER), Component.text("このラウンドの合計 " + holder.amount + " 枚", NamedTextColor.YELLOW),
-                List.of(Component.text("今回出す分: " + (holder.amount - legal.streetBet()) + " 枚", NamedTextColor.GRAY),
-                        Component.text("出せる範囲: " + legal.minRaiseTo() + "〜" + legal.maxRaiseTo(), NamedTextColor.GRAY),
-                        Component.text("ポット: " + table.pot() + " 枚", NamedTextColor.GRAY))));
-        holder.inventory.setItem(RAISE_CONFIRM, named(ItemStack.of(Material.LIME_WOOL), Component.text("合計 " + holder.amount + " 枚で決定", NamedTextColor.GREEN), List.of()));
+        holder.inventory.setItem(RAISE_INFO, named(ItemStack.of(Material.PAPER), L10n.tr("このラウンドの合計 %s 枚", holder.amount).color(NamedTextColor.YELLOW),
+                List.of(L10n.tr("今回出す分: %s 枚", (holder.amount - legal.streetBet())).color(NamedTextColor.GRAY),
+                        L10n.tr("出せる範囲: %s〜%s", legal.minRaiseTo(), legal.maxRaiseTo()).color(NamedTextColor.GRAY),
+                        L10n.tr("ポット: %s 枚", table.pot()).color(NamedTextColor.GRAY))));
+        holder.inventory.setItem(RAISE_CONFIRM, named(ItemStack.of(Material.LIME_WOOL), L10n.tr("合計 %s 枚で決定", holder.amount).color(NamedTextColor.GREEN), List.of()));
     }
 
     private void clickRaise(Raise raise, Player player, int slot, ClickType click) {
@@ -585,11 +586,11 @@ final class Menus implements Listener {
             return;
         }
         SeatInfo holder = new SeatInfo(table);
-        holder.inventory = Bukkit.createInventory(holder, 27, Glyphs.menuTitle(player, 27, Component.text("ポーカー")));
+        holder.inventory = Bukkit.createInventory(holder, 27, Glyphs.menuTitle(player, 27, L10n.tr("ポーカー")));
         CasinoTable.Seat s = table.seat(seat);
-        holder.inventory.setItem(13, named(ItemStack.of(Material.PAPER), Component.text("手元のチップ " + (s.chips + s.atRisk) + " 枚", NamedTextColor.YELLOW),
-                List.of(Component.text("ブラインド " + table.settings().smallBlind() + "/" + table.settings().bigBlind(), NamedTextColor.GRAY),
-                        Component.text("自分の番になるとチャットにボタンが出ます", NamedTextColor.GRAY))));
+        holder.inventory.setItem(13, named(ItemStack.of(Material.PAPER), L10n.tr("手元のチップ %s 枚", (s.chips + s.atRisk)).color(NamedTextColor.YELLOW),
+                List.of(L10n.tr("ブラインド %s/%s", table.settings().smallBlind(), table.settings().bigBlind()).color(NamedTextColor.GRAY),
+                        L10n.tr("自分の番になるとチャットにボタンが出ます").color(NamedTextColor.GRAY))));
         holder.inventory.setItem(18, rulesItem());
         holder.inventory.setItem(LEAVE_27, leaveItem());
         player.openInventory(holder.inventory);
@@ -617,14 +618,14 @@ final class Menus implements Listener {
             return;
         }
         SlotMenu holder = new SlotMenu(table);
-        holder.inventory = Bukkit.createInventory(holder, 27, Glyphs.menuTitle(player, 27, Component.text(slotTitle(table))));
+        holder.inventory = Bukkit.createInventory(holder, 27, Glyphs.menuTitle(player, 27, Component.text(slotTitle(table, player))));
         renderSlot(holder);
         player.openInventory(holder.inventory);
     }
 
-    private static String slotTitle(SlotMachine table) {
+    private static String slotTitle(SlotMachine table, Player player) {
         CasinoTable.Seat seat = table.seat(0);
-        return "スロット：手元 " + (seat == null ? 0 : seat.chips) + " 枚・1 回 " + table.bet() + " 枚";
+        return L10n.text(L10n.of(player), "スロット：手元 %s 枚・1 回 %s 枚", seat == null ? 0 : seat.chips, table.bet());
     }
 
     private void renderSlot(SlotMenu menu) {
@@ -637,8 +638,8 @@ final class Menus implements Listener {
             long value = bets.get(i);
             boolean selected = value == table.bet();
             ItemStack item = named(Items.model("chip/" + chipIcon(value, selected ? 3 : 1)),
-                    Component.text("1 回 " + value + " 枚（1 ライン " + value / Line.COUNT + " 枚）", selected ? NamedTextColor.GREEN : NamedTextColor.GOLD),
-                    List.of(Component.text(selected ? "選択中" : "クリックで切り替え", selected ? NamedTextColor.GREEN : NamedTextColor.YELLOW)));
+                    L10n.tr("1 回 %s 枚（1 ライン %s 枚）", value, value / Line.COUNT).color(selected ? NamedTextColor.GREEN : NamedTextColor.GOLD),
+                    List.of(L10n.tr(selected ? "選択中" : "クリックで切り替え").color(selected ? NamedTextColor.GREEN : NamedTextColor.YELLOW)));
             if (selected) {
                 item.editMeta(meta -> meta.setEnchantmentGlintOverride(true));
             }
@@ -647,23 +648,23 @@ final class Menus implements Listener {
         io.github.r0319.luckycasino.slot.Paytable p = table.settings().paytable();
         long bet = table.bet();
         long lineBet = bet / Line.COUNT;
-        inv.setItem(SLOT_INFO, named(ItemStack.of(Material.PAPER), Component.text("配当表（1 ライン " + lineBet + " 枚あたり）", NamedTextColor.YELLOW),
+        inv.setItem(SLOT_INFO, named(ItemStack.of(Material.PAPER), L10n.tr("配当表（1 ライン %s 枚あたり）", lineBet).color(NamedTextColor.YELLOW),
                 List.of(payLine("7 7 7", p.sevens(), lineBet), payLine("BAR BAR BAR", p.bars(), lineBet), payLine("ベル 3 つ", p.bells(), lineBet),
                         payLine("スイカ 3 つ", p.melons(), lineBet), payLine("レモン 3 つ", p.lemons(), lineBet),
                         payLine("チェリー 3 つ", p.cherry3(), lineBet), payLine("チェリー 左から 2 つ", p.cherry2(), lineBet),
                         payLine("チェリー 左に 1 つ", p.cherry1(), lineBet),
-                        Component.text("横 3 本と斜め 2 本、5 ラインを全部見ます。", NamedTextColor.GRAY),
-                        Component.text("1 回 " + bet + " 枚を 5 ラインに分けて賭け、", NamedTextColor.GRAY),
-                        Component.text("当たったラインの分を合計して戻します。", NamedTextColor.GRAY),
-                        Component.text("還元率 " + String.format("%.1f", p.returnRate() * 100) + "%", NamedTextColor.GRAY))));
-        inv.setItem(SLOT_SPIN, named(ItemStack.of(Material.LEVER), Component.text("回す（" + bet + " 枚）", NamedTextColor.GREEN),
-                List.of(Component.text("台の右のレバーをクリックしても回せます", NamedTextColor.GRAY))));
+                        L10n.tr("横 3 本と斜め 2 本、5 ラインを全部見ます。").color(NamedTextColor.GRAY),
+                        L10n.tr("1 回 %s 枚を 5 ラインに分けて賭け、", bet).color(NamedTextColor.GRAY),
+                        L10n.tr("当たったラインの分を合計して戻します。").color(NamedTextColor.GRAY),
+                        L10n.tr("還元率 %s%%", String.format("%.1f", p.returnRate() * 100)).color(NamedTextColor.GRAY))));
+        inv.setItem(SLOT_SPIN, named(ItemStack.of(Material.LEVER), L10n.tr("回す（%s 枚）", bet).color(NamedTextColor.GREEN),
+                List.of(L10n.tr("台の右のレバーをクリックしても回せます").color(NamedTextColor.GRAY))));
         inv.setItem(SLOT_RULES, rulesItem());
         inv.setItem(LEAVE_27, leaveItem());
     }
 
     private static Component payLine(String name, long times, long bet) {
-        return Component.text(name + "： " + times * bet + " 枚（" + times + " 倍）", NamedTextColor.WHITE);
+        return L10n.tr("%s： %s 枚（%s 倍）", L10n.tr(name), times * bet, times).color(NamedTextColor.WHITE);
     }
 
     private static String chipIcon(long value, int count) {
@@ -704,7 +705,7 @@ final class Menus implements Listener {
             table.setBet(player, bets.get(index));
         }
         renderSlot(menu);
-        retitle(menu, player, slotTitle(table));
+        retitle(menu, player, slotTitle(table, player));
     }
 
     /**
@@ -783,13 +784,13 @@ final class Menus implements Listener {
     }
 
     private static ItemStack rulesItem() {
-        return named(ItemStack.of(Material.WRITTEN_BOOK), Component.text("ルールブック", NamedTextColor.AQUA),
-                List.of(Component.text("遊び方と配当を読む", NamedTextColor.GRAY)));
+        return named(ItemStack.of(Material.WRITTEN_BOOK), L10n.tr("ルールブック").color(NamedTextColor.AQUA),
+                List.of(L10n.tr("遊び方と配当を読む").color(NamedTextColor.GRAY)));
     }
 
     private static ItemStack leaveItem() {
-        return named(ItemStack.of(Material.OAK_DOOR), Component.text("席を立つ", NamedTextColor.GRAY),
-                List.of(Component.text("チップを精算して席を離れます", NamedTextColor.GRAY)));
+        return named(ItemStack.of(Material.OAK_DOOR), L10n.tr("席を立つ").color(NamedTextColor.GRAY),
+                List.of(L10n.tr("チップを精算して席を離れます").color(NamedTextColor.GRAY)));
     }
 
     static ItemStack named(ItemStack item, Component name, List<Component> lore) {

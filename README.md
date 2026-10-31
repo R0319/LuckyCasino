@@ -5,7 +5,7 @@
 Purpur / Paper 26.2 向けのカジノプラグインです。ブラックジャック・ルーレット・ポーカー（テキサスホールデム）・カジノホールデム・バカラ・ビッグホイール・チンチロ・ハイ＆ロー・競馬のテーブルと、スロットマシンを置いて遊べます。カード・チップ・ホイール・リールはすべて ItemDisplay とリソースパックのモデルで表示し、配る・回す・払い出す動きは Display の補間で見せます。
 
 - 経済プラグイン（Vault 経由）があるサーバーではお金をチップに両替して遊び、席を立つとお金に戻ります。無いサーバー（hub など）では練習用チップを無料で配ります。賭けるのはゲーム内のお金だけで、現実のお金を扱う機能はありません。
-- ゲーム内の文字（メニュー・チャット・ルールブック）は今のところ日本語だけです。
+- ゲーム内の文字は日本語と英語があり、見る人のゲームの言語で出ます（「言語」の節を参照）。
 - 統合版（Geyser）向けの表示は Geyser 拡張（`geyser/`）で準備中です。今はブラックジャックのカードだけが対象で、ポーカーの手札・ルーレット・チップは統合版では見えません。
 
 ## 動作環境
@@ -205,6 +205,16 @@ Java 25 が必要です（Paper 26.2 の API が Java 25 向けのため）。
 
 `config.yml` の `resource-pack.url` と `resource-pack.sha1` を設定すると、参加した Java 版プレイヤーにパックを送ります。試験用に、ビルド済みの zip を `dist/` に置いています（GitHub の raw URL をコミット固定で指定して配信）。パックを変えたら `tools/` で `python3 gen_table.py`（カードは `gen_cards.py`、スロットは `gen_slot.py`、バカラ以降の卓は `gen_games.py`、実績のアイコンは `gen_icons.py`）を実行し、`./gradlew build` のあと zip を `dist/` へコピーして SHA-1 を更新してください。
 
+## 言語（日本語・英語）
+
+ゲームの中の文（メニュー・チャット・卓の上の文字・ルールブック・実績）は日本語と英語があります。
+
+- リソースパックを入れた Java 版の人には、その人のゲームの言語で出ます（日本語以外はすべて英語）。卓の上の文字も、見る人ごとに変わります。
+- パックを入れていない人・統合版の人・サーバーのログは、`config.yml` の `language`（`ja` / `en`、既定 `ja`）の言語です。
+- ルールブックは、パックの有無にかかわらずその人のゲームの言語で開きます。
+
+文はコードに日本語のまま書き、その日本語を翻訳のキーにしています。文を足したり変えたりしたら、英訳を `tools/i18n/en_us.json` に書いて `python3 tools/i18n_keys.py` を実行してください（`resourcepacks/java/assets/luckycasino/lang/` の `en_us.json` と `ja_jp.json` を作り直します）。英訳が足りないとテスト（`L10nTest`）が失敗します。英語のルールブックが 1 ページに収まるかは、ルールブックの見本（`tools/preview/rulebook.py`）の「English」で確かめられます。
+
 ## 統合版（Geyser 拡張）
 
 ```
@@ -242,7 +252,7 @@ Minecraft の公式製品ではありません。Mojang および Microsoft が�
 
 LuckyCasino is a casino plugin for Paper / Purpur 26.2. Place tables and play blackjack, roulette (European), Texas hold'em poker, casino hold'em (heads-up against the dealer, playable alone), baccarat, big wheel, chinchiro (a Japanese dice game), high & low, horse racing, and a 5-line slot machine. Cards, chips, wheels and reels are drawn with ItemDisplay entities and a resource pack, and every deal, spin and payout is animated with display interpolation.
 
-**Note: all in-game text (menus, chat, rule books) is currently Japanese only.**
+In-game text (menus, chat, floating table text, rule books and achievements) is available in English and Japanese. Java players with the resource pack see their own game language (English for any language other than Japanese), even on shared table text. Players without the pack, Bedrock players and the server log use `language` in `config.yml` (`ja` by default; set it to `en` for an English server). Rule books always open in the player's own language.
 
 ### Features
 

@@ -32,6 +32,8 @@ tasks.processResources {
     val props = mapOf("version" to project.version)
     inputs.properties(props)
     filesMatching("plugin.yml") { expand(props) }
+    // 言語ファイルはリソースパックと同じもの（サーバー側の既定の言語にも使う）
+    from(rootProject.layout.projectDirectory.dir("resourcepacks/java/assets/luckycasino/lang")) { into("lang") }
 }
 
 // Java 版リソースパック（サーバー配信用 zip）

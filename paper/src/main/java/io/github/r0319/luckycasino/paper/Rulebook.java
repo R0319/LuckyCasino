@@ -17,8 +17,9 @@ final class Rulebook {
     }
 
     static void open(Player player, GameType type) {
-        player.openBook(Book.book(Component.text(type.displayName() + "のルール"), Component.text("LuckyCasino"),
-                pages(type, Glyphs.enabled(player))));
+        L10n.Lang lang = L10n.of(player);
+        player.openBook(Book.book(Component.text(L10n.text(lang, "%sのルール", L10n.tr(type.displayName()))), Component.text("LuckyCasino"),
+                pages(type, Glyphs.enabled(player)).stream().map(page -> L10n.localize(lang, page)).toList()));
     }
 
     /** ルールブックのページ。pictures はリソースパックの絵を出せる人（PictureRules）。 */
@@ -41,9 +42,10 @@ final class Rulebook {
     }
 
     static Component page(String title, String... lines) {
-        Component page = Component.text(title, NamedTextColor.DARK_BLUE).decorate(TextDecoration.BOLD);
+        Component page = L10n.tr(title).color(NamedTextColor.DARK_BLUE).decorate(TextDecoration.BOLD);
         for (String line : lines) {
-            page = page.append(Component.newline()).append(Component.text(line, NamedTextColor.BLACK).decoration(TextDecoration.BOLD, false));
+            page = page.append(Component.newline()).append((line.isEmpty() ? Component.empty() : L10n.tr(line))
+                    .color(NamedTextColor.BLACK).decoration(TextDecoration.BOLD, false));
         }
         return page;
     }
@@ -123,8 +125,8 @@ final class Rulebook {
                     slotRow(Symbol.CHERRY, Symbol.CHERRY, Symbol.CHERRY, "20 倍"),
                     slotRow(Symbol.CHERRY, Symbol.CHERRY, null, "4 倍"),
                     slotRow(Symbol.CHERRY, null, null, "1 倍"),
-                    Component.text("？ は何でも", NamedTextColor.DARK_GRAY),
-                    Component.text("（設定で変わります。今の配当は台のメニューの紙に出ます）", NamedTextColor.DARK_GRAY)));
+                    L10n.tr("？ は何でも").color(NamedTextColor.DARK_GRAY),
+                    L10n.tr("（設定で変わります。今の配当は台のメニューの紙に出ます）").color(NamedTextColor.DARK_GRAY)));
             return pages;
         }
         pages.add(page("配当（1 ラインの何倍か）",
@@ -197,7 +199,7 @@ final class Rulebook {
             out.add(picturePage("役（強い順）3",
                     hand("ワンペア", "ペア1組", "AH AC 9D 6S 3H"),
                     hand("ハイカード", "役なし", "AS QD 9C 6H 3S"),
-                    Component.text("同じ役なら、数の大きいほうが勝ち（A が一番強い）", NamedTextColor.DARK_GRAY)));
+                    L10n.tr("同じ役なら、数の大きいほうが勝ち（A が一番強い）").color(NamedTextColor.DARK_GRAY)));
             return out;
         }
         out.add(page("役（強い順）",
@@ -275,7 +277,7 @@ final class Rulebook {
 
     /** 絵の入ったページ。絵は行より背が高いので、項目の間を 1 行あける。 */
     private static Component picturePage(String title, Component... items) {
-        Component page = Component.text(title, NamedTextColor.DARK_BLUE).decorate(TextDecoration.BOLD);
+        Component page = L10n.tr(title).color(NamedTextColor.DARK_BLUE).decorate(TextDecoration.BOLD);
         for (Component item : items) {
             page = page.append(Component.newline()).append(Component.newline()).append(item.decoration(TextDecoration.BOLD, false));
         }
@@ -288,13 +290,13 @@ final class Rulebook {
         for (Symbol symbol : new Symbol[]{a, b, c}) {
             row = row.append(symbol == null ? Component.text(" ？ ", NamedTextColor.DARK_GRAY) : Glyphs.slot(symbol));
         }
-        return row.append(Component.text(" " + pay, NamedTextColor.BLACK));
+        return row.append(Component.text(" ").append(L10n.tr(pay)).color(NamedTextColor.BLACK));
     }
 
     /** ポーカーの役の名前と、その例の 5 枚（"AS KH TD" のように、ランク + スート S/H/D/C）。 */
     private static Component hand(String name, String hint, String cards) {
-        Component row = Component.text(name, NamedTextColor.BLACK).append(Component.newline()).append(PictureRules.cards(cards));
+        Component row = L10n.tr(name).color(NamedTextColor.BLACK).append(Component.newline()).append(PictureRules.cards(cards));
         // 本の 1 行は 114 px。カード 5 枚（1 枚 10 px）と短い説明が収まるように詰める
-        return row.append(Component.text(" " + hint, NamedTextColor.DARK_GRAY));
+        return row.append(Component.text(" ").append(L10n.tr(hint)).color(NamedTextColor.DARK_GRAY));
     }
 }

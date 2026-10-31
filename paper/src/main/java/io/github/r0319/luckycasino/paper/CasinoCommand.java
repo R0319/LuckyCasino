@@ -49,14 +49,14 @@ final class CasinoCommand implements BasicCommand {
         CommandSender sender = source.getSender();
         if (ADMIN.contains(sub)) {
             if (!sender.hasPermission(TableManager.ADMIN)) {
-                sender.sendMessage(Component.text("権限がありません", NamedTextColor.RED));
+                sender.sendMessage(L10n.tr("権限がありません").color(NamedTextColor.RED));
                 return;
             }
             admin(source, sub, args);
             return;
         }
         if (!(source.getExecutor() instanceof Player player)) {
-            sender.sendMessage(Component.text("プレイヤーとして実行してください", NamedTextColor.RED));
+            sender.sendMessage(L10n.tr("プレイヤーとして実行してください").color(NamedTextColor.RED));
             return;
         }
         if (sub.equals("dealer")) {
@@ -70,7 +70,7 @@ final class CasinoCommand implements BasicCommand {
             return;
         }
         if (table == null) {
-            player.sendMessage(Component.text("テーブルの席に着いていません。椅子をクリックすると座れます", NamedTextColor.GRAY));
+            player.sendMessage(L10n.tr("テーブルの席に着いていません。椅子をクリックすると座れます").color(NamedTextColor.GRAY));
             return;
         }
         switch (sub) {
@@ -92,11 +92,11 @@ final class CasinoCommand implements BasicCommand {
     private void dealer(Player player, String[] args) {
         CasinoTable table = plugin.tables().nearestWithDealer(player.getLocation(), 6);
         if (table == null) {
-            player.sendMessage(Component.text("6 ブロック以内にディーラーのいるテーブルがありません", NamedTextColor.RED));
+            player.sendMessage(L10n.tr("6 ブロック以内にディーラーのいるテーブルがありません").color(NamedTextColor.RED));
             return;
         }
         if (!table.canEdit(player)) {
-            player.sendMessage(Component.text("ディーラーの見た目を変えられるのは、テーブルを置いた人と管理者だけです", NamedTextColor.RED));
+            player.sendMessage(L10n.tr("ディーラーの見た目を変えられるのは、テーブルを置いた人と管理者だけです").color(NamedTextColor.RED));
             return;
         }
         String what = args.length > 1 ? args[1].toLowerCase(Locale.ROOT) : "";
@@ -105,23 +105,23 @@ final class CasinoCommand implements BasicCommand {
         switch (what) {
             case "skin" -> {
                 if (!DealerLook.validSkin(value)) {
-                    player.sendMessage(Component.text("プレイヤー名は英数字と _ の 3〜16 文字です", NamedTextColor.RED));
+                    player.sendMessage(L10n.tr("プレイヤー名は英数字と _ の 3〜16 文字です").color(NamedTextColor.RED));
                     return;
                 }
                 plugin.tables().changeDealer(table, look.withSkin(value));
-                player.sendMessage(Component.text("ディーラーのスキンを " + value + " にしました", NamedTextColor.GREEN));
+                player.sendMessage(L10n.tr("ディーラーのスキンを %s にしました", value).color(NamedTextColor.GREEN));
             }
             case "name" -> {
                 if (value.isEmpty() || value.codePointCount(0, value.length()) > DealerLook.MAX_NAME) {
-                    player.sendMessage(Component.text("名前は 1〜" + DealerLook.MAX_NAME + " 文字です", NamedTextColor.RED));
+                    player.sendMessage(L10n.tr("名前は 1〜%s 文字です", DealerLook.MAX_NAME).color(NamedTextColor.RED));
                     return;
                 }
                 plugin.tables().changeDealer(table, look.withName(value));
-                player.sendMessage(Component.text("ディーラーの名前を「" + value + "」にしました", NamedTextColor.GREEN));
+                player.sendMessage(L10n.tr("ディーラーの名前を「%s」にしました", value).color(NamedTextColor.GREEN));
             }
             case "reset" -> {
                 plugin.tables().changeDealer(table, DealerLook.DEFAULT);
-                player.sendMessage(Component.text("ディーラーの見た目を元に戻しました", NamedTextColor.GREEN));
+                player.sendMessage(L10n.tr("ディーラーの見た目を元に戻しました").color(NamedTextColor.GREEN));
             }
             default -> plugin.dealerMenu().open(player, table);
         }
@@ -148,7 +148,7 @@ final class CasinoCommand implements BasicCommand {
                     try {
                         table.raiseTo(player, Long.parseLong(args[1]));
                     } catch (NumberFormatException e) {
-                        player.sendMessage(Component.text("額は数字で指定してください", NamedTextColor.RED));
+                        player.sendMessage(L10n.tr("額は数字で指定してください").color(NamedTextColor.RED));
                     }
                 } else {
                     table.openRaise(player);
@@ -162,13 +162,13 @@ final class CasinoCommand implements BasicCommand {
         String text = switch (table.type()) {
             case BLACKJACK -> "/casino hit|stand|double|split|bet|leave|rules";
             case ROULETTE -> "/casino bet|leave|rules";
-            case POKER -> "/casino fold|check|call|raise [合計]|allin|leave|rules";
+            case POKER -> "/casino fold|check|call|raise [total]|allin|leave|rules";
             case SLOT -> "/casino spin|bet|leave|rules";
             case BACCARAT, BIGWHEEL, HIGHLOW, HORSERACE -> "/casino bet|leave|rules";
             case CHINCHIRO -> "/casino bet|roll|leave|rules";
             case HOLDEM -> "/casino bet|call|fold|leave|rules";
         };
-        player.sendMessage(Component.text("使い方: " + text, NamedTextColor.GRAY));
+        player.sendMessage(L10n.tr("使い方: %s", text).color(NamedTextColor.GRAY));
     }
 
     private void admin(CommandSourceStack source, String sub, String[] args) {
@@ -177,43 +177,43 @@ final class CasinoCommand implements BasicCommand {
             case "give" -> {
                 GameType type = args.length > 1 ? GameType.byId(args[1].toLowerCase(Locale.ROOT)) : null;
                 if (type == null) {
-                    sender.sendMessage(Component.text("使い方: /casino give <" + typeIds() + "> [プレイヤー]", NamedTextColor.RED));
+                    sender.sendMessage(L10n.tr("使い方: /casino give <%s> [プレイヤー]", typeIds()).color(NamedTextColor.RED));
                     return;
                 }
                 Player target = args.length > 2 ? plugin.getServer().getPlayerExact(args[2])
                         : source.getExecutor() instanceof Player p ? p : null;
                 if (target == null) {
-                    sender.sendMessage(Component.text("プレイヤーが見つかりません", NamedTextColor.RED));
+                    sender.sendMessage(L10n.tr("プレイヤーが見つかりません").color(NamedTextColor.RED));
                     return;
                 }
                 target.getInventory().addItem(plugin.tableItem().create(type));
-                sender.sendMessage(Component.text(target.getName() + " に" + type.itemName() + "を渡しました", NamedTextColor.GREEN));
+                sender.sendMessage(L10n.tr("%s に%sを渡しました", target.getName(), L10n.tr(type.itemName())).color(NamedTextColor.GREEN));
             }
             case "remove" -> {
                 if (!(source.getExecutor() instanceof Player player)) {
-                    sender.sendMessage(Component.text("プレイヤーとして実行してください", NamedTextColor.RED));
+                    sender.sendMessage(L10n.tr("プレイヤーとして実行してください").color(NamedTextColor.RED));
                     return;
                 }
                 CasinoTable table = plugin.tables().nearest(player.getLocation(), 6);
                 if (table == null) {
-                    player.sendMessage(Component.text("6 ブロック以内にテーブルがありません", NamedTextColor.RED));
+                    player.sendMessage(L10n.tr("6 ブロック以内にテーブルがありません").color(NamedTextColor.RED));
                     return;
                 }
                 if (!table.empty() && !(args.length > 1 && args[1].equalsIgnoreCase("force"))) {
-                    player.sendMessage(Component.text("座っている人がいるので片付けません。精算して片付けるなら /casino remove force", NamedTextColor.RED));
+                    player.sendMessage(L10n.tr("座っている人がいるので片付けません。精算して片付けるなら /casino remove force").color(NamedTextColor.RED));
                     return;
                 }
                 plugin.tables().remove(table, false);
-                player.sendMessage(Component.text("テーブルを片付けました", NamedTextColor.GREEN));
+                player.sendMessage(L10n.tr("テーブルを片付けました").color(NamedTextColor.GREEN));
             }
-            case "status" -> sender.sendMessage(Component.text(
-                    "Geyser 拡張: " + (plugin.bridge().isConnected() ? "接続中" : "未接続")
-                            + " / 通貨: " + (plugin.bank().practice() ? "練習用（経済プラグインなし）" : "Vault")
-                            + " / テーブル: " + plugin.tables().tables().size() + " 台", NamedTextColor.GRAY));
+            case "status" -> sender.sendMessage(L10n.tr("Geyser 拡張: %s / 通貨: %s / テーブル: %s 台",
+                    L10n.tr(plugin.bridge().isConnected() ? "接続中" : "未接続"),
+                    plugin.bank().practice() ? L10n.tr("練習用（経済プラグインなし）") : "Vault",
+                    plugin.tables().tables().size()).color(NamedTextColor.GRAY));
             case "selftest" -> {
                 GameType type = args.length > 1 ? GameType.byId(args[1].toLowerCase(Locale.ROOT)) : null;
                 if (type == null) {
-                    sender.sendMessage(Component.text("使い方: /casino selftest <" + typeIds() + "> [回数]", NamedTextColor.RED));
+                    sender.sendMessage(L10n.tr("使い方: /casino selftest <%s> [回数]", typeIds()).color(NamedTextColor.RED));
                     return;
                 }
                 int rounds = 10;
@@ -221,7 +221,7 @@ final class CasinoCommand implements BasicCommand {
                     try {
                         rounds = Integer.parseInt(args[2]);
                     } catch (NumberFormatException e) {
-                        sender.sendMessage(Component.text("回数は数字で指定してください", NamedTextColor.RED));
+                        sender.sendMessage(L10n.tr("回数は数字で指定してください").color(NamedTextColor.RED));
                         return;
                     }
                 }

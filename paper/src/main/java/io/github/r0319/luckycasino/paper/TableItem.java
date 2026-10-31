@@ -32,9 +32,10 @@ final class TableItem {
     }
 
     ItemStack create(GameType type) {
-        ItemStack item = Menus.named(Items.model("table/" + type.id()), Component.text(type.itemName(), NamedTextColor.GOLD),
-                List.of(Component.text("ブロックの上面に右クリックで置く（" + (type.singleBlock() ? "1 x 1 ブロック、高さ 2" : "4 x 2 ブロック") + "）", NamedTextColor.GRAY),
-                        Component.text("置いた人がスニーク + 右クリックで片付けられます", NamedTextColor.GRAY)));
+        ItemStack item = Menus.named(Items.model("table/" + type.id()), L10n.tr(type.itemName()).color(NamedTextColor.GOLD),
+                List.of(L10n.tr("ブロックの上面に右クリックで置く（%s）", L10n.tr(type.singleBlock() ? "1 x 1 ブロック、高さ 2" : "4 x 2 ブロック"))
+                                .color(NamedTextColor.GRAY),
+                        L10n.tr("置いた人がスニーク + 右クリックで片付けられます").color(NamedTextColor.GRAY)));
         item.editPersistentDataContainer(pdc -> pdc.set(marker, PersistentDataType.STRING, type.id()));
         return item;
     }
@@ -66,7 +67,7 @@ final class TableItem {
         List<String> shape = section.getStringList("shape");
         ConfigurationSection ingredients = section.getConfigurationSection("ingredients");
         if (shape.isEmpty() || shape.size() > 3 || ingredients == null) {
-            logger.warning(where + " の shape か ingredients が不正なため、レシピを登録しません");
+            logger.warning(L10n.plain("%s の shape か ingredients が不正なため、レシピを登録しません", where));
             return;
         }
         ShapedRecipe recipe = new ShapedRecipe(recipeKey(type), create(type));
@@ -74,7 +75,7 @@ final class TableItem {
         for (String key : ingredients.getKeys(false)) {
             RecipeChoice choice = choice(ingredients.getString(key, ""));
             if (choice == null || key.length() != 1) {
-                logger.warning(where + " の材料 " + key + " を読めないため、レシピを登録しません");
+                logger.warning(L10n.plain("%s の材料 %s を読めないため、レシピを登録しません", where, key));
                 return;
             }
             recipe.setIngredient(key.charAt(0), choice);

@@ -21,7 +21,7 @@ Hangar（https://hangar.papermc.io ）でプロジェクトを作るときに入
 LuckyCasino adds casino tables you can place and play in survival or on a hub.
 Cards, chips, wheels and reels are real 3D models (ItemDisplay + resource pack), and every deal, spin and payout is animated.
 
-> **All in-game text (menus, chat, rule books) is currently Japanese only.**
+> In-game text is available in **English and Japanese**. With the resource pack, each player sees their own game language; without it, the server's `language` setting is used.
 
 ## Games
 - Blackjack (5 seats, 6 decks, dealer stands on soft 17, 3:2)
