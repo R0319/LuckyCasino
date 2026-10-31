@@ -2,7 +2,8 @@ name: LuckyCasino
 version: '${version}'
 main: io.github.r0319.luckycasino.paper.LuckyCasinoPaper
 api-version: '26.2'
-description: カジノ（ブラックジャック・ルーレット・ポーカー）。Java 版は ItemDisplay + リソースパック、統合版は Geyser 拡張で表示
+description: カジノ（ブラックジャック・ルーレット・ポーカー・スロット・バカラ・ビッグホイール・チンチロ・ハイ＆ロー・競馬）。Java 版は ItemDisplay + リソースパック、統合版は Geyser 拡張で表示
+website: https://github.com/R0319/LuckyCasino
 author: R0319
 softdepend: [Vault]
 permissions:

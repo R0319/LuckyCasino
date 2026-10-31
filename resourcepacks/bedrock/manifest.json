@@ -2,7 +2,7 @@
   "format_version": 2,
   "header": {
     "name": "LuckyCasino",
-    "description": "LuckyCasino prototype (cards)",
+    "description": "LuckyCasino casino plugin resources",
     "uuid": "d1cdbd84-c856-479a-be77-22dd2c48e1e6",
     "version": [0, 1, 0],
     "min_engine_version": [1, 21, 0]
