@@ -145,7 +145,8 @@ final class SelfTest {
     /** 賭けたチップがあるボットを 1 人選んで席を立たせる（切断・ログアウトと同じ処理）。すぐ精算されたら失敗。 */
     private void leaveMidRound() {
         ThreadLocalRandom random = ThreadLocalRandom.current();
-        if (random.nextInt(3) != 0) {
+        // 賭けを受け付けている間に立つと置いた賭けが戻る（勝負前なので正しい）。勝負が始まってからだけ試す
+        if (random.nextInt(3) != 0 || table.bettingOpen()) {
             return;
         }
         List<Integer> candidates = new ArrayList<>();

@@ -161,6 +161,11 @@ abstract class SpotTable extends CasinoTable {
         return state == State.IDLE || state == State.BETTING;
     }
 
+    @Override
+    boolean bettingOpen() {
+        return canBet();
+    }
+
     /** 席 seat の賭け（賭け場所 → 額、置いた順）。 */
     Map<String, Long> bets(int seat) {
         return bets.getOrDefault(seat, Map.of());
