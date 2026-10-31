@@ -157,6 +157,11 @@ final class BlackjackTable extends CasinoTable {
     }
 
     @Override
+    boolean bettingOpen() {
+        return state != State.PLAYING;
+    }
+
+    @Override
     protected void onAway(int index) {
         if (waitingInput && round.currentSeat() == index) {
             act(index, Action.STAND);

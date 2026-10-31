@@ -565,6 +565,11 @@ abstract class CasinoTable {
         updateStatus();
     }
 
+    /** まだ賭けを受け付けている（勝負が始まる前で、席を立てば置いた賭けが戻る）。自己テストが使う。 */
+    boolean bettingOpen() {
+        return false;
+    }
+
     /** 勝負中に席を立った人の手番を進めるなど。 */
     protected void onAway(int seat) {
     }

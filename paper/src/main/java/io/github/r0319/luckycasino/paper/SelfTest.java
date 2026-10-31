@@ -13,6 +13,7 @@ import org.bukkit.scheduler.BukkitTask;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * ボットだけで卓を回す自己テスト（/casino selftest）。ワールドの初期地点の近くに保存しない卓を出し、
@@ -23,6 +24,8 @@ import java.util.UUID;
  *   <li>勝負の区切りで、卓の備品以外のエンティティ（カード・チップ・文字）が残っていない</li>
  *   <li>進行中に例外が起きていない、進行が止まっていない</li>
  * </ul>
+ * leave を付けると、勝負の途中（賭けたチップがある間）にボットを席から立たせ、切断・ログアウトと同じ扱いになるかも確かめる。
+ * 勝負中に立った席はすぐには精算されず、勝負が最後まで進んでから精算される（賭けが戻って負け逃げできない）こと。
  */
 final class SelfTest {
 
@@ -49,6 +52,7 @@ final class SelfTest {
     private final GameType type;
     private final int rounds;
     private final CommandSender sender;
+    private final boolean leaveTest;
     private CasinoTable table;
     private Chunk chunk;
     private BukkitTask watchdog;
@@ -61,20 +65,22 @@ final class SelfTest {
     private int idleSeconds;
     private final List<String> failures = new ArrayList<>();
     private int errors;
+    private int leaves;
 
-    private SelfTest(LuckyCasinoPaper plugin, GameType type, int rounds, CommandSender sender) {
+    private SelfTest(LuckyCasinoPaper plugin, GameType type, int rounds, CommandSender sender, boolean leaveTest) {
         this.plugin = plugin;
         this.type = type;
         this.rounds = rounds;
         this.sender = sender;
+        this.leaveTest = leaveTest;
     }
 
-    static void start(LuckyCasinoPaper plugin, GameType type, int rounds, CommandSender sender) {
+    static void start(LuckyCasinoPaper plugin, GameType type, int rounds, CommandSender sender, boolean leaveTest) {
         if (running != null) {
             sender.sendMessage(L10n.tr("自己テストはもう動いています（%s）", L10n.tr(running.type.displayName())).color(NamedTextColor.RED));
             return;
         }
-        running = new SelfTest(plugin, type, Math.max(1, Math.min(rounds, 200)), sender);
+        running = new SelfTest(plugin, type, Math.max(1, Math.min(rounds, 200)), sender, leaveTest);
         running.begin();
     }
 
@@ -123,13 +129,46 @@ final class SelfTest {
         for (int i = 0; i < table.seatCount(); i++) {
             seatBot(i);
         }
-        log(L10n.plain("開始: %s を %s 回（%s %s %s %s、ボット %s 人）", L10n.tr(type.displayName()), rounds, world.getName(), x, y, z, table.seatCount()));
+        log(L10n.plain("開始: %s を %s 回（%s %s %s %s、ボット %s 人）%s", L10n.tr(type.displayName()), rounds, world.getName(), x, y, z, table.seatCount(),
+                leaveTest ? L10n.plain("、途中で席を立つ") : ""));
         watchdog = plugin.getServer().getScheduler().runTaskTimer(plugin, () -> {
+            if (leaveTest) {
+                leaveMidRound();
+            }
             if (++idleSeconds > STALL_SECONDS) {
                 fail(L10n.plain("進行が %s 秒止まっています（%s 回目のあと）", STALL_SECONDS, finished));
                 finish(null);
             }
         }, 20L, 20L);
+    }
+
+    /** 賭けたチップがあるボットを 1 人選んで席を立たせる（切断・ログアウトと同じ処理）。すぐ精算されたら失敗。 */
+    private void leaveMidRound() {
+        ThreadLocalRandom random = ThreadLocalRandom.current();
+        // 賭けを受け付けている間に立つと置いた賭けが戻る（勝負前なので正しい）。勝負が始まってからだけ試す
+        if (random.nextInt(3) != 0 || table.bettingOpen()) {
+            return;
+        }
+        List<Integer> candidates = new ArrayList<>();
+        for (int i = 0; i < table.seatCount(); i++) {
+            CasinoTable.Seat seat = table.seat(i);
+            if (seat != null && seat.bot && !seat.away && seat.atRisk > 0) {
+                candidates.add(i);
+            }
+        }
+        if (candidates.isEmpty()) {
+            return;
+        }
+        int index = candidates.get(random.nextInt(candidates.size()));
+        CasinoTable.Seat seat = table.seat(index);
+        long atRisk = seat.atRisk;
+        table.leave(seat.player);
+        CasinoTable.Seat after = table.seat(index);
+        if (after == seat && after.away) {
+            leaves++;
+        } else if (after == null) {
+            fail(L10n.plain("勝負中（賭け %s 枚）に席を立ったのに、勝負の終わりを待たずに精算されました（席 %s）", atRisk, index + 1));
+        }
     }
 
     private void seatBot(int index) {
@@ -236,6 +275,9 @@ final class SelfTest {
         boolean ok = failures.isEmpty() && finished >= rounds;
         log(L10n.plain("%s: %s %s/%s 回、精算 %s 件、胴元から見た損益 %s 枚、補充 %s 枚、例外 %s 件、問題 %s 件",
                 L10n.tr(ok ? "成功" : "失敗"), L10n.tr(type.displayName()), finished, rounds, bets, -net, supplied, errors, failures.size()));
+        if (leaveTest) {
+            log(L10n.plain("勝負の途中で席を立った回数 %s", leaves));
+        }
         failures.forEach(message -> log(" - " + message));
     }
 

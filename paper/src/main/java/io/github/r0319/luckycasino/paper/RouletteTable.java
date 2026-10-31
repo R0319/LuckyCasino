@@ -181,6 +181,11 @@ final class RouletteTable extends CasinoTable {
         return state == State.IDLE || state == State.BETTING;
     }
 
+    @Override
+    boolean bettingOpen() {
+        return canBet();
+    }
+
     /** 賭けを置く。置けなければ理由を返す（null なら成功）。 */
     Component place(int index, RouletteBet bet) {
         Seat seat = seats[index];
