@@ -36,7 +36,11 @@ abstract class SpotTable extends CasinoTable {
      * @param id   保存や表示の引き当てに使う名前
      * @param slot メニュー（54 マス）の上 4 段のどこに出すか
      */
-    record Spot(String id, String name, String help, Material icon, int slot) {
+    record Spot(String id, Component name, Component help, Material icon, int slot) {
+        /** name と help は翻訳のキー（日本語）。 */
+        Spot(String id, String name, String help, Material icon, int slot) {
+            this(id, L10n.tr(name), L10n.tr(help), icon, slot);
+        }
     }
 
     /** 払い戻しのあと、次の回を受け付けるまで（tick）。 */
@@ -104,8 +108,8 @@ abstract class SpotTable extends CasinoTable {
     protected abstract void clearRound();
 
     /** 状況の文字の一行目に出す名前。 */
-    protected String title() {
-        return type().displayName();
+    protected Component title() {
+        return L10n.tr(type().displayName());
     }
 
     /** ボットが賭ける場所（自己テスト用）。既定は場所を 1〜2 か所選ぶ。 */
@@ -187,7 +191,7 @@ abstract class SpotTable extends CasinoTable {
         } else if (canBet()) {
             openMenu(player);
         } else {
-            player.sendMessage(Component.text("今の回が終わったら賭けられます", NamedTextColor.GRAY));
+            player.sendMessage(L10n.tr("今の回が終わったら賭けられます").color(NamedTextColor.GRAY));
         }
     }
 
@@ -207,13 +211,13 @@ abstract class SpotTable extends CasinoTable {
     }
 
     /** 賭けを置く。置けなければ理由を返す（null なら成功）。 */
-    String place(int index, String spotId, long amount) {
+    Component place(int index, String spotId, long amount) {
         Seat seat = seats[index];
         if (seat == null || seat.away || !canBet() || spot(spotId) == null) {
-            return "今は賭けられません";
+            return L10n.tr("今は賭けられません");
         }
         if (amount > seat.chips) {
-            return "チップが足りません";
+            return L10n.tr("チップが足りません");
         }
         Map<String, Long> mine = bets.computeIfAbsent(index, k -> new LinkedHashMap<>());
         long here = mine.getOrDefault(spotId, 0L) + amount;
@@ -221,14 +225,14 @@ abstract class SpotTable extends CasinoTable {
             if (mine.isEmpty()) {
                 bets.remove(index);
             }
-            return "1 か所 " + settings.minBet() + "〜" + settings.maxBet() + " 枚、1 回の合計 " + settings.maxTotal() + " 枚までです";
+            return L10n.tr("1 か所 %s〜%s 枚、1 回の合計 %s 枚までです", settings.minBet(), settings.maxBet(), settings.maxTotal());
         }
         long keep = reserve(total(index) + amount);
         if (seat.chips - amount < keep) {
             if (mine.isEmpty()) {
                 bets.remove(index);
             }
-            return "負けたときの支払いに備えて、賭けたあとも手元に " + keep + " 枚必要です";
+            return L10n.tr("負けたときの支払いに備えて、賭けたあとも手元に %s 枚必要です", keep);
         }
         mine.put(spotId, here);
         seat.chips -= amount;
@@ -239,7 +243,7 @@ abstract class SpotTable extends CasinoTable {
         if (state == State.IDLE) {
             state = State.BETTING;
             countdown = settings.bettingSeconds();
-            broadcast(Component.text("ベットを受け付けています（あと " + countdown + " 秒）", NamedTextColor.AQUA));
+            broadcast(L10n.tr("ベットを受け付けています（あと %s 秒）", countdown).color(NamedTextColor.AQUA));
         }
         updateStatus();
         return null;
@@ -318,7 +322,7 @@ abstract class SpotTable extends CasinoTable {
         }
         countdown--;
         if (countdown == 3) {
-            broadcast(Component.text("まもなく締め切ります", NamedTextColor.YELLOW));
+            broadcast(L10n.tr("まもなく締め切ります").color(NamedTextColor.YELLOW));
         }
         if (countdown <= 0) {
             start();
@@ -333,7 +337,7 @@ abstract class SpotTable extends CasinoTable {
         }
         state = State.PLAYING;
         plugin.spotMenu().close(this);
-        broadcast(Component.text("ノーモアベット", NamedTextColor.AQUA));
+        broadcast(L10n.tr("ノーモアベット").color(NamedTextColor.AQUA));
         int ticks = play();
         if (ticks != UNTIL_FINISHED) {
             later(ticks + 10, this::payoutAll);
@@ -372,15 +376,15 @@ abstract class SpotTable extends CasinoTable {
             long net = sumBack - sumBet;
             Player player = online(seat);
             if (player != null) {
-                player.showTitle(Title.title(result, Component.text(net > 0 ? "+" + net + " 枚" : net == 0 ? "±0" : net + " 枚",
+                player.showTitle(Title.title(result, L10n.delta(net).color(
                                 net > 0 ? NamedTextColor.GREEN : net == 0 ? NamedTextColor.YELLOW : NamedTextColor.RED),
                         Title.Times.times(Duration.ofMillis(100), Duration.ofMillis(2000), Duration.ofMillis(400))));
                 if (net > 0) {
                     player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1f, 1.2f);
                 }
-                player.sendMessage(Component.text("結果 ", NamedTextColor.WHITE).append(result)
-                        .append(Component.text((sumBack < 0 ? "：追加の支払い " + -sumBack : "：払い戻し " + sumBack)
-                                + " 枚（手元 " + seat.chips + " 枚）", NamedTextColor.GRAY)));
+                player.sendMessage(L10n.tr("結果 ").color(NamedTextColor.WHITE).append(result)
+                        .append((sumBack < 0 ? L10n.tr("：追加の支払い %s 枚（手元 %s 枚）", -sumBack, seat.chips)
+                                : L10n.tr("：払い戻し %s 枚（手元 %s 枚）", sumBack, seat.chips)).color(NamedTextColor.GRAY)));
             }
         }
         updateStatus();
@@ -423,7 +427,7 @@ abstract class SpotTable extends CasinoTable {
             } else {
                 Player player = online(seat);
                 if (player != null) {
-                    player.sendMessage(Component.text("次の回のベットを受け付けています", NamedTextColor.AQUA));
+                    player.sendMessage(L10n.tr("次の回のベットを受け付けています").color(NamedTextColor.AQUA));
                     openMenu(player);
                 }
             }
@@ -456,13 +460,13 @@ abstract class SpotTable extends CasinoTable {
     protected Component statusText() {
         Component text = switch (state) {
             case IDLE -> empty()
-                    ? Component.text(title(), NamedTextColor.GOLD).append(Component.newline())
-                    .append(Component.text("椅子をクリックして座る", NamedTextColor.GRAY))
-                    : Component.text("ベットを待っています", NamedTextColor.AQUA);
-            case BETTING -> Component.text("ベット受付中（あと " + Math.max(countdown, 0) + " 秒）", NamedTextColor.AQUA);
-            case PLAYING -> Component.text("ノーモアベット", NamedTextColor.YELLOW);
-            case PAYING -> Component.text("払い戻し中", NamedTextColor.YELLOW);
+                    ? title().color(NamedTextColor.GOLD).append(Component.newline())
+                    .append(L10n.tr("椅子をクリックして座る").color(NamedTextColor.GRAY))
+                    : L10n.tr("ベットを待っています").color(NamedTextColor.AQUA);
+            case BETTING -> L10n.tr("ベット受付中（あと %s 秒）", Math.max(countdown, 0)).color(NamedTextColor.AQUA);
+            case PLAYING -> L10n.tr("ノーモアベット").color(NamedTextColor.YELLOW);
+            case PAYING -> L10n.tr("払い戻し中").color(NamedTextColor.YELLOW);
         };
-        return text.append(limitsLine("1 か所 " + settings.minBet() + "〜" + settings.maxBet() + "、合計 " + settings.maxTotal() + " まで"));
+        return text.append(limitsLine(L10n.tr("1 か所 %s〜%s、合計 %s まで", settings.minBet(), settings.maxBet(), settings.maxTotal())));
     }
 }

@@ -56,18 +56,18 @@ final class SpotMenu implements Listener {
             return;
         }
         if (!table.canBet()) {
-            player.sendMessage(Component.text("今の回が終わったら賭けられます", NamedTextColor.GRAY));
+            player.sendMessage(L10n.tr("今の回が終わったら賭けられます").color(NamedTextColor.GRAY));
             return;
         }
         Holder holder = new Holder(table);
         holder.chip = table.settings().minBet();
         holder.inventory = Bukkit.createInventory(holder, 54,
-                Glyphs.menuTitle(player, 54, Component.text(table.type().displayName() + "：賭ける場所を選ぶ")));
+                Glyphs.menuTitle(player, 54, L10n.tr("%s：賭ける場所を選ぶ", table.type().displayName())));
         render(holder, player);
         player.openInventory(holder.inventory);
-        player.sendMessage(Component.text("閉じてしまったら ", NamedTextColor.GRAY)
-                .append(Component.text("[賭ける]", NamedTextColor.AQUA).clickEvent(ClickEvent.runCommand("/casino bet")))
-                .append(Component.text(" で開き直せます", NamedTextColor.GRAY)));
+        player.sendMessage(L10n.tr("閉じてしまったら ").color(NamedTextColor.GRAY)
+                .append(L10n.tr("[賭ける]").color(NamedTextColor.AQUA).clickEvent(ClickEvent.runCommand("/casino bet")))
+                .append(L10n.tr(" で開き直せます").color(NamedTextColor.GRAY)));
     }
 
     /** 勝負が始まったら、この卓のメニューを閉じる。 */
@@ -87,13 +87,13 @@ final class SpotMenu implements Listener {
         var mine = seat < 0 ? java.util.Map.<String, Long>of() : table.bets(seat);
         for (SpotTable.Spot spot : table.spots()) {
             List<Component> lore = new ArrayList<>();
-            lore.add(Component.text(spot.help(), NamedTextColor.GRAY));
+            lore.add(spot.help().color(NamedTextColor.GRAY));
             Long placed = mine.get(spot.id());
             if (placed != null) {
-                lore.add(Component.text("ここに " + placed + " 枚賭けています", NamedTextColor.GREEN));
+                lore.add(L10n.tr("ここに %s 枚賭けています", placed).color(NamedTextColor.GREEN));
             }
-            lore.add(Component.text("クリックで " + holder.chip + " 枚置く", NamedTextColor.YELLOW));
-            ItemStack item = Menus.named(ItemStack.of(spot.icon()), Component.text(spot.name(), NamedTextColor.WHITE), lore);
+            lore.add(L10n.tr("クリックで %s 枚置く", holder.chip).color(NamedTextColor.YELLOW));
+            ItemStack item = Menus.named(ItemStack.of(spot.icon()), spot.name().color(NamedTextColor.WHITE), lore);
             if (placed != null) {
                 item.editMeta(meta -> meta.setEnchantmentGlintOverride(true));
             }
@@ -103,21 +103,21 @@ final class SpotMenu implements Listener {
         for (long value : chipValues(table)) {
             boolean selected = value == holder.chip;
             inv.setItem(slot++, Menus.named(Items.model("chip/c" + value + "_" + (selected ? 3 : 1)),
-                    Component.text(value + " 枚ずつ置く", selected ? NamedTextColor.GREEN : NamedTextColor.GOLD),
-                    List.of(Component.text(selected ? "選択中" : "クリックで切り替え", NamedTextColor.GRAY))));
+                    L10n.tr("%s 枚ずつ置く", value).color(selected ? NamedTextColor.GREEN : NamedTextColor.GOLD),
+                    List.of(L10n.tr(selected ? "選択中" : "クリックで切り替え").color(NamedTextColor.GRAY))));
         }
         long chips = seat < 0 ? 0 : table.seat(seat).chips;
         long total = seat < 0 ? 0 : table.total(seat);
         SpotSettings s = table.settings();
-        inv.setItem(INFO, Menus.named(ItemStack.of(Material.PAPER), Component.text("賭けた合計 " + total + " 枚", NamedTextColor.YELLOW),
-                List.of(Component.text("手元のチップ: " + chips + " 枚", NamedTextColor.GRAY),
-                        Component.text("1 か所 " + s.minBet() + "〜" + s.maxBet() + " 枚、合計 " + s.maxTotal() + " 枚まで", NamedTextColor.GRAY),
-                        Component.text("同じ場所をもう一度クリックすると積み増します", NamedTextColor.GRAY))));
-        inv.setItem(CLEAR, Menus.named(ItemStack.of(Material.BARRIER), Component.text("賭けを全部取り消す", NamedTextColor.RED), List.of()));
-        inv.setItem(RULES, Menus.named(ItemStack.of(Material.WRITTEN_BOOK), Component.text("ルールブック", NamedTextColor.AQUA),
-                List.of(Component.text("遊び方と配当を読む", NamedTextColor.GRAY))));
-        inv.setItem(LEAVE, Menus.named(ItemStack.of(Material.OAK_DOOR), Component.text("席を立つ", NamedTextColor.GRAY),
-                List.of(Component.text("チップを精算して席を離れます", NamedTextColor.GRAY))));
+        inv.setItem(INFO, Menus.named(ItemStack.of(Material.PAPER), L10n.tr("賭けた合計 %s 枚", total).color(NamedTextColor.YELLOW),
+                List.of(L10n.tr("手元のチップ: %s 枚", chips).color(NamedTextColor.GRAY),
+                        L10n.tr("1 か所 %s〜%s 枚、合計 %s 枚まで", s.minBet(), s.maxBet(), s.maxTotal()).color(NamedTextColor.GRAY),
+                        L10n.tr("同じ場所をもう一度クリックすると積み増します").color(NamedTextColor.GRAY))));
+        inv.setItem(CLEAR, Menus.named(ItemStack.of(Material.BARRIER), L10n.tr("賭けを全部取り消す").color(NamedTextColor.RED), List.of()));
+        inv.setItem(RULES, Menus.named(ItemStack.of(Material.WRITTEN_BOOK), L10n.tr("ルールブック").color(NamedTextColor.AQUA),
+                List.of(L10n.tr("遊び方と配当を読む").color(NamedTextColor.GRAY))));
+        inv.setItem(LEAVE, Menus.named(ItemStack.of(Material.OAK_DOOR), L10n.tr("席を立つ").color(NamedTextColor.GRAY),
+                List.of(L10n.tr("チップを精算して席を離れます").color(NamedTextColor.GRAY))));
     }
 
     private static List<Long> chipValues(SpotTable table) {
@@ -165,9 +165,9 @@ final class SpotMenu implements Listener {
                 } else {
                     for (SpotTable.Spot spot : table.spots()) {
                         if (spot.slot() == slot) {
-                            String error = table.place(seat, spot.id(), holder.chip);
+                            Component error = table.place(seat, spot.id(), holder.chip);
                             if (error != null) {
-                                player.sendMessage(Component.text(error, NamedTextColor.RED));
+                                player.sendMessage(error.color(NamedTextColor.RED));
                             }
                         }
                     }

@@ -445,7 +445,7 @@ abstract class CasinoTable {
         try {
             task.run();
         } catch (RuntimeException e) {
-            plugin.getLogger().log(Level.SEVERE, "テーブル " + id + " の処理で例外が起きました", e);
+            plugin.getLogger().log(Level.SEVERE, L10n.plain("テーブル %s の処理で例外が起きました", id), e);
             if (observer != null) {
                 observer.error(e);
             }
@@ -460,16 +460,16 @@ abstract class CasinoTable {
             return false;
         }
         if (!bank.withdraw(player, chips)) {
-            player.sendMessage(Component.text("お金が足りません", NamedTextColor.RED));
+            player.sendMessage(L10n.tr("お金が足りません").color(NamedTextColor.RED));
             return false;
         }
         Seat seat = new Seat(player.getUniqueId(), player.getName(), chips, false);
         seats[index] = seat;
         writeLedger(seat);
         mounts[index].addPassenger(player);
-        player.sendMessage(Component.text(bank.practice()
-                ? "練習用のチップ " + chips + " 枚を受け取りました。お金は使いません。"
-                : "チップ " + chips + " 枚に両替しました。メニューの「席を立つ」か /casino leave でお金に戻ります。", NamedTextColor.GREEN));
+        player.sendMessage((bank.practice()
+                ? L10n.tr("練習用のチップ %s 枚を受け取りました。お金は使いません。", chips)
+                : L10n.tr("チップ %s 枚に両替しました。メニューの「席を立つ」か /casino leave でお金に戻ります。", chips)).color(NamedTextColor.GREEN));
         playSound(Sound.BLOCK_WOODEN_BUTTON_CLICK_ON, 1f);
         onSeated(index, player);
         updateStatus();
@@ -498,8 +498,7 @@ abstract class CasinoTable {
             return;
         }
         seat.standing = true;
-        send(seat, Component.text("席とチップはそのままです。卓から " + (int) standingRange()
-                + " ブロック以内なら自由に歩けます。テーブルのクリックでメニュー、自分の椅子のクリックで座り直し。精算はメニューの「席を立つ」か /casino leave（離れすぎても精算します）", NamedTextColor.YELLOW));
+        send(seat, L10n.tr("席とチップはそのままです。卓から %s ブロック以内なら自由に歩けます。テーブルのクリックでメニュー、自分の椅子のクリックで座り直し。精算はメニューの「席を立つ」か /casino leave（離れすぎても精算します）", (int) standingRange()).color(NamedTextColor.YELLOW));
         updateStatus();
     }
 
@@ -538,7 +537,7 @@ abstract class CasinoTable {
             boolean far = player == null || !player.getWorld().equals(center.getWorld())
                     || player.getLocation().distanceSquared(center) > range * range;
             if (far) {
-                send(seat, Component.text("卓から離れたので席を立ちます", NamedTextColor.YELLOW));
+                send(seat, L10n.tr("卓から離れたので席を立ちます").color(NamedTextColor.YELLOW));
                 leave(seat.player);
             }
         }
@@ -560,7 +559,7 @@ abstract class CasinoTable {
         } else {
             seat.away = true;
             eject(index);
-            send(seat, Component.text("勝負が終わったら残りのチップを精算します。以降は自動で進めます。", NamedTextColor.YELLOW));
+            send(seat, L10n.tr("勝負が終わったら残りのチップを精算します。以降は自動で進めます。").color(NamedTextColor.YELLOW));
             onAway(index);
         }
         updateStatus();
@@ -588,10 +587,10 @@ abstract class CasinoTable {
         eject(index);
         long total = seat.chips + seat.atRisk;
         Component message = bank.practice()
-                ? Component.text("席を立ちました（練習用チップ " + total + " 枚は回収しました）", NamedTextColor.GRAY)
-                : Component.text("席を立ちました。チップ " + total + " 枚をお金に戻しました。", NamedTextColor.GREEN);
+                ? L10n.tr("席を立ちました（練習用チップ %s 枚は回収しました）", total).color(NamedTextColor.GRAY)
+                : L10n.tr("席を立ちました。チップ %s 枚をお金に戻しました。", total).color(NamedTextColor.GREEN);
         if (note != null) {
-            message = Component.text(note + "：", NamedTextColor.YELLOW).append(message);
+            message = L10n.tr("%s：", L10n.tr(note)).color(NamedTextColor.YELLOW).append(message);
         }
         send(seat, message);
         updateStatus();
@@ -621,7 +620,7 @@ abstract class CasinoTable {
             if (seat.away || (!seat.bot && Bukkit.getPlayer(seat.player) == null)) {
                 cashOut(i, null);
             } else if (seat.chips < minChips()) {
-                send(seat, Component.text("チップが最低額に足りないため、席を立ちます", NamedTextColor.YELLOW));
+                send(seat, L10n.tr("チップが最低額に足りないため、席を立ちます").color(NamedTextColor.YELLOW));
                 cashOut(i, null);
             }
         }
@@ -721,7 +720,8 @@ abstract class CasinoTable {
     }
 
     /** 状況の文字の下に出す賭け金の行。 */
-    protected Component limitsLine(String text) {
-        return Component.newline().append(Component.text(text + (bank.practice() ? "（練習用）" : ""), NamedTextColor.GRAY));
+    protected Component limitsLine(Component text) {
+        return Component.newline().append(text.color(NamedTextColor.GRAY))
+                .append(bank.practice() ? L10n.tr("（練習用）").color(NamedTextColor.GRAY) : Component.empty());
     }
 }

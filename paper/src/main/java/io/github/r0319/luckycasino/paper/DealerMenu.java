@@ -57,7 +57,7 @@ final class DealerMenu implements Listener {
 
     void open(Player player, CasinoTable table) {
         Holder holder = new Holder(table);
-        holder.inventory = Bukkit.createInventory(holder, 36, Component.text("ディーラーの見た目"));
+        holder.inventory = Bukkit.createInventory(holder, 36, L10n.tr("ディーラーの見た目"));
         fill(holder);
         player.openInventory(holder.inventory);
     }
@@ -66,28 +66,28 @@ final class DealerMenu implements Listener {
         Inventory inventory = holder.inventory;
         DealerLook look = holder.table.dealerLook();
         inventory.setItem(INFO, Menus.named(ItemStack.of(Material.ARMOR_STAND), look.nameText(), List.of(
-                Component.text("スキン: " + (look.skin() == null ? "既定" : look.skin()), NamedTextColor.GRAY),
-                Component.text("手に持った物を下の枠に重ねてクリックすると着せます", NamedTextColor.GRAY),
-                Component.text("（手元の物は減りません。空の手でクリックすると外します）", NamedTextColor.GRAY))));
+                L10n.tr("スキン: %s", look.skin() == null ? L10n.tr("既定") : look.skin()).color(NamedTextColor.GRAY),
+                L10n.tr("手に持った物を下の枠に重ねてクリックすると着せます").color(NamedTextColor.GRAY),
+                L10n.tr("（手元の物は減りません。空の手でクリックすると外します）").color(NamedTextColor.GRAY))));
         for (int i = 0; i < DealerLook.SLOTS.size(); i++) {
             ItemStack worn = look.equipment().get(DealerLook.SLOTS.get(i));
-            Component name = Component.text(SLOT_NAMES.get(i), NamedTextColor.YELLOW);
+            Component name = L10n.tr(SLOT_NAMES.get(i)).color(NamedTextColor.YELLOW);
             if (worn == null) {
                 inventory.setItem(FIRST_SLOT + i + (i >= 4 ? 1 : 0), Menus.named(ItemStack.of(SLOT_EMPTY.get(i)), name.append(
-                        Component.text("（なし）", NamedTextColor.DARK_GRAY)), List.of(
-                        Component.text("手に持った物を重ねてクリックで着せる", NamedTextColor.GRAY))));
+                        L10n.tr("（なし）").color(NamedTextColor.DARK_GRAY)), List.of(
+                        L10n.tr("手に持った物を重ねてクリックで着せる").color(NamedTextColor.GRAY))));
             } else {
                 ItemStack shown = worn.clone();
-                shown.lore(List.of(name, Component.text("空の手でクリックで外す", NamedTextColor.GRAY)));
+                shown.lore(List.of(name, L10n.tr("空の手でクリックで外す").color(NamedTextColor.GRAY)));
                 inventory.setItem(FIRST_SLOT + i + (i >= 4 ? 1 : 0), shown);
             }
         }
-        inventory.setItem(SKIN, Menus.named(ItemStack.of(Material.PLAYER_HEAD), Component.text("スキンを変える", NamedTextColor.GOLD),
-                List.of(Component.text("プレイヤー名を指定します（チャットに入力欄が出ます）", NamedTextColor.GRAY))));
-        inventory.setItem(NAME, Menus.named(ItemStack.of(Material.NAME_TAG), Component.text("名前を変える", NamedTextColor.GOLD),
-                List.of(Component.text("頭の上に出る名前（" + DealerLook.MAX_NAME + " 文字まで）", NamedTextColor.GRAY))));
-        inventory.setItem(RESET, Menus.named(ItemStack.of(Material.BARRIER), Component.text("元に戻す", NamedTextColor.RED),
-                List.of(Component.text("スキン・服装・名前を最初の状態にします", NamedTextColor.GRAY))));
+        inventory.setItem(SKIN, Menus.named(ItemStack.of(Material.PLAYER_HEAD), L10n.tr("スキンを変える").color(NamedTextColor.GOLD),
+                List.of(L10n.tr("プレイヤー名を指定します（チャットに入力欄が出ます）").color(NamedTextColor.GRAY))));
+        inventory.setItem(NAME, Menus.named(ItemStack.of(Material.NAME_TAG), L10n.tr("名前を変える").color(NamedTextColor.GOLD),
+                List.of(L10n.tr("頭の上に出る名前（%s 文字まで）", DealerLook.MAX_NAME).color(NamedTextColor.GRAY))));
+        inventory.setItem(RESET, Menus.named(ItemStack.of(Material.BARRIER), L10n.tr("元に戻す").color(NamedTextColor.RED),
+                List.of(L10n.tr("スキン・服装・名前を最初の状態にします").color(NamedTextColor.GRAY))));
     }
 
     private static EquipmentSlot slotAt(int raw) {
@@ -158,9 +158,9 @@ final class DealerMenu implements Listener {
 
     private static void suggest(Player player, String command, String help) {
         player.closeInventory();
-        player.sendMessage(Component.text("[ここをクリックして入力] ", NamedTextColor.GREEN)
+        player.sendMessage(L10n.tr("[ここをクリックして入力] ").color(NamedTextColor.GREEN)
                 .clickEvent(ClickEvent.suggestCommand(command))
                 .hoverEvent(HoverEvent.showText(Component.text(command)))
-                .append(Component.text(help, NamedTextColor.GRAY)));
+                .append(L10n.tr(help).color(NamedTextColor.GRAY)));
     }
 }

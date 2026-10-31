@@ -80,14 +80,14 @@ final class TableManager implements Listener {
             ConfigurationSection section = yaml.getConfigurationSection(id);
             World world = section == null ? null : plugin.getServer().getWorld(section.getString("world", ""));
             if (world == null) {
-                plugin.getLogger().warning("テーブル " + id + " のワールドが見つからないため読み込みません");
+                plugin.getLogger().warning(L10n.plain("テーブル %s のワールドが見つからないため読み込みません", id));
                 continue;
             }
             Frame frame = new Frame(world, section.getDouble("x"), section.getDouble("y"), section.getDouble("z"),
                     (float) section.getDouble("yaw"));
             GameType type = GameType.byId(section.getString("type", GameType.BLACKJACK.id()));
             if (type == null) {
-                plugin.getLogger().warning("テーブル " + id + " の種類 " + section.getString("type") + " が分からないため読み込みません");
+                plugin.getLogger().warning(L10n.plain("テーブル %s の種類 %s が分からないため読み込みません", id, section.getString("type")));
                 continue;
             }
             UUID owner = parseUuid(section.getString("owner"));
@@ -128,7 +128,7 @@ final class TableManager implements Listener {
         try {
             yaml.save(file);
         } catch (IOException e) {
-            plugin.getLogger().log(Level.SEVERE, "tables.yml を保存できません", e);
+            plugin.getLogger().log(Level.SEVERE, L10n.plain("tables.yml を保存できません"), e);
         }
     }
 
@@ -221,11 +221,11 @@ final class TableManager implements Listener {
     /** 両替メニューで選んだあと席に着かせる。ほかの卓に座っていたら断る。 */
     void sit(Player player, CasinoTable table, int seat, long chips) {
         if (tableOf(player.getUniqueId()) != null) {
-            player.sendMessage(Component.text("先に今の席を立ってください", NamedTextColor.RED));
+            player.sendMessage(L10n.tr("先に今の席を立ってください").color(NamedTextColor.RED));
             return;
         }
         if (table.seat(seat) != null) {
-            player.sendMessage(Component.text("その席はもう埋まっています", NamedTextColor.RED));
+            player.sendMessage(L10n.tr("その席はもう埋まっています").color(NamedTextColor.RED));
             return;
         }
         table.sit(player, seat, chips);
@@ -235,7 +235,7 @@ final class TableManager implements Listener {
 
     private void place(Player player, Block clicked, ItemStack item, GameType type) {
         if (!player.hasPermission("luckycasino.place")) {
-            player.sendMessage(Component.text("テーブルを置く権限がありません", NamedTextColor.RED));
+            player.sendMessage(L10n.tr("テーブルを置く権限がありません").color(NamedTextColor.RED));
             return;
         }
         float snapped = Math.round(player.getYaw() / 90f) * 90f;
@@ -254,19 +254,19 @@ final class TableManager implements Listener {
                 blocked = !block.getRelative(BlockFace.UP, up).isEmpty();
             }
             if (blocked) {
-                player.sendMessage(Component.text(shape.spaceText(), NamedTextColor.RED));
+                player.sendMessage(L10n.tr(shape.spaceText()).color(NamedTextColor.RED));
                 return;
             }
         }
         for (int i = 0; i < shape.seats(); i++) {
             Block seat = frame.at(shape.seat(i)).getBlock();
             if (!seat.isPassable() || !seat.getRelative(BlockFace.UP).isPassable() || tableAt(seat) != null) {
-                player.sendMessage(Component.text("椅子を置く場所が塞がっています", NamedTextColor.RED));
+                player.sendMessage(L10n.tr("椅子を置く場所が塞がっています").color(NamedTextColor.RED));
                 return;
             }
         }
         if (shape.dealer() != null && !frame.at(shape.dealer()).getBlock().isPassable()) {
-            player.sendMessage(Component.text("ディーラーが立つ場所（奥）が塞がっています", NamedTextColor.RED));
+            player.sendMessage(L10n.tr("ディーラーが立つ場所（奥）が塞がっています").color(NamedTextColor.RED));
             return;
         }
 
@@ -285,7 +285,7 @@ final class TableManager implements Listener {
         }
         if (!allowed) {
             replaced.forEach(state -> state.update(true, false));
-            player.sendMessage(Component.text("ここにはテーブルを置けません", NamedTextColor.RED));
+            player.sendMessage(L10n.tr("ここにはテーブルを置けません").color(NamedTextColor.RED));
             return;
         }
 
@@ -295,7 +295,9 @@ final class TableManager implements Listener {
         if (player.getGameMode() != GameMode.CREATIVE) {
             item.subtract();
         }
-        player.sendMessage(Component.text(type.itemName() + "を置きました" + (plugin.bank().practice() ? "（このサーバーには経済プラグインが無いので練習用です）" : ""), NamedTextColor.GREEN));
+        player.sendMessage(L10n.tr("%sを置きました", L10n.tr(type.itemName()))
+                .append(plugin.bank().practice() ? L10n.tr("（このサーバーには経済プラグインが無いので練習用です）") : Component.empty())
+                .color(NamedTextColor.GREEN));
     }
 
     /** 片付ける。座っている人がいれば精算してから。 */
@@ -336,9 +338,9 @@ final class TableManager implements Listener {
             if (table.seatOf(player.getUniqueId()) >= 0) {
                 table.interact(player, true);
             } else if (table.seat(seat) != null) {
-                player.sendMessage(Component.text("その席は " + table.seat(seat).name + " が使っています", NamedTextColor.GRAY));
+                player.sendMessage(L10n.tr("その席は %s が使っています", table.seat(seat).name).color(NamedTextColor.GRAY));
             } else if (tableOf(player.getUniqueId()) != null) {
-                player.sendMessage(Component.text("先に今の席を立ってください", NamedTextColor.RED));
+                player.sendMessage(L10n.tr("先に今の席を立ってください").color(NamedTextColor.RED));
             } else {
                 plugin.menus().openBuyIn(player, table, seat);
             }
@@ -376,10 +378,10 @@ final class TableManager implements Listener {
             event.setCancelled(true);
             if (player.isSneaking() && table.canEdit(player)) {
                 if (!table.empty()) {
-                    player.sendMessage(Component.text("座っている人がいるので片付けられません", NamedTextColor.RED));
+                    player.sendMessage(L10n.tr("座っている人がいるので片付けられません").color(NamedTextColor.RED));
                 } else {
                     remove(table, player.getGameMode() != GameMode.CREATIVE);
-                    player.sendMessage(Component.text("テーブルを片付けました", NamedTextColor.GREEN));
+                    player.sendMessage(L10n.tr("テーブルを片付けました").color(NamedTextColor.GREEN));
                 }
             } else if (table.seatOf(player.getUniqueId()) >= 0) {
                 table.interact(player, false);
@@ -393,7 +395,7 @@ final class TableManager implements Listener {
             if (event.getBlockFace() == BlockFace.UP) {
                 place(player, block, item, type);
             } else {
-                player.sendMessage(Component.text("ブロックの上面をクリックして置いてください", NamedTextColor.GRAY));
+                player.sendMessage(L10n.tr("ブロックの上面をクリックして置いてください").color(NamedTextColor.GRAY));
             }
         }
     }
@@ -437,7 +439,7 @@ final class TableManager implements Listener {
             if (tables.get(table.id()) != table || !table.spawned()) {
                 return;
             }
-            plugin.getLogger().info("テーブル " + table.id() + " の表示が消されたため作り直します（" + event.getCause() + "）");
+            plugin.getLogger().info(L10n.plain("テーブル %s の表示が消されたため作り直します（%s）", table.id(), event.getCause()));
             table.despawn("テーブルの表示が消されたため作り直しました。賭けていた分も戻して精算したので、座り直してください");
             table.spawn();
         });

@@ -76,7 +76,8 @@ final class PokerTable extends CasinoTable {
     private TextDisplay potLabel;
     private final long[] shownStack = new long[SEATS];
     private final long[] shownBet = new long[SEATS];
-    private final String[] lastAction = new String[SEATS];
+    private final Component[] lastAction = new Component[SEATS];
+    private final boolean[] allIn = new boolean[SEATS];
     private final boolean[] folded = new boolean[SEATS];
     private long shownPot;
 
@@ -141,10 +142,9 @@ final class PokerTable extends CasinoTable {
     @Override
     protected void onSeated(int seat, Player player) {
         if (player != null) {
-            player.sendMessage(Component.text("ブラインド " + settings.smallBlind() + "/" + settings.bigBlind()
-                    + "。2 人以上そろうと配り始めます", NamedTextColor.AQUA));
+            player.sendMessage(L10n.tr("ブラインド %s/%s。2 人以上そろうと配り始めます", settings.smallBlind(), settings.bigBlind()).color(NamedTextColor.AQUA));
             if (state == State.PLAYING) {
-                player.sendMessage(Component.text("今の勝負が終わったら参加します", NamedTextColor.GRAY));
+                player.sendMessage(L10n.tr("今の勝負が終わったら参加します").color(NamedTextColor.GRAY));
             }
         }
         maybeStart();
@@ -226,13 +226,14 @@ final class PokerTable extends CasinoTable {
             inHand[index] = true;
             shownStack[index] = stack;
             shownBet[index] = 0;
-            lastAction[index] = "";
+            lastAction[index] = Component.empty();
+            allIn[index] = false;
             folded[index] = false;
             seatLabels[index] = label(LAYOUT.seatLabel(index), 0.6f);
             updateSeatLabel(index);
         });
         potLabel = label(LAYOUT.potLabel(), 0.6f);
-        broadcast(Component.text("新しい勝負を配ります（" + stacks.size() + " 人）", NamedTextColor.AQUA));
+        broadcast(L10n.tr("新しい勝負を配ります（%s 人）", stacks.size()).color(NamedTextColor.AQUA));
         enqueue(round.start());
     }
 
@@ -253,12 +254,12 @@ final class PokerTable extends CasinoTable {
             Seat seat = index >= 0 ? seats[index] : null;
             Player player = online(seat);
             if (player != null) {
-                player.sendActionBar(Component.text("あなたの番です（あと " + Math.max(countdown, 0) + " 秒）", NamedTextColor.YELLOW));
+                player.sendActionBar(L10n.tr("あなたの番です（あと %s 秒）", Math.max(countdown, 0)).color(NamedTextColor.YELLOW));
             }
             if (countdown <= 0 && index >= 0) {
                 if (seat != null) {
-                    send(seat, Component.text("時間切れのため、" + (legal != null && legal.canCheck() ? "チェック" : "フォールド") + "しました",
-                            NamedTextColor.GRAY));
+                    send(seat, L10n.tr(legal != null && legal.canCheck() ? "時間切れのため、チェックしました" : "時間切れのため、フォールドしました")
+                            .color(NamedTextColor.GRAY));
                 }
                 apply(index, () -> round.timeout(index));
             }
@@ -305,7 +306,7 @@ final class PokerTable extends CasinoTable {
             return;
         }
         if (!legal.canRaise()) {
-            player.sendMessage(Component.text("今はレイズできません", NamedTextColor.RED));
+            player.sendMessage(L10n.tr("今はレイズできません").color(NamedTextColor.RED));
             return;
         }
         long to = Math.max(legal.minRaiseTo(), Math.min(amount, legal.maxRaiseTo()));
@@ -321,7 +322,7 @@ final class PokerTable extends CasinoTable {
     private int turnOf(Player player) {
         int index = seatOf(player.getUniqueId());
         if (index < 0 || !waitingInput || round == null || round.currentSeat() != index) {
-            player.sendMessage(Component.text("今はあなたの番ではありません", NamedTextColor.RED));
+            player.sendMessage(L10n.tr("今はあなたの番ではありません").color(NamedTextColor.RED));
             return -1;
         }
         return index;
@@ -335,7 +336,7 @@ final class PokerTable extends CasinoTable {
         try {
             events = action.get();
         } catch (IllegalStateException | IllegalArgumentException e) {
-            send(seats[index], Component.text("その行動は今は選べません", NamedTextColor.RED));
+            send(seats[index], L10n.tr("その行動は今は選べません").color(NamedTextColor.RED));
             return;
         }
         waitingInput = false;
@@ -375,7 +376,7 @@ final class PokerTable extends CasinoTable {
             case PokerEvent.Blind e -> {
                 shownStack[e.seat()] -= e.amount();
                 shownBet[e.seat()] = e.amount();
-                lastAction[e.seat()] = (e.big() ? "BB " : "SB ") + e.amount();
+                lastAction[e.seat()] = Component.text((e.big() ? "BB " : "SB ") + e.amount());
                 showBet(e.seat());
                 updateSeatLabel(e.seat());
                 playSound(Sound.BLOCK_CHAIN_PLACE, 1.4f);
@@ -387,7 +388,7 @@ final class PokerTable extends CasinoTable {
                 swing();
                 Player player = online(seats[e.seat()]);
                 if (player != null) {
-                    player.sendMessage(Component.text("あなたの手札: ", NamedTextColor.WHITE)
+                    player.sendMessage(L10n.tr("あなたの手札: ").color(NamedTextColor.WHITE)
                             .append(cardText(e.first())).append(Component.space()).append(cardText(e.second())));
                 }
                 yield 9;
@@ -433,8 +434,8 @@ final class PokerTable extends CasinoTable {
                 }
                 swing();
                 for (int i = 0; i < SEATS; i++) {
-                    if (inHand[i] && !folded[i] && !lastAction[i].startsWith("オールイン")) {
-                        lastAction[i] = "";
+                    if (inHand[i] && !folded[i] && !allIn[i]) {
+                        lastAction[i] = Component.empty();
                         updateSeatLabel(i);
                     }
                 }
@@ -444,7 +445,7 @@ final class PokerTable extends CasinoTable {
                     case RIVER -> "リバー";
                     case PREFLOP -> "";
                 };
-                Component line = Component.text(name + ": ", NamedTextColor.AQUA);
+                Component line = L10n.tr("%s: ", L10n.tr(name)).color(NamedTextColor.AQUA);
                 for (Card card : e.cards()) {
                     line = line.append(cardText(card)).append(Component.space());
                 }
@@ -457,18 +458,18 @@ final class PokerTable extends CasinoTable {
                 potView.showPlain(frame.at(LAYOUT.pot()), shownPot);
                 updatePotLabel();
                 updateSeatLabel(e.seat());
-                send(seats[e.seat()], Component.text("誰も合わせなかった " + e.amount() + " 枚が戻りました", NamedTextColor.GRAY));
+                send(seats[e.seat()], L10n.tr("誰も合わせなかった %s 枚が戻りました", e.amount()).color(NamedTextColor.GRAY));
                 yield 6;
             }
             case PokerEvent.Shown e -> {
                 holeViews.get(e.seat()).forEach(PrivateCardView::reveal);
-                lastAction[e.seat()] = e.value().displayName();
+                lastAction[e.seat()] = L10n.tr(e.value().displayName());
                 updateSeatLabel(e.seat());
                 Seat seat = seats[e.seat()];
                 unlock(seat, e.value());
-                broadcast(Component.text((seat == null ? "席 " + (e.seat() + 1) : seat.name) + ": ", NamedTextColor.WHITE)
+                broadcast(L10n.tr("%s: ", seatName(e.seat())).color(NamedTextColor.WHITE)
                         .append(cardText(e.first())).append(Component.space()).append(cardText(e.second()))
-                        .append(Component.text(" " + e.value().displayName(), NamedTextColor.GOLD)));
+                        .append(Component.space()).append(L10n.tr(e.value().displayName()).color(NamedTextColor.GOLD)));
                 yield 16;
             }
             case PokerEvent.Won e -> {
@@ -513,16 +514,17 @@ final class PokerTable extends CasinoTable {
         int index = e.seat();
         shownStack[index] -= e.added();
         shownBet[index] = e.streetBet();
-        String text = switch (e.action()) {
-            case FOLD -> "フォールド";
-            case CHECK -> "チェック";
-            case CALL -> "コール " + e.added();
-            case BET -> "ベット " + e.streetBet();
-            case RAISE -> "レイズ " + e.streetBet();
+        Component text = switch (e.action()) {
+            case FOLD -> L10n.tr("フォールド");
+            case CHECK -> L10n.tr("チェック");
+            case CALL -> L10n.tr("コール %s", e.added());
+            case BET -> L10n.tr("ベット %s", e.streetBet());
+            case RAISE -> L10n.tr("レイズ %s", e.streetBet());
         };
         if (e.allIn()) {
-            text = "オールイン " + e.streetBet();
+            text = L10n.tr("オールイン %s", e.streetBet());
         }
+        allIn[index] = e.allIn();
         lastAction[index] = text;
         if (e.action() == PokerAction.FOLD) {
             folded[index] = true;
@@ -539,8 +541,7 @@ final class PokerTable extends CasinoTable {
         updateSeatLabel(index);
         updatePotLabel();
         Seat seat = seats[index];
-        broadcast(Component.text((seat == null ? "席 " + (index + 1) : seat.name) + ": " + text,
-                e.allIn() ? NamedTextColor.GOLD : NamedTextColor.GRAY));
+        broadcast(L10n.tr("%s: ", seatName(index)).append(text).color(e.allIn() ? NamedTextColor.GOLD : NamedTextColor.GRAY));
     }
 
     private void won(PokerEvent.Won e) {
@@ -553,18 +554,20 @@ final class PokerTable extends CasinoTable {
         payoutViews.add(win);
         Location target = frame.at(LAYOUT.bet(index));
         later(2, () -> win.slideTo(target));
-        lastAction[index] = (e.value() == null ? "" : e.value().displayName() + " ") + "+" + e.amount();
+        lastAction[index] = (e.value() == null ? Component.empty() : L10n.tr(e.value().displayName()).append(Component.space()))
+                .append(Component.text("+" + e.amount()));
         updateSeatLabel(index);
         updatePotLabel();
         Seat seat = seats[index];
-        String name = seat == null ? "席 " + (index + 1) : seat.name;
-        String pot = e.pot() == 0 ? "ポット" : "サイドポット " + e.pot();
-        broadcast(Component.text(name + " が" + pot + " " + e.amount() + " 枚を獲得"
-                + (e.value() == null ? "" : "（" + e.value().displayName() + "）"), NamedTextColor.GREEN));
+        Component name = seatName(index);
+        Component pot = e.pot() == 0 ? L10n.tr("ポット") : L10n.tr("サイドポット %s", e.pot());
+        broadcast(L10n.tr("%s が%s %s 枚を獲得", name, pot, e.amount())
+                .append(e.value() == null ? Component.empty() : L10n.tr("（%s）", L10n.tr(e.value().displayName())))
+                .color(NamedTextColor.GREEN));
         Player player = online(seat);
         if (player != null) {
-            player.showTitle(Title.title(Component.text("獲得 +" + e.amount() + " 枚", NamedTextColor.GREEN),
-                    Component.text(e.value() == null ? "全員が降りました" : e.value().displayName(), NamedTextColor.GOLD),
+            player.showTitle(Title.title(L10n.tr("獲得 +%s 枚", e.amount()).color(NamedTextColor.GREEN),
+                    L10n.tr(e.value() == null ? "全員が降りました" : e.value().displayName()).color(NamedTextColor.GOLD),
                     Title.Times.times(Duration.ofMillis(100), Duration.ofMillis(1800), Duration.ofMillis(400))));
             player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1f, 1.2f);
         }
@@ -584,7 +587,7 @@ final class PokerTable extends CasinoTable {
         }
         maybeStart();
         if (state == State.STARTING) {
-            broadcast(Component.text(settings.startSeconds() + " 秒後に次の勝負を配ります", NamedTextColor.GRAY));
+            broadcast(L10n.tr("%s 秒後に次の勝負を配ります", settings.startSeconds()).color(NamedTextColor.GRAY));
         }
         updateStatus();
     }
@@ -607,36 +610,43 @@ final class PokerTable extends CasinoTable {
             later(10, () -> apply(index, () -> round.timeout(index)));
             return;
         }
-        player.showTitle(Title.title(Component.text("あなたの番", NamedTextColor.YELLOW),
-                Component.text(legal.canCheck() ? "チェックできます" : "コール " + legal.toCall() + " 枚", NamedTextColor.WHITE),
+        player.showTitle(Title.title(L10n.tr("あなたの番").color(NamedTextColor.YELLOW),
+                (legal.canCheck() ? L10n.tr("チェックできます") : L10n.tr("コール %s 枚", legal.toCall())).color(NamedTextColor.WHITE),
                 Title.Times.times(Duration.ofMillis(100), Duration.ofMillis(1200), Duration.ofMillis(300))));
         player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 1f, 1.6f);
         player.sendMessage(actionButtons(legal));
     }
 
+    private Component seatName(int index) {
+        Seat seat = seats[index];
+        return seat == null ? L10n.tr("席 %s", index + 1) : Component.text(seat.name);
+    }
+
     /** チャットに出す行動のボタン。 */
     private Component actionButtons(Legal legal) {
-        Component line = Component.text("ポット " + round.pot() + " 枚： ", NamedTextColor.WHITE);
+        Component line = L10n.tr("ポット %s 枚： ", round.pot()).color(NamedTextColor.WHITE);
         if (legal.toCall() > 0) {
-            line = line.append(button("フォールド", "降りる", "fold", NamedTextColor.RED)).append(Component.space());
-            line = line.append(button(legal.callIsAllIn() ? "コール（オールイン " + legal.toCall() + "）" : "コール " + legal.toCall(),
-                    "同じ額を出す", "call", NamedTextColor.GREEN)).append(Component.space());
+            line = line.append(button(L10n.tr("フォールド"), L10n.tr("降りる"), "fold", NamedTextColor.RED)).append(Component.space());
+            line = line.append(button(legal.callIsAllIn() ? L10n.tr("コール（オールイン %s）", legal.toCall()) : L10n.tr("コール %s", legal.toCall()),
+                    L10n.tr("同じ額を出す"), "call", NamedTextColor.GREEN)).append(Component.space());
         } else {
-            line = line.append(button("チェック", "賭けずに回す", "check", NamedTextColor.GREEN)).append(Component.space());
+            line = line.append(button(L10n.tr("チェック"), L10n.tr("賭けずに回す"), "check", NamedTextColor.GREEN)).append(Component.space());
         }
         if (legal.canRaise()) {
-            String verb = legal.toCall() == 0 && legal.streetBet() == 0 ? "ベット" : "レイズ";
-            line = line.append(button(verb + " " + legal.minRaiseTo(), "最低額で" + verb + "（このラウンドの合計）",
+            boolean bet = legal.toCall() == 0 && legal.streetBet() == 0;
+            line = line.append(button(L10n.tr(bet ? "ベット %s" : "レイズ %s", legal.minRaiseTo()),
+                    L10n.tr(bet ? "最低額でベット（このラウンドの合計）" : "最低額でレイズ（このラウンドの合計）"),
                     "raise " + legal.minRaiseTo(), NamedTextColor.GOLD)).append(Component.space());
             long potTo = potRaise(legal);
             if (potTo > legal.minRaiseTo() && potTo < legal.maxRaiseTo()) {
-                line = line.append(button("ポット " + potTo, "ポットと同じ額で" + verb, "raise " + potTo, NamedTextColor.GOLD))
+                line = line.append(button(L10n.tr("ポット %s", potTo), L10n.tr(bet ? "ポットと同じ額でベット" : "ポットと同じ額でレイズ"),
+                                "raise " + potTo, NamedTextColor.GOLD))
                         .append(Component.space());
             }
-            line = line.append(button("金額を選ぶ", "メニューで額を決める", "raise", NamedTextColor.YELLOW)).append(Component.space());
+            line = line.append(button(L10n.tr("金額を選ぶ"), L10n.tr("メニューで額を決める"), "raise", NamedTextColor.YELLOW)).append(Component.space());
         }
         if (legal.maxRaiseTo() > legal.streetBet() && (legal.canRaise() || !legal.callIsAllIn())) {
-            line = line.append(button("オールイン", "手元のチップを全部出す（" + (legal.maxRaiseTo() - legal.streetBet()) + " 枚）",
+            line = line.append(button(L10n.tr("オールイン"), L10n.tr("手元のチップを全部出す（%s 枚）", legal.maxRaiseTo() - legal.streetBet()),
                     "allin", NamedTextColor.DARK_RED));
         }
         return line;
@@ -648,9 +658,9 @@ final class PokerTable extends CasinoTable {
         return Math.max(legal.minRaiseTo(), Math.min(legal.maxRaiseTo(), currentBet + round.pot() + legal.toCall()));
     }
 
-    private static Component button(String label, String help, String command, NamedTextColor color) {
-        return Component.text("[" + label + "]", color)
-                .hoverEvent(HoverEvent.showText(Component.text(help)))
+    private static Component button(Component label, Component help, String command, NamedTextColor color) {
+        return Component.text("[", color).append(label).append(Component.text("]"))
+                .hoverEvent(HoverEvent.showText(help))
                 .clickEvent(ClickEvent.runCommand("/casino " + command));
     }
 
@@ -696,11 +706,11 @@ final class PokerTable extends CasinoTable {
             return;
         }
         boolean turn = waitingInput && round != null && round.currentSeat() == index;
-        Component text = Component.text((index == button ? "Ⓓ " : "") + (seat == null ? "席 " + (index + 1) : seat.name),
-                turn ? NamedTextColor.YELLOW : folded[index] ? NamedTextColor.DARK_GRAY : NamedTextColor.WHITE);
-        text = text.append(Component.newline()).append(Component.text(shownStack[index] + " 枚", NamedTextColor.GOLD));
-        if (!lastAction[index].isEmpty()) {
-            text = text.append(Component.newline()).append(Component.text(lastAction[index],
+        Component text = Component.text(index == button ? "Ⓓ " : "").append(seatName(index))
+                .color(turn ? NamedTextColor.YELLOW : folded[index] ? NamedTextColor.DARK_GRAY : NamedTextColor.WHITE);
+        text = text.append(Component.newline()).append(L10n.tr("%s 枚", shownStack[index]).color(NamedTextColor.GOLD));
+        if (lastAction[index] != null && !lastAction[index].equals(Component.empty())) {
+            text = text.append(Component.newline()).append(lastAction[index].color(
                     folded[index] ? NamedTextColor.DARK_GRAY : NamedTextColor.AQUA));
         }
         label.text(text);
@@ -712,7 +722,7 @@ final class PokerTable extends CasinoTable {
             for (long bet : shownBet) {
                 total += bet;
             }
-            potLabel.text(total > 0 ? Component.text("ポット " + total, NamedTextColor.GOLD) : Component.empty());
+            potLabel.text(total > 0 ? L10n.tr("ポット %s", total).color(NamedTextColor.GOLD) : Component.empty());
         }
     }
 
@@ -766,18 +776,18 @@ final class PokerTable extends CasinoTable {
     protected Component statusText() {
         Component text = switch (state) {
             case IDLE -> empty()
-                    ? Component.text("ポーカー（テキサスホールデム）", NamedTextColor.GOLD).append(Component.newline())
-                    .append(Component.text("椅子をクリックして座る", NamedTextColor.GRAY))
-                    : Component.text("あと 1 人そろうと始まります", NamedTextColor.AQUA);
-            case STARTING -> Component.text("まもなく配ります（" + Math.max(countdown, 0) + " 秒）", NamedTextColor.AQUA);
+                    ? L10n.tr("ポーカー（テキサスホールデム）").color(NamedTextColor.GOLD).append(Component.newline())
+                    .append(L10n.tr("椅子をクリックして座る").color(NamedTextColor.GRAY))
+                    : L10n.tr("あと 1 人そろうと始まります").color(NamedTextColor.AQUA);
+            case STARTING -> L10n.tr("まもなく配ります（%s 秒）", Math.max(countdown, 0)).color(NamedTextColor.AQUA);
             case PLAYING -> {
                 int index = round == null ? -1 : round.currentSeat();
                 Seat seat = index >= 0 && waitingInput ? seats[index] : null;
-                yield seat == null ? Component.text("勝負中", NamedTextColor.YELLOW)
-                        : Component.text(seat.name + " の番（あと " + Math.max(countdown, 0) + " 秒）", NamedTextColor.YELLOW);
+                yield seat == null ? L10n.tr("勝負中").color(NamedTextColor.YELLOW)
+                        : L10n.tr("%s の番（あと %s 秒）", seat.name, Math.max(countdown, 0)).color(NamedTextColor.YELLOW);
             }
         };
-        return text.append(limitsLine("ブラインド " + settings.smallBlind() + "/" + settings.bigBlind()));
+        return text.append(limitsLine(L10n.tr("ブラインド %s/%s", settings.smallBlind(), settings.bigBlind())));
     }
 
     @Override

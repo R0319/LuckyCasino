@@ -14,7 +14,7 @@ import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** ルールブックの全ページを作り、見本用に JSON で書き出す（build/rulebook）。折り返しと絵の重なりは見本で見る。 */
+/** ルールブックの全ページを日本語と英語で作り、見本用に JSON で書き出す（build/rulebook、英語は -en）。折り返しと絵の重なりは見本で見る。 */
 class RulebookTest {
 
     /** 本の 1 ページの行数。 */
@@ -26,7 +26,8 @@ class RulebookTest {
         Files.createDirectories(out);
         for (GameType type : GameType.values()) {
             for (boolean pictures : new boolean[]{true, false}) {
-                List<Component> pages = Rulebook.pages(type, pictures);
+                for (L10n.Lang lang : L10n.Lang.values()) {
+                List<Component> pages = Rulebook.pages(type, pictures).stream().map(page -> L10n.localize(lang, page)).toList();
                 for (Component page : pages) {
                     String text = PlainTextComponentSerializer.plainText().serialize(page);
                     long lines = text.chars().filter(c -> c == '\n').count() + 1;
@@ -34,7 +35,9 @@ class RulebookTest {
                 }
                 String json = pages.stream().map(GsonComponentSerializer.gson()::serialize)
                         .collect(Collectors.joining(",\n", "[\n", "\n]\n"));
-                Files.writeString(out.resolve(type.id() + (pictures ? "" : "-text") + ".json"), json, StandardCharsets.UTF_8);
+                String suffix = (pictures ? "" : "-text") + (lang == L10n.Lang.EN ? "-en" : "");
+                Files.writeString(out.resolve(type.id() + suffix + ".json"), json, StandardCharsets.UTF_8);
+                }
             }
         }
     }

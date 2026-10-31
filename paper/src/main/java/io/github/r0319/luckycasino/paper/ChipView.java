@@ -84,7 +84,7 @@ final class ChipView {
         Location labelAt = base.clone().add(0, 0.28, 0);
         label = labelAt.getWorld().spawn(labelAt, TextDisplay.class, entity -> {
             entity.setPersistent(false);
-            entity.text(Component.text(amount + " 枚", NamedTextColor.GOLD));
+            entity.text(L10n.tr("%s 枚", amount).color(NamedTextColor.GOLD));
             entity.setBillboard(Display.Billboard.CENTER);
             entity.setTransformation(new Transformation(new Vector3f(), new AxisAngle4f(),
                     new Vector3f(0.6f, 0.6f, 0.6f), new AxisAngle4f()));

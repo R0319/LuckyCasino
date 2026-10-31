@@ -30,7 +30,7 @@ final class PictureRules {
 
     /** 1 行ずつ並べたページ。BLANK は空行。 */
     static Component page(String title, Component... lines) {
-        Component page = Component.text(title, NamedTextColor.DARK_BLUE).decorate(TextDecoration.BOLD);
+        Component page = L10n.tr(title).color(NamedTextColor.DARK_BLUE).decorate(TextDecoration.BOLD);
         for (Component line : lines) {
             page = page.append(Component.newline()).append(line.decoration(TextDecoration.BOLD, false));
         }
@@ -41,17 +41,17 @@ final class PictureRules {
     static Component row(Object... parts) {
         Component row = Component.empty();
         for (Object part : parts) {
-            row = row.append(part instanceof Component c ? c : Component.text(part.toString(), NamedTextColor.BLACK));
+            row = row.append(part instanceof Component c ? c : L10n.tr(part.toString()).color(NamedTextColor.BLACK));
         }
         return row;
     }
 
     static Component note(String text) {
-        return Component.text(text, NamedTextColor.DARK_GRAY);
+        return L10n.tr(text).color(NamedTextColor.DARK_GRAY);
     }
 
     static Component label(String text) {
-        return Component.text(text, NamedTextColor.DARK_BLUE);
+        return L10n.tr(text).color(NamedTextColor.DARK_BLUE);
     }
 
     /** "AS KH TD" のようなカード（ランク + スート S/H/D/C、?? は裏）。 */
@@ -229,7 +229,7 @@ final class PictureRules {
                 page("配当（戻る額）",
                         row(pic(Pic.PLAYER), " プレイヤー 2 倍"),
                         row(pic(Pic.BANKER), " バンカー 1.95 倍"),
-                        note("   （5% の手数料）"),
+                        note("   （5%% の手数料）"),
                         row(pic(Pic.TIE), " タイ 9 倍"),
                         BLANK,
                         row("ペア 12 倍"),
@@ -359,8 +359,9 @@ final class PictureRules {
                 page("競馬",
                         row("1 着の馬を当てる（単勝）"),
                         BLANK,
-                        row(silk(0), " 白  ", silk(1), " 黒  ", silk(2), " 赤"),
-                        row(silk(3), " 青  ", silk(4), " 黄  ", silk(5), " 緑"),
+                        row(silk(0), " 白  ", silk(1), " 黒"),
+                        row(silk(2), " 赤  ", silk(3), " 青"),
+                        row(silk(4), " 黄  ", silk(5), " 緑"),
                         BLANK,
                         row("6 頭が左のゲートから"),
                         row("右のゴールへ走る"),

@@ -231,19 +231,19 @@ final class ChinchiroTable extends SpotTable {
     }
 
     private static Component handText(Chinchiro.Roll roll) {
-        return Component.text(roll.a() + "・" + roll.b() + "・" + roll.c() + " ", NamedTextColor.GRAY)
-                .append(Component.text(roll.hand().label(), color(roll.hand())));
+        return L10n.tr("%s・%s・%s ", roll.a(), roll.b(), roll.c()).color(NamedTextColor.GRAY)
+                .append(L10n.hand(roll.hand()).color(color(roll.hand())));
     }
 
-    private String who(int seat) {
-        return seat < 0 ? "親" : seats[seat] != null ? seats[seat].name : "子";
+    private Component who(int seat) {
+        return seat < 0 ? L10n.tr("親") : seats[seat] != null ? Component.text(seats[seat].name) : L10n.tr("子");
     }
 
     /** 子から見た倍率を短く。 */
     private static Component outcome(int m) {
-        return m > 0 ? Component.text("勝ち +" + m + " 倍", NamedTextColor.GREEN)
-                : m == 0 ? Component.text("引き分け", NamedTextColor.YELLOW)
-                : Component.text("負け " + m + " 倍", NamedTextColor.RED);
+        return m > 0 ? L10n.tr("勝ち +%s 倍", m).color(NamedTextColor.GREEN)
+                : m == 0 ? L10n.tr("引き分け").color(NamedTextColor.YELLOW)
+                : L10n.tr("負け %s 倍", m).color(NamedTextColor.RED);
     }
 
     // ---- 勝負 ----
@@ -271,7 +271,7 @@ final class ChinchiroTable extends SpotTable {
         tries = 0;
         turnToken++;
         if (seat < 0) {
-            broadcast(Component.text("親が振ります", NamedTextColor.GRAY));
+            broadcast(L10n.tr("親が振ります").color(NamedTextColor.GRAY));
             later(10, this::rollNow);
             updateStatus();
             return;
@@ -295,9 +295,9 @@ final class ChinchiroTable extends SpotTable {
             });
             return;
         }
-        player.sendMessage(Component.text("あなたの番です（" + (tries + 1) + " / " + Chinchiro.TRIES + " 回目） ", NamedTextColor.AQUA)
-                .append(Component.text("[振る]", NamedTextColor.GOLD).clickEvent(ClickEvent.runCommand("/casino roll")))
-                .append(Component.text(" かどんぶりをクリック。" + TURN_TICKS / 20 + " 秒で自動で振ります", NamedTextColor.GRAY)));
+        player.sendMessage(L10n.tr("あなたの番です（%s / %s 回目） ", (tries + 1), Chinchiro.TRIES).color(NamedTextColor.AQUA)
+                .append(L10n.tr("[振る]").color(NamedTextColor.GOLD).clickEvent(ClickEvent.runCommand("/casino roll")))
+                .append(L10n.tr(" かどんぶりをクリック。%s 秒で自動で振ります", TURN_TICKS / 20).color(NamedTextColor.GRAY)));
         player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 1f, 1.4f);
         later(TURN_TICKS, () -> {
             if (token == turnToken && waiting) {
@@ -310,7 +310,7 @@ final class ChinchiroTable extends SpotTable {
     void roll(Player player) {
         int seat = seatOf(player.getUniqueId());
         if (seat < 0 || state() != State.PLAYING || turn != seat || !waiting) {
-            player.sendMessage(Component.text("今はあなたの振る番ではありません", NamedTextColor.GRAY));
+            player.sendMessage(L10n.tr("今はあなたの振る番ではありません").color(NamedTextColor.GRAY));
             return;
         }
         rollNow();
@@ -343,9 +343,9 @@ final class ChinchiroTable extends SpotTable {
     private void rolled(int seat, Chinchiro.Roll roll) {
         Hand hand = roll.hand();
         if (resultLabel != null) {
-            resultLabel.text(Component.text(who(seat) + " ", NamedTextColor.AQUA).append(handText(roll)));
+            resultLabel.text(who(seat).color(NamedTextColor.AQUA).append(Component.space()).append(handText(roll)));
         }
-        broadcast(Component.text(who(seat) + "（" + tries + " 回目）: ", NamedTextColor.GRAY).append(handText(roll)));
+        broadcast(L10n.tr("%s（%s 回目）: ", who(seat), tries).color(NamedTextColor.GRAY).append(handText(roll)));
         if (hand.kind() == Kind.PINZORO || hand.kind() == Kind.ZORO || hand.kind() == Kind.SHIGORO) {
             Location at = frame.at(LAYOUT.resultLabel());
             at.getWorld().spawnParticle(Particle.END_ROD, at, 20, 0.2, 0.15, 0.2, 0.03);
@@ -378,11 +378,11 @@ final class ChinchiroTable extends SpotTable {
                 results[seat] = settled;
             }
             queue.clear();
-            broadcast(Component.text("親の " + hand.label() + " で決まりました。子は ", NamedTextColor.YELLOW).append(outcome(settled)));
+            broadcast(L10n.tr("親の %s で決まりました。子は ", L10n.hand(hand)).color(NamedTextColor.YELLOW).append(outcome(settled)));
             later(PAUSE, this::finish);
             return;
         }
-        broadcast(Component.text("親は " + hand.label() + "。子が順に振ります", NamedTextColor.YELLOW));
+        broadcast(L10n.tr("親は %s。子が順に振ります", L10n.hand(hand)).color(NamedTextColor.YELLOW));
         later(PAUSE, this::nextPlayer);
     }
 
@@ -390,7 +390,7 @@ final class ChinchiroTable extends SpotTable {
         hands[seat] = hand;
         int m = Chinchiro.versus(dealerHand, hand);
         results[seat] = m;
-        showHand(seat, Component.text(hand.label() + " ", color(hand)).append(outcome(m)));
+        showHand(seat, L10n.hand(hand).color(color(hand)).append(Component.space()).append(outcome(m)));
         later(PAUSE, this::nextPlayer);
     }
 
@@ -420,8 +420,8 @@ final class ChinchiroTable extends SpotTable {
 
     @Override
     protected Component resultText() {
-        return dealerHand == null ? Component.text("勝負なし", NamedTextColor.GRAY)
-                : Component.text("親 ", NamedTextColor.WHITE).append(Component.text(dealerHand.label(), color(dealerHand)));
+        return dealerHand == null ? L10n.tr("勝負なし").color(NamedTextColor.GRAY)
+                : L10n.tr("親 ").color(NamedTextColor.WHITE).append(L10n.hand(dealerHand).color(color(dealerHand)));
     }
 
     @Override
@@ -449,10 +449,10 @@ final class ChinchiroTable extends SpotTable {
         if (state() != State.PLAYING || turn == -2) {
             return super.statusText();
         }
-        Component text = turn < 0 ? Component.text("親が振っています", NamedTextColor.YELLOW)
-                : Component.text(who(turn) + " の番（" + Math.max(tries + (waiting ? 1 : 0), 1) + " / " + Chinchiro.TRIES + " 回目）", NamedTextColor.YELLOW);
+        Component text = turn < 0 ? L10n.tr("親が振っています").color(NamedTextColor.YELLOW)
+                : L10n.tr("%s の番（%s / %s 回目）", who(turn), Math.max(tries + (waiting ? 1 : 0), 1), Chinchiro.TRIES).color(NamedTextColor.YELLOW);
         if (dealerHand != null) {
-            text = text.append(Component.newline()).append(Component.text("親 " + dealerHand.label(), color(dealerHand)));
+            text = text.append(Component.newline()).append(L10n.tr("親 %s", L10n.hand(dealerHand)).color(color(dealerHand)));
         }
         return text;
     }

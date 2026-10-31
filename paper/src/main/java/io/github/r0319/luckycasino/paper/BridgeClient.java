@@ -108,9 +108,9 @@ final class BridgeClient {
                 }
                 writer.println(BridgeProtocol.AUTH + " " + BridgeProtocol.sign(key, hello[2]));
                 if (!BridgeProtocol.OK.equals(in.readLine())) {
-                    throw new IOException("authentication failed (bridge.key が拡張の key と一致しているか確認)");
+                    throw new IOException(L10n.plain("認証に失敗しました（bridge.key が拡張の key と一致しているか確認してください）"));
                 }
-                logger.info("Geyser 拡張（" + host + ":" + port + "）と接続しました");
+                logger.info(L10n.plain("Geyser 拡張（%s:%s）と接続しました", host, port));
                 backoff = 1_000;
                 out = writer;
                 for (String line : resync.get()) {
@@ -127,10 +127,10 @@ final class BridgeClient {
                         }
                     }
                 }
-                logger.warning("Geyser 拡張との接続が切れました");
+                logger.warning(L10n.plain("Geyser 拡張との接続が切れました"));
             } catch (IOException | IllegalArgumentException e) {
                 if (running) {
-                    logger.warning("Geyser 拡張に接続できません: " + e.getMessage() + "（" + backoff / 1000 + " 秒後に再試行）");
+                    logger.warning(L10n.plain("Geyser 拡張に接続できません: %s（%s 秒後に再試行）", e.getMessage(), backoff / 1000));
                 }
             } finally {
                 out = null;

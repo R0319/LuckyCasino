@@ -37,7 +37,7 @@ public record Paytable(long sevens, long bars, long bells, long melons, long lem
                 case 2 -> cherry2;
                 default -> cherry1;
             };
-            return new Win(times, "チェリー " + count + " つ", count == 3);
+            return new Win(times, Symbol.CHERRY, count, count == 3);
         }
         if (a == b && b == c) {
             long times = switch (a) {
@@ -48,7 +48,7 @@ public record Paytable(long sevens, long bars, long bells, long melons, long lem
                 case LEMON -> lemons;
                 case CHERRY -> cherry3;
             };
-            return new Win(times, a.displayName() + " が 3 つ", a == Symbol.SEVEN || a == Symbol.BAR);
+            return new Win(times, a, 3, a == Symbol.SEVEN || a == Symbol.BAR);
         }
         return Win.NONE;
     }
@@ -99,7 +99,16 @@ public record Paytable(long sevens, long bars, long bells, long melons, long lem
      * @param name  役の名前
      * @param big   大当たり（演出を大きくする）
      */
-    public record Win(long times, String name, boolean big) {
-        public static final Win NONE = new Win(0, "", false);
+    /** 当たり。symbol は左からそろった絵柄、count はその数（チェリー以外は 3）。 */
+    public record Win(long times, Symbol symbol, int count, boolean big) {
+        public static final Win NONE = new Win(0, null, 0, false);
+
+        /** 役の名前（日本語）。 */
+        public String name() {
+            if (symbol == null) {
+                return "";
+            }
+            return symbol == Symbol.CHERRY ? "チェリー " + count + " つ" : symbol.displayName() + " が 3 つ";
+        }
     }
 }

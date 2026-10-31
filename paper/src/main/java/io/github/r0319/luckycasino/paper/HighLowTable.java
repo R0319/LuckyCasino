@@ -68,20 +68,23 @@ final class HighLowTable extends SpotTable {
         int b = base == null ? 7 : HighLow.value(base);
         String bt = rankText(b);
         if (b < 13) {
-            out.add(new Spot("high", "ハイ（" + bt + " より上）", rankText(b + 1) + "〜K が出たら当たり。" + odds(HighLow.Bet.HIGH, b) + "が戻る。同じ数は負け",
+            out.add(new Spot("high", L10n.tr("ハイ（%s より上）", bt),
+                    L10n.tr("%s〜K が出たら当たり。%sが戻る。同じ数は負け", rankText(b + 1), odds(HighLow.Bet.HIGH, b)),
                     Material.LIME_CONCRETE, 20));
         }
-        out.add(new Spot("same", "同じ（" + bt + "）", bt + " が出たら当たり（マークは問わない）。" + odds(HighLow.Bet.SAME, b) + "が戻る",
+        out.add(new Spot("same", L10n.tr("同じ（%s）", bt),
+                L10n.tr("%s が出たら当たり（マークは問わない）。%sが戻る", bt, odds(HighLow.Bet.SAME, b)),
                 Material.GOLD_BLOCK, 22));
         if (b > 1) {
-            out.add(new Spot("low", "ロー（" + bt + " より下）", "A〜" + rankText(b - 1) + " が出たら当たり。" + odds(HighLow.Bet.LOW, b) + "が戻る。同じ数は負け",
+            out.add(new Spot("low", L10n.tr("ロー（%s より下）", bt),
+                    L10n.tr("A〜%s が出たら当たり。%sが戻る。同じ数は負け", rankText(b - 1), odds(HighLow.Bet.LOW, b)),
                     Material.LIGHT_BLUE_CONCRETE, 24));
         }
         return out;
     }
 
-    private static String odds(HighLow.Bet bet, int base) {
-        return HighLow.percentText(HighLow.percent(bet, base));
+    private static Component odds(HighLow.Bet bet, int base) {
+        return L10n.times(HighLow.percent(bet, base));
     }
 
     @Override
@@ -123,16 +126,16 @@ final class HighLowTable extends SpotTable {
     private void showBase() {
         int b = HighLow.value(base);
         if (baseLabel != null) {
-            baseLabel.text(Component.text("基準", NamedTextColor.GRAY).append(Component.newline())
+            baseLabel.text(L10n.tr("基準").color(NamedTextColor.GRAY).append(Component.newline())
                     .append(Component.text(rankText(b), NamedTextColor.WHITE)));
         }
         if (nextLabel != null) {
-            nextLabel.text(Component.text("次は？", NamedTextColor.YELLOW));
+            nextLabel.text(L10n.tr("次は？").color(NamedTextColor.YELLOW));
         }
         oddsLabels.forEach((bet, label) -> {
             int percent = HighLow.percent(bet, b);
-            label.text(percent == 0 ? Component.text("なし", NamedTextColor.DARK_GRAY)
-                    : Component.text(HighLow.percentText(percent), NamedTextColor.GOLD));
+            label.text(percent == 0 ? L10n.tr("なし").color(NamedTextColor.DARK_GRAY)
+                    : L10n.times(percent).color(NamedTextColor.GOLD));
         });
     }
 
@@ -144,7 +147,7 @@ final class HighLowTable extends SpotTable {
         nextView = CardView.deal(plugin, plugin.bridge(), frame.at(LAYOUT.next()), Frame.delta(LAYOUT.shoe(), LAYOUT.next()), CardCode.HIDDEN, false);
         swing();
         later(14, () -> {
-            broadcast(Component.text("めくります…", NamedTextColor.GRAY));
+            broadcast(L10n.tr("めくります…").color(NamedTextColor.GRAY));
             playSound(Sound.BLOCK_NOTE_BLOCK_HAT, 0.8f);
         });
         later(22, () -> playSound(Sound.BLOCK_NOTE_BLOCK_HAT, 1.0f));
@@ -154,7 +157,7 @@ final class HighLowTable extends SpotTable {
                 nextView.reveal(shown.code());
             }
             if (nextLabel != null) {
-                nextLabel.text(Component.text("次", NamedTextColor.GRAY).append(Component.newline()).append(verdict()));
+                nextLabel.text(L10n.tr("次").color(NamedTextColor.GRAY).append(Component.newline()).append(verdict()));
             }
             Location at = frame.at(LAYOUT.cardLabel(true));
             at.getWorld().spawnParticle(Particle.END_ROD, at, 12, 0.15, 0.1, 0.1, 0.02);
@@ -167,8 +170,8 @@ final class HighLowTable extends SpotTable {
     private Component verdict() {
         int b = HighLow.value(base);
         int n = HighLow.value(next);
-        Component word = n > b ? Component.text("ハイ", NamedTextColor.GREEN)
-                : n < b ? Component.text("ロー", NamedTextColor.AQUA) : Component.text("同じ！", NamedTextColor.GOLD);
+        Component word = n > b ? L10n.tr("ハイ").color(NamedTextColor.GREEN)
+                : n < b ? L10n.tr("ロー").color(NamedTextColor.AQUA) : L10n.tr("同じ！").color(NamedTextColor.GOLD);
         return Component.text(rankText(n) + " ", NamedTextColor.WHITE).append(word);
     }
 

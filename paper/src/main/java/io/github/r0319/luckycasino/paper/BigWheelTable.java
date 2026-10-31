@@ -158,8 +158,8 @@ final class BigWheelTable extends SpotTable {
             case FIVE -> Component.text("5", NamedTextColor.LIGHT_PURPLE);
             case TEN -> Component.text("10", NamedTextColor.GREEN);
             case TWENTY -> Component.text("20", NamedTextColor.GOLD);
-            case JOKER -> Component.text("ジョーカー", NamedTextColor.DARK_GRAY);
-            case LOGO -> Component.text("ロゴ", NamedTextColor.RED);
+            case JOKER -> L10n.tr("ジョーカー").color(NamedTextColor.DARK_GRAY);
+            case LOGO -> L10n.tr("ロゴ").color(NamedTextColor.RED);
         };
     }
 
@@ -212,7 +212,7 @@ final class BigWheelTable extends SpotTable {
     @Override
     protected Component resultText() {
         BigWheel.Segment s = BigWheel.at(result);
-        return segmentText(s).append(Component.text("（" + s.pays() + ":1）", NamedTextColor.WHITE));
+        return segmentText(s).append(L10n.tr("（%s:1）", s.pays()).color(NamedTextColor.WHITE));
     }
 
     @Override
