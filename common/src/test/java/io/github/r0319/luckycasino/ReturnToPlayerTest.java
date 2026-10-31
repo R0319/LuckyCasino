@@ -11,6 +11,7 @@ import io.github.r0319.luckycasino.card.Card;
 import io.github.r0319.luckycasino.card.Rank;
 import io.github.r0319.luckycasino.card.Shoe;
 import io.github.r0319.luckycasino.highlow.HighLow;
+import io.github.r0319.luckycasino.holdem.CasinoHoldem;
 import io.github.r0319.luckycasino.horserace.HorseRace;
 import io.github.r0319.luckycasino.roulette.BetType;
 import io.github.r0319.luckycasino.roulette.RouletteBet;
@@ -48,6 +49,7 @@ class ReturnToPlayerTest {
         record("スロット（5 ライン）", Paytable.DEFAULT.returnRate());
         baccarat();
         blackjack();
+        casinoHoldem();
         report.forEach((name, rtp) -> System.out.printf("還元率 %-28s %6.2f%%%n", name, rtp * 100));
     }
 
@@ -176,6 +178,23 @@ class ReturnToPlayerTest {
         }
         // 最初の賭け金あたりの損益で表す（ダブル・スプリットで足した分は損益にだけ入る）
         record("ブラックジャック（基本戦略・試行）", 1 + (returned - staked) / (double) rounds / 100);
+    }
+
+    /** アンティ 1 枚あたりの還元率。目安どおりにコールしたとき（完全な戦略だと 97.84%）。 */
+    private void casinoHoldem() {
+        Random random = new Random(4);
+        Shoe shoe = Shoe.everyRound(1, random);
+        long back = 0;
+        long staked = 0;
+        int rounds = 400_000;
+        for (int i = 0; i < rounds; i++) {
+            shoe.shuffleIfNeeded();
+            CasinoHoldem game = CasinoHoldem.deal(shoe, 1);
+            boolean call = CasinoHoldem.suggestCall(game.hole(0), game.flop());
+            staked += call ? 300 : 100;
+            back += game.antePayout(0, call, 100) + (call ? game.callPayout(0, 200) : 0);
+        }
+        record("カジノホールデム（目安どおり・試行）", 1 + (back - staked) / (double) rounds / 100);
     }
 
     private static int value(Card card) {

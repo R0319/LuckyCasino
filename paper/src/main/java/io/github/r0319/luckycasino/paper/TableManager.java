@@ -159,6 +159,7 @@ final class TableManager implements Listener {
             case CHINCHIRO -> new ChinchiroTable(plugin, id, frame, owner, bank, spot(type, selfTest));
             case HIGHLOW -> new HighLowTable(plugin, id, frame, owner, bank, spot(type, selfTest));
             case HORSERACE -> new HorseRaceTable(plugin, id, frame, owner, bank, spot(type, selfTest));
+            case HOLDEM -> new HoldemTable(plugin, id, frame, owner, bank, spot(type, selfTest));
         };
     }
 

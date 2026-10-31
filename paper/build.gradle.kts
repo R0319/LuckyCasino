@@ -23,6 +23,7 @@ tasks.test {
 
 tasks.jar {
     archiveBaseName = "LuckyCasino-Paper"
+    from(rootProject.files("LICENSE", "THIRD_PARTY_NOTICES.md"))
     from(configurations.runtimeClasspath.map { cp -> cp.map { zipTree(it) } })
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
@@ -38,6 +39,7 @@ val javaPack by tasks.registering(Zip::class) {
     archiveFileName = "LuckyCasino-java-pack.zip"
     destinationDirectory = layout.buildDirectory.dir("resourcepack")
     from(rootProject.layout.projectDirectory.dir("resourcepacks/java"))
+    from(rootProject.files("LICENSE"))
 }
 
 tasks.assemble { dependsOn(javaPack) }

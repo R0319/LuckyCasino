@@ -155,6 +155,14 @@ def royal_flush():
     return img
 
 
+def holdem_full_house():
+    """満員御礼: フルハウス（A が 3 枚と K が 2 枚）の扇に、勝ちの金の星。"""
+    img = fan(["spade_a", "heart_a", "diamond_a", "club_k", "heart_k"], spread=11, tilt=12)
+    for x, y, r in ((10, 10, 3), (62, 8, 2)):
+        sparkle(img, x, y, r, GOLD)
+    return img
+
+
 def bet_cell(label, fill, chip_color, chip_dark):
     """ベットマットの 1 マスに数字と、その上に置いたチップ。"""
     img = Image.new("RGBA", (SIZE, SIZE), (0, 0, 0, 0))
@@ -328,6 +336,7 @@ ICONS = {
     "chinchiro_pinzoro": chinchiro_pinzoro,
     "highlow_same": highlow_same,
     "horserace_longshot": horserace_longshot,
+    "holdem_full_house": holdem_full_house,
 }
 
 

@@ -35,6 +35,7 @@ final class Rulebook {
             case CHINCHIRO -> pictures ? PictureRules.chinchiro() : GameRules.chinchiro();
             case HIGHLOW -> pictures ? PictureRules.highLow() : GameRules.highLow();
             case HORSERACE -> pictures ? PictureRules.horseRace() : GameRules.horseRace();
+            case HOLDEM -> holdem(pictures);
         });
         return pages;
     }
@@ -175,24 +176,31 @@ final class Rulebook {
                         "オールイン: 全部出す",
                         "",
                         "自分の番になるとチャットにボタンが出ます。")));
+        pages.addAll(handRanks(pictures));
+        return pages;
+    }
+
+    /** 役の一覧（ポーカーとカジノホールデムで共通）。 */
+    private static List<Component> handRanks(boolean pictures) {
+        List<Component> out = new ArrayList<>();
         if (pictures) {
-            pages.add(picturePage("役（強い順）1",
+            out.add(picturePage("役（強い順）1",
                     hand("ロイヤルフラッシュ", "最強", "AS KS QS JS TS"),
                     hand("ストレートフラッシュ", "同マーク連番", "9H 8H 7H 6H 5H"),
                     hand("フォーカード", "同じ数4枚", "KS KH KD KC 3S"),
                     hand("フルハウス", "3枚＋2枚", "QS QH QD 7C 7S")));
-            pages.add(picturePage("役（強い順）2",
+            out.add(picturePage("役（強い順）2",
                     hand("フラッシュ", "同マーク5枚", "AD JD 8D 6D 2D"),
                     hand("ストレート", "数が連番", "TC 9D 8S 7H 6C"),
                     hand("スリーカード", "同じ数3枚", "7S 7H 7D KC 2S"),
                     hand("ツーペア", "ペア2組", "JS JH 4D 4C 9S")));
-            pages.add(picturePage("役（強い順）3",
+            out.add(picturePage("役（強い順）3",
                     hand("ワンペア", "ペア1組", "AH AC 9D 6S 3H"),
                     hand("ハイカード", "役なし", "AS QD 9C 6H 3S"),
                     Component.text("同じ役なら、数の大きいほうが勝ち（A が一番強い）", NamedTextColor.DARK_GRAY)));
-            return pages;
+            return out;
         }
-        pages.add(page("役（強い順）",
+        out.add(page("役（強い順）",
                         "ロイヤルフラッシュ",
                         "ストレートフラッシュ",
                         "フォーカード",
@@ -203,6 +211,65 @@ final class Rulebook {
                         "ツーペア",
                         "ワンペア",
                         "ハイカード"));
+        return out;
+    }
+
+    private static List<Component> holdem(boolean pictures) {
+        List<Component> pages = new ArrayList<>();
+        if (pictures) {
+            pages.add(PictureRules.page("カジノホールデム",
+                    PictureRules.row("ディーラーと 1 対 1。"),
+                    PictureRules.row(Glyphs.pic(Glyphs.Pic.CHIP), " アンティを賭ける"),
+                    PictureRules.row("手札 2 枚と場の 3 枚"),
+                    PictureRules.row(PictureRules.cards("AS KD"), "  ", PictureRules.cards("QH 7C 2S")),
+                    PictureRules.BLANK,
+                    PictureRules.row(PictureRules.label("コール"), " 2 倍を足す"),
+                    PictureRules.row(PictureRules.label("フォールド"), " 降りる"),
+                    PictureRules.BLANK,
+                    PictureRules.row("残り 2 枚と親の手"),
+                    PictureRules.row(PictureRules.cards("QH 7C 2S JD TH")),
+                    PictureRules.BLANK,
+                    PictureRules.note("7 枚の強い 5 枚で比べる")));
+            pages.add(PictureRules.page("勝ち負け",
+                    PictureRules.row("ディーラーは 4 の"),
+                    PictureRules.row("ペア以上で成立"),
+                    PictureRules.row(PictureRules.cards("4S 4H")),
+                    PictureRules.BLANK,
+                    PictureRules.label("不成立"),
+                    PictureRules.row(" アンティに配当"),
+                    PictureRules.row(" コールは戻る"),
+                    PictureRules.label("成立して勝ち"),
+                    PictureRules.row(" アンティに配当"),
+                    PictureRules.row(" コールに 1 倍"),
+                    PictureRules.row(PictureRules.label("負け"), " 両方失う"),
+                    PictureRules.row(PictureRules.label("引き分け"), " 戻る")));
+        } else {
+            pages.add(page("カジノホールデム",
+                    "ディーラーと 1 対 1 で勝負するホールデム。1 人でも遊べます。",
+                    "",
+                    "アンティを賭けて締め切ると、手札 2 枚と場の 3 枚が配られます。",
+                    "",
+                    "コール（アンティの 2 倍を足す）かフォールド（降りてアンティを失う）を選ぶと、場の残り 2 枚とディーラーの 2 枚が開きます。"));
+            pages.add(page("勝ち負け",
+                    "7 枚の中の強い 5 枚で比べます。ディーラーは 4 のワンペア以上で成立。",
+                    "",
+                    "不成立: アンティに配当、コールは戻る",
+                    "成立して勝ち: アンティに配当、コールに 1 倍",
+                    "負け: 両方失う",
+                    "引き分け: 両方戻る"));
+        }
+        pages.add(page("アンティの配当",
+                "ロイヤルフラッシュ 100 倍",
+                "ストレートフラッシュ 20 倍",
+                "フォーカード 10 倍",
+                "フルハウス 3 倍",
+                "フラッシュ 2 倍",
+                "ストレート以下 1 倍",
+                "",
+                "賭け金に足して払います。",
+                "",
+                "選ぶ時間は 20 秒で、過ぎると自動でコール。賭けたあとも、アンティの 2 倍を手元に残してください。"));
+        pages.addAll(handRanks(pictures));
         return pages;
     }
 

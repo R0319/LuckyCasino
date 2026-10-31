@@ -52,7 +52,9 @@ final class Achievements implements Listener {
 
         HIGHLOW_SAME("highlow/same", FIRST_PLAY, "achievement/highlow_same", "以心伝心", "ハイ＆ローで「同じ」に賭けて当てる", Frame.GOAL),
 
-        HORSERACE_LONGSHOT("horserace/longshot", FIRST_PLAY, "achievement/horserace_longshot", "大穴的中", "競馬で 8 倍以上の馬の単勝を当てる", Frame.CHALLENGE);
+        HORSERACE_LONGSHOT("horserace/longshot", FIRST_PLAY, "achievement/horserace_longshot", "大穴的中", "競馬で 8 倍以上の馬の単勝を当てる", Frame.CHALLENGE),
+
+        HOLDEM_FULL_HOUSE("holdem/full_house", FIRST_PLAY, "achievement/holdem_full_house", "満員御礼", "カジノホールデムでフルハウス以上の手でディーラーに勝つ", Frame.GOAL);
 
         final String path;
         final Achievement parent;

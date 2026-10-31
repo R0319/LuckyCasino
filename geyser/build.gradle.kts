@@ -23,6 +23,7 @@ tasks.processResources {
 
 tasks.jar {
     archiveBaseName = "LuckyCasino-Geyser"
+    from(rootProject.files("LICENSE", "THIRD_PARTY_NOTICES.md"))
     from(configurations.runtimeClasspath.map { cp -> cp.map { zipTree(it) } })
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }

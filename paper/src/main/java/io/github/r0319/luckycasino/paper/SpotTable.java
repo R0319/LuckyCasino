@@ -245,6 +245,27 @@ abstract class SpotTable extends CasinoTable {
         return null;
     }
 
+    /**
+     * 勝負の途中で足す賭け（カジノホールデムのコールなど）。締め切りや上限は見ない。
+     * spotId は spots() になくても、spot(id) で引ければよい。足せたら true。
+     */
+    protected boolean addBet(int index, String spotId, long amount) {
+        Seat seat = seats[index];
+        if (seat == null || amount <= 0 || amount > seat.chips || spot(spotId) == null) {
+            return false;
+        }
+        Map<String, Long> mine = bets.computeIfAbsent(index, k -> new LinkedHashMap<>());
+        long here = mine.getOrDefault(spotId, 0L) + amount;
+        mine.put(spotId, here);
+        seat.chips -= amount;
+        seat.atRisk += amount;
+        writeLedger(seat);
+        showChips(index, spotId, here);
+        playSound(Sound.BLOCK_CHAIN_PLACE, 1.4f);
+        updateStatus();
+        return true;
+    }
+
     /** 自分の賭けを全部取り消す。 */
     void clearBets(int index) {
         if (seats[index] == null || !canBet()) {
