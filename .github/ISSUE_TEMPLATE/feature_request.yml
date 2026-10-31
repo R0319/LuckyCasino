@@ -1,0 +1,15 @@
+name: Idea / 要望
+description: Suggest a new game, rule or feature / ゲームやルール、機能の提案
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        English or Japanese is fine. / 英語でも日本語でも大丈夫です。
+  - type: textarea
+    id: idea
+    attributes:
+      label: Idea / 提案
+      description: What would you like, and why? / 何がほしいか、なぜほしいか
+    validations:
+      required: true
