@@ -1,0 +1,76 @@
+name: Bug report / 不具合の報告
+description: Something does not work as described / 説明どおりに動かない
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        English or Japanese is fine. / 英語でも日本語でも大丈夫です。
+  - type: input
+    id: version
+    attributes:
+      label: LuckyCasino version / 版
+      description: "The jar name, or `/version LuckyCasino`"
+      placeholder: "0.3.0"
+    validations:
+      required: true
+  - type: input
+    id: server
+    attributes:
+      label: Server software and version / サーバーと版
+      description: "Output of `/version`"
+      placeholder: "Purpur 26.2 build ..."
+    validations:
+      required: true
+  - type: dropdown
+    id: game
+    attributes:
+      label: Game / ゲーム
+      options:
+        - Blackjack / ブラックジャック
+        - Texas hold'em poker / ポーカー
+        - Casino hold'em / カジノホールデム
+        - Roulette / ルーレット
+        - Slot machine / スロット
+        - Baccarat / バカラ
+        - Big wheel / ビッグホイール
+        - Chinchiro / チンチロ
+        - High & low / ハイ＆ロー
+        - Horse racing / 競馬
+        - Not game-specific / ゲームに関係しない
+    validations:
+      required: true
+  - type: dropdown
+    id: client
+    attributes:
+      label: Player's client / プレイヤーの環境
+      options:
+        - Java Edition with the resource pack / Java 版（パックあり）
+        - Java Edition without the resource pack / Java 版（パックなし）
+        - Bedrock Edition (Geyser) / 統合版
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect? / 何が起きて、本来どうなるはずか
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce / 再現する手順
+      placeholder: |
+        1. Place a blackjack table
+        2. Sit down and bet 100
+        3. ...
+  - type: textarea
+    id: logs
+    attributes:
+      label: Server log / サーバーのログ
+      description: Errors from `logs/latest.log`, if any. / エラーが出ていれば貼ってください。
+      render: text
+  - type: textarea
+    id: extra
+    attributes:
+      label: Other plugins, config, screenshots / ほかのプラグイン・設定・画像
