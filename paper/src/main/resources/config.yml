@@ -112,6 +112,16 @@ horserace:
   buy-ins: [100, 500, 1000, 5000]
   standing-range: 8
 
+# カジノホールデム。1 人ずつディーラーと勝負する。アンティを賭けたあと、コール（アンティの 2 倍）に備えて
+# 手元にアンティの 2 倍を残す必要がある（max-bet と max-total は同じ値にする）
+holdem:
+  min-bet: 10
+  max-bet: 300
+  max-total: 300
+  betting-seconds: 15
+  buy-ins: [100, 500, 1000, 5000]
+  standing-range: 8
+
 # テーブルのクラフトレシピ。材料は素材名か、#planks のようなタグ名。使わないなら enabled: false
 recipes:
   blackjack:
@@ -214,6 +224,16 @@ recipes:
       H: hay_block
       P: '#planks'
       S: saddle
+  holdem:
+    enabled: true
+    shape:
+      - LLL
+      - PGP
+      - 'P P'
+    ingredients:
+      L: lime_carpet
+      P: '#planks'
+      G: gold_ingot
 
 # Geyser 拡張（統合版にカードを見せる）との通信
 bridge:

@@ -8,7 +8,7 @@
 from PIL import ImageDraw
 
 import gen_table as gt
-from gen_table import GOLD, WHITE, FELT, JAVA, felt_base, for_item_display, table_model, write_json
+from gen_table import GOLD, WHITE, FELT, FELT_LIGHT, JAVA, felt_base, for_item_display, table_model, write_json
 
 # 3x5 の字（gen_table にない分）
 gt.GLYPHS.update({
@@ -567,6 +567,40 @@ def horserace_icon_model():
                         "firstperson_righthand": {"rotation": [0, 90, 0], "scale": [0.5, 0.5, 0.5]}}}
 
 
+# ---- カジノホールデム（paper の HoldemLayout と合わせる） ----
+HD_SEATS = [1.6 - 0.8 * i for i in range(5)]
+HD_HOLE_Z, HD_BET_Z, HD_BET_DX, HD_BOARD_Z, HD_DEALER_Z = 0.62, 0.22, 0.17, -0.22, -0.66
+HD_CARD_STEP, HD_BOARD_STEP = 0.21, 0.27
+
+
+def card_outline(d, x, z, color):
+    d.rectangle([u(x - 0.12), v(z - 0.18), u(x + 0.12), v(z + 0.18)], outline=color)
+
+
+def holdem_felt():
+    img = felt_base(192, 96)
+    d = ImageDraw.Draw(img)
+    d.rectangle([2, 2, 189, 93], outline=GOLD)
+    text(img, "CASINO HOLDEM", -1.3, HD_BOARD_Z, GOLD)
+    text(img, "DEALER 4-4 UP", -1.3, HD_BOARD_Z + 0.15, WHITE)
+    text(img, "DEALER", -0.5, HD_DEALER_Z, GOLD)
+    for k in range(2):
+        card_outline(d, (k - 0.5) * HD_CARD_STEP, HD_DEALER_Z, FELT_LIGHT)
+    for i in range(5):
+        card_outline(d, (i - 2) * HD_BOARD_STEP, HD_BOARD_Z, FELT_LIGHT)
+    for x in HD_SEATS:
+        d.rectangle([u(x - 0.24), v(HD_HOLE_Z - 0.18), u(x + 0.24), v(HD_HOLE_Z + 0.18)], outline=WHITE)
+        for dx, color in ((-HD_BET_DX, WHITE), (HD_BET_DX, GOLD)):
+            cx, cy, r = u(x + dx), v(HD_BET_Z), 5
+            d.ellipse([cx - r, cy - r, cx + r, cy + r], outline=color, fill=tint(color, 0.15))
+    # 丸の色の見本（白がアンティ、金がコール）
+    for z, label, color in ((HD_BOARD_Z - 0.1, "ANTE", WHITE), (HD_BOARD_Z + 0.1, "CALL", GOLD)):
+        cx, cy, r = u(1.0), v(z), 3
+        d.ellipse([cx - r, cy - r, cx + r, cy + r], outline=color, fill=tint(color, 0.15))
+        text(img, label, 1.31, z, color)
+    return img
+
+
 def item(path):
     write_json(JAVA / "items" / f"{path}.json", {"model": {"type": "minecraft:model", "model": f"luckycasino:item/{path}"}})
 
@@ -599,6 +633,10 @@ def main():
     for_item_display(highlow_felt(), 96).save(tex / "highlow_felt.png")
     write_json(JAVA / "models" / "item" / "table" / "highlow.json", table_model("highlow_felt"))
     item("table/highlow")
+
+    for_item_display(holdem_felt(), 96).save(tex / "holdem_felt.png")
+    write_json(JAVA / "models" / "item" / "table" / "holdem.json", table_model("holdem_felt"))
+    item("table/holdem")
 
     horse_coat().save(tex / "horse_coat.png")
     gt.Image.new("RGBA", (16, 16), (50, 30, 20, 255)).save(tex / "horse_mane.png")

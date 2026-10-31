@@ -21,6 +21,7 @@ import java.util.stream.Stream;
  * /casino fold|check|call|raise [合計]|allin … ポーカーの行動
  * /casino spin … スロットを回す（チャットのボタンから呼ばれる）
  * /casino roll … チンチロで自分の番にサイコロを振る（チャットのボタンから呼ばれる）
+ * /casino call|fold … カジノホールデムでコールかフォールドを選ぶ（チャットのボタンから呼ばれる）
  * /casino bet … 賭けのメニューを開き直す
  * /casino leave … 席を立つ
  * /casino rules [種類] … ルールブック
@@ -81,6 +82,7 @@ final class CasinoCommand implements BasicCommand {
                     case PokerTable poker -> poker(player, poker, sub, args);
                     case SlotMachine slot when sub.equals("spin") -> slot.spin(player);
                     case ChinchiroTable chinchiro when sub.equals("roll") -> chinchiro.roll(player);
+                    case HoldemTable holdem when sub.equals("call") || sub.equals("fold") -> holdem.choose(player, sub.equals("call"));
                     default -> usage(player, table);
                 }
             }
@@ -164,6 +166,7 @@ final class CasinoCommand implements BasicCommand {
             case SLOT -> "/casino spin|bet|leave|rules";
             case BACCARAT, BIGWHEEL, HIGHLOW, HORSERACE -> "/casino bet|leave|rules";
             case CHINCHIRO -> "/casino bet|roll|leave|rules";
+            case HOLDEM -> "/casino bet|call|fold|leave|rules";
         };
         player.sendMessage(Component.text("使い方: " + text, NamedTextColor.GRAY));
     }

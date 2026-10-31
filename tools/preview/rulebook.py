@@ -34,7 +34,7 @@ NARROW = {**{c: 2 for c in "i!.,:;|'"}, **{c: 3 for c in "l`"}, **{c: 4 for c in
 
 GAMES = [("blackjack", "ブラックジャック"), ("roulette", "ルーレット"), ("poker", "ポーカー"), ("slot", "スロット"),
          ("baccarat", "バカラ"), ("bigwheel", "ビッグホイール"), ("chinchiro", "チンチロ"), ("highlow", "ハイ＆ロー"),
-         ("horserace", "競馬")]
+         ("horserace", "競馬"), ("holdem", "カジノホールデム")]
 
 font = ImageFont.truetype(UNIFONT, 16)
 _unihex = {}
