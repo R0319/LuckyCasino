@@ -1,9 +1,27 @@
 # LuckyCasino
 
+[English](#english) | 日本語
+
 Purpur / Paper 26.2 向けのカジノプラグインです。ブラックジャック・ルーレット・ポーカー（テキサスホールデム）・カジノホールデム・バカラ・ビッグホイール・チンチロ・ハイ＆ロー・競馬のテーブルと、スロットマシンを置いて遊べます。カード・チップ・ホイール・リールはすべて ItemDisplay とリソースパックのモデルで表示し、配る・回す・払い出す動きは Display の補間で見せます。
 
-- 経済プラグイン（Vault 経由）があるサーバーではお金をチップに両替して遊び、席を立つとお金に戻ります。無いサーバー（hub など）では練習用チップを無料で配ります。
+- 経済プラグイン（Vault 経由）があるサーバーではお金をチップに両替して遊び、席を立つとお金に戻ります。無いサーバー（hub など）では練習用チップを無料で配ります。賭けるのはゲーム内のお金だけで、現実のお金を扱う機能はありません。
+- ゲーム内の文字（メニュー・チャット・ルールブック）は今のところ日本語だけです。
 - 統合版（Geyser）向けの表示は Geyser 拡張（`geyser/`）で準備中です。今はブラックジャックのカードだけが対象で、ポーカーの手札・ルーレット・チップは統合版では見えません。
+
+## 動作環境
+
+| 必要なもの | 版 |
+| --- | --- |
+| サーバー | Paper または Purpur 26.2（`api-version: 26.2`） |
+| Java | 21 以上（サーバー本体の Paper 26.2 が求める版で動かす） |
+| 経済プラグイン（任意） | Vault または VaultUnlocked と、それに対応した経済プラグイン。無ければ練習用チップで遊ぶ |
+| 統合版の表示（任意・準備中） | Geyser（API 2.11.0 以上） |
+
+## 導入
+
+1. `LuckyCasino-Paper-<版>.jar` をサーバーの `plugins/` に入れて起動します。`plugins/LuckyCasino/config.yml` ができます。
+2. Java 版のプレイヤーに見た目を届けるため、`LuckyCasino-java-pack.zip` を HTTPS で取れる場所に置き、`config.yml` の `resource-pack.url` と `resource-pack.sha1` を書いて再起動します（下の「リソースパック」）。パックが無いと、テーブルやカードは正しく表示されません。
+3. 統合版のプレイヤーにもカードを見せるなら、下の「統合版（Geyser 拡張）」の手順で拡張を入れます。
 
 ## 構成
 
@@ -26,13 +44,13 @@ Java 25 が必要です（Paper 26.2 の API が Java 25 向けのため）。
 
 | 出力 | 置き場所 |
 | --- | --- |
-| `paper/build/libs/LuckyCasino-Paper-0.1.0-SNAPSHOT.jar` | Paper（Purpur）の `plugins/` |
+| `paper/build/libs/LuckyCasino-Paper-<版>.jar` | Paper（Purpur）の `plugins/` |
 | `paper/build/resourcepack/LuckyCasino-java-pack.zip` | Java 版プレイヤーへ配信（下の「リソースパック」） |
-| `geyser/build/libs/LuckyCasino-Geyser-0.1.0-SNAPSHOT.jar` | Velocity の `plugins/Geyser-Velocity/extensions/` |
+| `geyser/build/libs/LuckyCasino-Geyser-<版>.jar` | Velocity の `plugins/Geyser-Velocity/extensions/` |
 
 ## 遊び方（共通）
 
-1. テーブルを手に入れる：クラフトか、管理者が `/casino give <blackjack|roulette|poker|slot>`
+1. テーブルを手に入れる：クラフトか、管理者が `/casino give <種類>`（`blackjack` `roulette` `poker` `slot` `baccarat` `bigwheel` `chinchiro` `highlow` `horserace` `holdem`）
 2. ブロックの上面に右クリックで置く（テーブルは 4 x 2 ブロック、高さ 2 の空きが必要で、手前に椅子、奥にディーラーが出る。スロットは 1 x 1 ブロック・高さ 2 で、手前に椅子）。保護プラグイン（GriefPrevention など）で建築できない場所には置けません
 3. 椅子をクリック → チップに両替して座る
 4. 座ったまま椅子かテーブルをクリックすると、そのゲームのメニューが開く
@@ -207,3 +225,67 @@ Paper（hub / survival）                         Velocity
 ## アニメーションのプレビュー
 
 `dist/preview.html` をブラウザで開くと、各ゲームの 1 回分の勝負を、リソースパックのモデルとプラグインと同じ位置・tick で再生します（three.js を CDN から読み込みます）。モデルやテクスチャ、`tools/preview/preview.js`・`games.js`（賭け場所を選ぶ卓）を変えたら `tools/preview` で `python3 build.py` を実行して作り直してください。動きのタイミングを Java 側で変えたときは、`preview.js` / `games.js` の同じ箇所も合わせて直します。
+
+## ライセンス
+
+LuckyCasino は [MIT License](LICENSE) です。コード・リソースパック（モデル・フォント・テクスチャ）を含め、このリポジトリのものはすべて同じライセンスです。使っている他の人のもの（ビルドに使うライブラリ、プレビューのページが読み込むライブラリやフォント）は [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) にまとめています。配布する jar と zip には、他の人のコードや素材は入っていません。
+
+Minecraft の公式製品ではありません。Mojang および Microsoft が承認したものでも、関係するものでもありません（NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.）。
+
+## 生成 AI の利用について
+
+このプロジェクトのコードの大部分と、テクスチャを描く `tools/` のスクリプトは、作者の指示で AI のコーディング支援（Claude）が書いたものです。ゲームの種類・ルール・配当・見た目は作者が決め、変更を確かめ、自分のサーバーで試してから出しています。画像生成 AI は使っていません。
+
+---
+
+## English
+
+LuckyCasino is a casino plugin for Paper / Purpur 26.2. Place tables and play blackjack, roulette (European), Texas hold'em poker, casino hold'em (heads-up against the dealer, playable alone), baccarat, big wheel, chinchiro (a Japanese dice game), high & low, horse racing, and a 5-line slot machine. Cards, chips, wheels and reels are drawn with ItemDisplay entities and a resource pack, and every deal, spin and payout is animated with display interpolation.
+
+**Note: all in-game text (menus, chat, rule books) is currently Japanese only.**
+
+### Features
+
+- Ten games, each with its own table model, seats and an NPC dealer whose look can be changed per table.
+- Uses your economy (via Vault or VaultUnlocked) for chips: players buy chips when they sit down and cash out when they leave. Without an economy plugin, free practice chips are used. Only in-game money is involved; there is no real-money feature.
+- Chip balances are journaled to `chips.yml`, so players are refunded once even if the server crashes mid-round.
+- Every bet has a return to player below 100% (checked by unit tests), shoes are reshuffled every round, and table chunks stay loaded while players are seated.
+- Craftable tables (recipes are configurable), picture rule books, and an achievements tab.
+- Optional Geyser extension that shows blackjack cards to Bedrock players (work in progress).
+
+### Requirements
+
+| | Version |
+| --- | --- |
+| Server | Paper or Purpur 26.2 |
+| Java | 21 or newer (use whatever Java your Paper 26.2 server needs) |
+| Economy (optional) | Vault or VaultUnlocked with an economy plugin |
+| Bedrock display (optional, WIP) | Geyser API 2.11.0 or newer |
+
+### Installation
+
+1. Put `LuckyCasino-Paper-<version>.jar` in `plugins/` and start the server.
+2. Host `LuckyCasino-java-pack.zip` somewhere reachable over HTTPS and set `resource-pack.url` and `resource-pack.sha1` in `plugins/LuckyCasino/config.yml`. Without the pack, tables and cards are not displayed correctly.
+3. Get a table by crafting it or with `/casino give <type>` (`blackjack`, `roulette`, `poker`, `slot`, `baccarat`, `bigwheel`, `chinchiro`, `highlow`, `horserace`, `holdem`), then right-click the top of a block to place it.
+
+### Commands and permissions
+
+`/casino` is the only command; see the Japanese command table above. Permissions are `luckycasino.place` (place tables, everyone by default) and `luckycasino.admin` (give, remove, status and self-test, OP by default).
+
+### Building
+
+```
+./gradlew build
+```
+
+Building needs JDK 25 (the Paper 26.2 API targets it); the jars themselves run on Java 21 or newer. Outputs are listed in the build section above.
+
+### License
+
+MIT License (see [LICENSE](LICENSE)). Third-party components are listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md); none of them are bundled in the release files.
+
+NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.
+
+### Use of generative AI
+
+Most of the code, and the `tools/` scripts that draw the textures, were written by an AI coding assistant (Claude) under the author's direction. The author chose the games, rules, payouts and look, reviewed the changes, and tested them on their own server. No AI image generator was used.
