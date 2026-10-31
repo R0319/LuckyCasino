@@ -38,7 +38,7 @@ Cards, chips, wheels and reels are real 3D models (ItemDisplay + resource pack),
 - Respects protection plugins: tables cannot be placed where the player cannot build.
 
 ## Requirements
-- Paper or Purpur 26.2, Java 25
+- Paper or Purpur 26.2
 - Optional: Vault or VaultUnlocked with an economy plugin
 - The resource pack (download from GitHub Releases) must be sent to Java players with `resource-pack.url` and `resource-pack.sha1` in `config.yml`.
 
@@ -58,4 +58,4 @@ Not an official Minecraft product. Not approved by or associated with Mojang or 
 ## 出す前に確かめること
 
 - Hangar の Platform の版の一覧に 26.2 があるか（まだ確かめていません）
-- 版番号（今は `0.1.0-SNAPSHOT`）をリリースの版にしたか
+- アップロードする jar が GitHub Releases と同じ版か（今は v0.2.0）

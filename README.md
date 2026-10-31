@@ -13,7 +13,7 @@ Purpur / Paper 26.2 向けのカジノプラグインです。ブラックジャ
 | 必要なもの | 版 |
 | --- | --- |
 | サーバー | Paper または Purpur 26.2（`api-version: 26.2`） |
-| Java | 25 |
+| Java | 21 以上（サーバー本体の Paper 26.2 が求める版で動かす） |
 | 経済プラグイン（任意） | Vault または VaultUnlocked と、それに対応した経済プラグイン。無ければ練習用チップで遊ぶ |
 | 統合版の表示（任意・準備中） | Geyser（API 2.11.0 以上） |
 
@@ -44,9 +44,9 @@ Java 25 が必要です（Paper 26.2 の API が Java 25 向けのため）。
 
 | 出力 | 置き場所 |
 | --- | --- |
-| `paper/build/libs/LuckyCasino-Paper-0.1.0-SNAPSHOT.jar` | Paper（Purpur）の `plugins/` |
+| `paper/build/libs/LuckyCasino-Paper-<版>.jar` | Paper（Purpur）の `plugins/` |
 | `paper/build/resourcepack/LuckyCasino-java-pack.zip` | Java 版プレイヤーへ配信（下の「リソースパック」） |
-| `geyser/build/libs/LuckyCasino-Geyser-0.1.0-SNAPSHOT.jar` | Velocity の `plugins/Geyser-Velocity/extensions/` |
+| `geyser/build/libs/LuckyCasino-Geyser-<版>.jar` | Velocity の `plugins/Geyser-Velocity/extensions/` |
 
 ## 遊び方（共通）
 
@@ -250,7 +250,7 @@ LuckyCasino is a casino plugin for Paper / Purpur 26.2. Place tables and play bl
 | | Version |
 | --- | --- |
 | Server | Paper or Purpur 26.2 |
-| Java | 25 |
+| Java | 21 or newer (use whatever Java your Paper 26.2 server needs) |
 | Economy (optional) | Vault or VaultUnlocked with an economy plugin |
 | Bedrock display (optional, WIP) | Geyser API 2.11.0 or newer |
 
@@ -270,7 +270,7 @@ LuckyCasino is a casino plugin for Paper / Purpur 26.2. Place tables and play bl
 ./gradlew build
 ```
 
-Java 25 is required. Outputs are listed in the build section above.
+Building needs JDK 25 (the Paper 26.2 API targets it); the jars themselves run on Java 21 or newer. Outputs are listed in the build section above.
 
 ### License
 
