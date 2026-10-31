@@ -150,7 +150,7 @@ final class RouletteTable extends CasinoTable {
         } else if (canBet()) {
             plugin.menus().openRoulette(player, this);
         } else {
-            player.sendMessage(Component.text("今の回が終わったら賭けられます", NamedTextColor.GRAY));
+            player.sendMessage(L10n.tr("今の回が終わったら賭けられます").color(NamedTextColor.GRAY));
         }
     }
 
@@ -182,19 +182,19 @@ final class RouletteTable extends CasinoTable {
     }
 
     /** 賭けを置く。置けなければ理由を返す（null なら成功）。 */
-    String place(int index, RouletteBet bet) {
+    Component place(int index, RouletteBet bet) {
         Seat seat = seats[index];
         if (seat == null || seat.away || !canBet()) {
-            return "今は賭けられません";
+            return L10n.tr("今は賭けられません");
         }
         if (bet.amount() > seat.chips) {
-            return "チップが足りません";
+            return L10n.tr("チップが足りません");
         }
         RouletteBet merged;
         try {
             merged = round.place(index, bet);
         } catch (IllegalArgumentException e) {
-            return "1 か所 " + settings.minBet() + "〜" + settings.maxBet() + " 枚、1 回の合計 " + settings.maxTotal() + " 枚までです";
+            return L10n.tr("1 か所 %s〜%s 枚、1 回の合計 %s 枚までです", settings.minBet(), settings.maxBet(), settings.maxTotal());
         }
         seat.chips -= bet.amount();
         seat.atRisk += bet.amount();
@@ -204,7 +204,7 @@ final class RouletteTable extends CasinoTable {
         if (state == State.IDLE) {
             state = State.BETTING;
             countdown = settings.bettingSeconds();
-            broadcast(Component.text("ベットを受け付けています（あと " + countdown + " 秒）", NamedTextColor.AQUA));
+            broadcast(L10n.tr("ベットを受け付けています（あと %s 秒）", countdown).color(NamedTextColor.AQUA));
         }
         updateStatus();
         return null;
@@ -271,7 +271,7 @@ final class RouletteTable extends CasinoTable {
         }
         countdown--;
         if (countdown == 3) {
-            broadcast(Component.text("まもなく締め切ります", NamedTextColor.YELLOW));
+            broadcast(L10n.tr("まもなく締め切ります").color(NamedTextColor.YELLOW));
         }
         if (countdown <= 0) {
             spin();
@@ -286,7 +286,7 @@ final class RouletteTable extends CasinoTable {
         }
         state = State.SPINNING;
         plugin.menus().closeRoulette(this);
-        broadcast(Component.text("ノーモアベット", NamedTextColor.AQUA));
+        broadcast(L10n.tr("ノーモアベット").color(NamedTextColor.AQUA));
         int result = round.spin(random);
         shownUnder = -1;
         animateSpin(result);
@@ -411,14 +411,14 @@ final class RouletteTable extends CasinoTable {
             long net = sums[1] - sums[0];
             Player player = online(seat);
             if (player != null) {
-                player.showTitle(Title.title(number, Component.text(net > 0 ? "+" + net + " 枚" : net == 0 ? "±0" : net + " 枚",
+                player.showTitle(Title.title(number, L10n.delta(net).color(
                                 net > 0 ? NamedTextColor.GREEN : net == 0 ? NamedTextColor.YELLOW : NamedTextColor.RED),
                         Title.Times.times(Duration.ofMillis(100), Duration.ofMillis(2000), Duration.ofMillis(400))));
                 if (net > 0) {
                     player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1f, 1.2f);
                 }
-                player.sendMessage(Component.text("結果 ", NamedTextColor.WHITE).append(number)
-                        .append(Component.text("：払い戻し " + sums[1] + " 枚（手元 " + seat.chips + " 枚）", NamedTextColor.GRAY)));
+                player.sendMessage(L10n.tr("結果 ").color(NamedTextColor.WHITE).append(number)
+                        .append(L10n.tr("：払い戻し %s 枚（手元 %s 枚）", sums[1], seat.chips).color(NamedTextColor.GRAY)));
             }
         });
         later(80, this::finishRound);
@@ -443,7 +443,7 @@ final class RouletteTable extends CasinoTable {
             } else {
                 Player player = online(seat);
                 if (player != null) {
-                    player.sendMessage(Component.text("次の回のベットを受け付けています", NamedTextColor.AQUA));
+                    player.sendMessage(L10n.tr("次の回のベットを受け付けています").color(NamedTextColor.AQUA));
                     plugin.menus().openRoulette(player, this);
                 }
             }
@@ -485,14 +485,14 @@ final class RouletteTable extends CasinoTable {
     static Component numberText(int n) {
         NamedTextColor color = n == 0 ? NamedTextColor.GREEN : Wheel.red(n) ? NamedTextColor.RED : NamedTextColor.WHITE;
         String name = n == 0 ? "緑" : Wheel.red(n) ? "赤" : "黒";
-        return Component.text(n + " " + name, color);
+        return Component.text(n + " ", color).append(L10n.tr(name));
     }
 
     private void updateHistory() {
         if (historyLabel == null) {
             return;
         }
-        Component text = Component.text("これまでの結果", NamedTextColor.GOLD);
+        Component text = L10n.tr("これまでの結果").color(NamedTextColor.GOLD);
         Component line = Component.empty();
         for (int n : history) {
             NamedTextColor color = n == 0 ? NamedTextColor.GREEN : Wheel.red(n) ? NamedTextColor.RED : NamedTextColor.WHITE;
@@ -505,14 +505,14 @@ final class RouletteTable extends CasinoTable {
     protected Component statusText() {
         Component text = switch (state) {
             case IDLE -> empty()
-                    ? Component.text("ルーレット", NamedTextColor.GOLD).append(Component.newline())
-                    .append(Component.text("椅子をクリックして座る", NamedTextColor.GRAY))
-                    : Component.text("ベットを待っています", NamedTextColor.AQUA);
-            case BETTING -> Component.text("ベット受付中（あと " + Math.max(countdown, 0) + " 秒）", NamedTextColor.AQUA);
-            case SPINNING -> Component.text("ノーモアベット", NamedTextColor.YELLOW);
-            case PAYING -> Component.text("払い戻し中", NamedTextColor.YELLOW);
+                    ? L10n.tr("ルーレット").color(NamedTextColor.GOLD).append(Component.newline())
+                    .append(L10n.tr("椅子をクリックして座る").color(NamedTextColor.GRAY))
+                    : L10n.tr("ベットを待っています").color(NamedTextColor.AQUA);
+            case BETTING -> L10n.tr("ベット受付中（あと %s 秒）", Math.max(countdown, 0)).color(NamedTextColor.AQUA);
+            case SPINNING -> L10n.tr("ノーモアベット").color(NamedTextColor.YELLOW);
+            case PAYING -> L10n.tr("払い戻し中").color(NamedTextColor.YELLOW);
         };
-        return text.append(limitsLine("1 か所 " + settings.minBet() + "〜" + settings.maxBet() + "、合計 " + settings.maxTotal() + " まで"));
+        return text.append(limitsLine(L10n.tr("1 か所 %s〜%s、合計 %s まで", settings.minBet(), settings.maxBet(), settings.maxTotal())));
     }
 
     /** 外側の賭けの種類（メニュー用）。 */

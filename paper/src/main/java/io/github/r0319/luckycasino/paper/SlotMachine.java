@@ -270,8 +270,8 @@ final class SlotMachine extends CasinoTable {
             return false;
         }
         if (seatOf(player.getUniqueId()) < 0) {
-            player.sendMessage(Component.text(seats[0] == null ? "先に椅子をクリックして座ってください" : "この台は " + seats[0].name + " が使っています",
-                    NamedTextColor.GRAY));
+            player.sendMessage((seats[0] == null ? L10n.tr("先に椅子をクリックして座ってください")
+                    : L10n.tr("この台は %s が使っています", seats[0].name)).color(NamedTextColor.GRAY));
             return true;
         }
         spin(player);
@@ -318,23 +318,23 @@ final class SlotMachine extends CasinoTable {
         if (index < 0) {
             return;
         }
-        String error = startSpin(index);
+        Component error = startSpin(index);
         if (error != null) {
-            player.sendMessage(Component.text(error, NamedTextColor.RED));
+            player.sendMessage(error.color(NamedTextColor.RED));
         }
     }
 
     /** 回し始める。回せなければ理由を返す（null なら成功）。 */
-    private String startSpin(int index) {
+    private Component startSpin(int index) {
         Seat seat = seats[index];
         if (seat == null || seat.away || !spawned()) {
-            return "今は回せません";
+            return L10n.tr("今は回せません");
         }
         if (state != State.IDLE) {
-            return "リールが止まるまで待ってください";
+            return L10n.tr("リールが止まるまで待ってください");
         }
         if (seat.chips < bet) {
-            return "チップが足りません（1 回 " + bet + " 枚）";
+            return L10n.tr("チップが足りません（1 回 %s 枚）", bet);
         }
         seat.chips -= bet;
         seat.atRisk += bet;
@@ -402,7 +402,7 @@ final class SlotMachine extends CasinoTable {
                 for (Seat seat : seats) {
                     Player player = online(seat);
                     if (player != null) {
-                        player.sendActionBar(Component.text("リーチ！", NamedTextColor.GOLD));
+                        player.sendActionBar(L10n.tr("リーチ！").color(NamedTextColor.GOLD));
                     }
                 }
             });
@@ -507,18 +507,18 @@ final class SlotMachine extends CasinoTable {
         int wait;
         if (best == null) {
             celebrating = false;
-            resultLabel.text(Component.text("はずれ", NamedTextColor.GRAY));
+            resultLabel.text(L10n.tr("はずれ").color(NamedTextColor.GRAY));
             wait = 12;
         } else if (!spin.big()) {
             celebrating = true;
-            resultLabel.text(Component.text("+" + spin.payout() + " 枚", NamedTextColor.GOLD));
+            resultLabel.text(L10n.tr("+%s 枚", spin.payout()).color(NamedTextColor.GOLD));
             playSound(Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.2f);
             later(4, () -> playSound(Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.5f));
             blinkLines(lines, 32);
             wait = 36;
         } else {
             celebrating = true;
-            resultLabel.text(Component.text("大当たり！ +" + spin.payout() + " 枚", NamedTextColor.GOLD));
+            resultLabel.text(L10n.tr("大当たり！ +%s 枚", spin.payout()).color(NamedTextColor.GOLD));
             playSound(Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f);
             blinkLines(lines, 70);
             chipShower(best.win().times() >= 100 ? 18 : 10);
@@ -526,9 +526,9 @@ final class SlotMachine extends CasinoTable {
             top.getWorld().spawnParticle(Particle.FIREWORK, top, 40, 0.3, 0.2, 0.3, 0.08);
             Player player = online(seat);
             if (player != null) {
-                player.showTitle(Title.title(Component.text("大当たり！", NamedTextColor.GOLD),
-                        Component.text(best.win().name() + (lines.size() > 1 ? "（" + lines.size() + " ライン）" : "") + "  +" + spin.payout() + " 枚",
-                                NamedTextColor.YELLOW),
+                player.showTitle(Title.title(L10n.tr("大当たり！").color(NamedTextColor.GOLD),
+                        L10n.win(best.win()).append(lines.size() > 1 ? L10n.tr("（%s ライン）", lines.size()) : Component.empty())
+                                .append(L10n.tr("  +%s 枚", spin.payout())).color(NamedTextColor.YELLOW),
                         Title.Times.times(Duration.ofMillis(150), Duration.ofMillis(1800), Duration.ofMillis(400))));
             }
             wait = 76;
@@ -537,15 +537,15 @@ final class SlotMachine extends CasinoTable {
         if (player != null) {
             // チャットには結果と当たった役だけを出す（回すのはレバー、賭け金はメニューで）
             if (best == null) {
-                player.sendMessage(Component.text("はずれ", NamedTextColor.GRAY));
+                player.sendMessage(L10n.tr("はずれ").color(NamedTextColor.GRAY));
             } else {
                 long net = spin.payout() - spin.bet();
-                player.sendMessage(Component.text((spin.big() ? "大当たり" : "当たり") + "  " + spin.payout() + " 枚もどり", NamedTextColor.GOLD)
-                        .append(Component.text("（差し引き " + (net >= 0 ? "+" : "−") + Math.abs(net) + " 枚）", net >= 0 ? NamedTextColor.GREEN : NamedTextColor.GRAY)));
+                player.sendMessage(L10n.tr(spin.big() ? "大当たり  %s 枚もどり" : "当たり  %s 枚もどり", spin.payout()).color(NamedTextColor.GOLD)
+                        .append(L10n.tr("（差し引き %s%s 枚）", (net >= 0 ? "+" : "−"), Math.abs(net)).color(net >= 0 ? NamedTextColor.GREEN : NamedTextColor.GRAY)));
                 long lineBet = spin.bet() / Line.COUNT;
                 for (Spin.LineWin w : spin.wins()) {
-                    player.sendMessage(Component.text("  " + w.line().displayName() + "：" + w.win().name(), NamedTextColor.YELLOW)
-                            .append(Component.text("  +" + lineBet * w.win().times() + " 枚", NamedTextColor.GRAY)));
+                    player.sendMessage(L10n.tr("  %s：%s", L10n.tr(w.line().displayName()), L10n.win(w.win())).color(NamedTextColor.YELLOW)
+                            .append(L10n.tr("  +%s 枚", lineBet * w.win().times()).color(NamedTextColor.GRAY)));
                 }
             }
         }
@@ -644,11 +644,11 @@ final class SlotMachine extends CasinoTable {
         Seat seat = seats[0];
         if (seat != null) {
             return Component.text(seat.name, NamedTextColor.AQUA).append(Component.newline())
-                    .append(Component.text("1 回 " + bet + " 枚", NamedTextColor.GRAY));
+                    .append(L10n.tr("1 回 %s 枚", bet).color(NamedTextColor.GRAY));
         }
-        return Component.text("スロット", NamedTextColor.GOLD).append(Component.newline())
-                .append(Component.text("椅子で座る", NamedTextColor.GRAY)).append(Component.newline())
-                .append(Component.text("1 回 " + String.join("・", settings.bets().stream().map(String::valueOf).toList()) + " 枚",
-                        NamedTextColor.GRAY));
+        return L10n.tr("スロット").color(NamedTextColor.GOLD).append(Component.newline())
+                .append(L10n.tr("椅子で座る").color(NamedTextColor.GRAY)).append(Component.newline())
+                .append(L10n.tr("1 回 %s 枚", String.join("/", settings.bets().stream().map(String::valueOf).toList()))
+                        .color(NamedTextColor.GRAY));
     }
 }

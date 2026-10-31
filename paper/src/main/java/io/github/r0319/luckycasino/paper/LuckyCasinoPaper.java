@@ -38,6 +38,7 @@ public final class LuckyCasinoPaper extends JavaPlugin {
     @Override
     public void onEnable() {
         saveDefaultConfig();
+        L10n.serverLanguage(getConfig().getString("language", "ja"));
         startBridge();
         startResourcePack();
 
@@ -54,10 +55,10 @@ public final class LuckyCasinoPaper extends JavaPlugin {
                 spotSettings.put(type, SpotSettings.load(section(type.id())));
             }
         }
-        getLogger().info(String.format("スロットの還元率 %.1f%%、何か戻る確率 %.1f%%（5 ライン）",
-                slotSettings.paytable().returnRate() * 100, slotSettings.paytable().hitRate() * 100));
+        getLogger().info(L10n.plain("スロットの還元率 %s%%、何か戻る確率 %s%%（5 ライン）",
+                String.format("%.1f", slotSettings.paytable().returnRate() * 100), String.format("%.1f", slotSettings.paytable().hitRate() * 100)));
         if (slotSettings.paytable().returnRate() >= 1) {
-            getLogger().warning("スロットの還元率が 100% 以上です。回し続けるほどチップが増えるので、config.yml の slot の配当を下げてください");
+            getLogger().warning(L10n.plain("スロットの還元率が 100%% 以上です。回し続けるほどチップが増えるので、config.yml の slot の配当を下げてください"));
         }
         tableItem = new TableItem(this);
         tableItem.registerRecipes(getConfig().getConfigurationSection("recipes"), getLogger());
@@ -74,7 +75,7 @@ public final class LuckyCasinoPaper extends JavaPlugin {
         getServer().getPluginManager().registerEvents(tables, this);
         tables.load();
 
-        registerCommand("casino", "LuckyCasino のテーブル操作", new CasinoCommand(this));
+        registerCommand("casino", L10n.plain("LuckyCasino のテーブル操作"), new CasinoCommand(this));
     }
 
     private ConfigurationSection section(String path) {
@@ -99,9 +100,9 @@ public final class LuckyCasinoPaper extends JavaPlugin {
         String key = getConfig().getString("bridge.key", "");
         bridge = new BridgeClient(getLogger(), host, port, key, this::stateLines);
         if (!getConfig().getBoolean("bridge.enabled", true)) {
-            getLogger().info("bridge.enabled が false のため Geyser 拡張とは通信しません");
+            getLogger().info(L10n.plain("bridge.enabled が false のため Geyser 拡張とは通信しません"));
         } else if (key.length() < BridgeProtocol.MIN_KEY_LENGTH) {
-            getLogger().warning("bridge.key が未設定です。Geyser 拡張の config.properties の key を config.yml に設定してください");
+            getLogger().warning(L10n.plain("bridge.key が未設定です。Geyser 拡張の config.properties の key を config.yml に設定してください"));
         } else {
             bridge.start();
         }
@@ -113,7 +114,7 @@ public final class LuckyCasinoPaper extends JavaPlugin {
         if (!packUrl.isEmpty() && packSha1.matches("[0-9a-f]{40}")) {
             getServer().getPluginManager().registerEvents(new ResourcePackListener(packUrl, packSha1), this);
         } else if (!packUrl.isEmpty()) {
-            getLogger().warning("resource-pack.sha1 が 40 文字の 16 進ではないため、リソースパックを送りません");
+            getLogger().warning(L10n.plain("resource-pack.sha1 が 40 文字の 16 進ではないため、リソースパックを送りません"));
         }
     }
 
@@ -125,14 +126,14 @@ public final class LuckyCasinoPaper extends JavaPlugin {
             RegisteredServiceProvider<Economy> provider = getServer().getServicesManager().getRegistration(Economy.class);
             if (provider != null) {
                 double rate = getConfig().getDouble("economy.money-per-chip", 1.0);
-                getLogger().info("通貨: " + provider.getProvider().getName() + "（チップ 1 枚 = " + rate + "）");
+                getLogger().info(L10n.plain("通貨: %s（チップ 1 枚 = %s）", provider.getProvider().getName(), rate));
                 return new Bank.Vault(provider.getProvider(), rate > 0 ? rate : 1.0);
             }
         }
         if ("vault".equals(mode)) {
-            getLogger().warning("economy.mode が vault ですが、Vault の経済プラグインが見つかりません。練習用で動かします");
+            getLogger().warning(L10n.plain("economy.mode が vault ですが、Vault の経済プラグインが見つかりません。練習用で動かします"));
         }
-        getLogger().info("通貨: 練習用チップ（お金は使いません）");
+        getLogger().info(L10n.plain("通貨: 練習用チップ（お金は使いません）"));
         return new Bank.Practice(practiceChips);
     }
 
@@ -144,7 +145,7 @@ public final class LuckyCasinoPaper extends JavaPlugin {
         Map<UUID, Long> owed = ledger.drain();
         owed.forEach((uuid, chips) -> {
             bank.deposit(getServer().getOfflinePlayer(uuid), chips);
-            getLogger().info("前回精算できなかったチップ " + chips + " 枚を " + uuid + " に戻しました");
+            getLogger().info(L10n.plain("前回精算できなかったチップ %s 枚を %s に戻しました", chips, uuid));
         });
     }
 

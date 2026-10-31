@@ -194,7 +194,8 @@ def data_url(img):
 def main():
     sections, all_problems = [], []
     for game, name in GAMES:
-        for suffix, kind in (("", "Java 版（絵）"), ("-text", "統合版・パックなし（文字）")):
+        for suffix, kind in (("", "Java 版（絵）"), ("-text", "統合版・パックなし（文字）"),
+                             ("-en", "英語・Java 版（絵）"), ("-text-en", "英語・パックなし（文字）")):
             pages = json.loads((PAGES / f"{game}{suffix}.json").read_text(encoding="utf-8"))
             figs = []
             for n, page in enumerate(pages, 1):
@@ -205,7 +206,7 @@ def main():
             sections.append((game, name, kind, figs))
     tabs = "".join(f'<button data-game="{g}">{html.escape(n)}</button>' for g, n in GAMES)
     body = "".join(
-        f'<section data-game="{g}" data-kind="{"text" if "文字" in k else "pic"}"><h2>{html.escape(n)}'
+        f'<section data-game="{g}" data-kind="{("text" if "文字" in k else "pic") + ("-en" if "英語" in k else "")}"><h2>{html.escape(n)}'
         f'<small>{html.escape(k)}</small></h2><div class="pages">{"".join(f)}</div></section>'
         for g, n, k, f in sections)
     template = (Path(__file__).parent / "rulebook_template.html").read_text(encoding="utf-8")

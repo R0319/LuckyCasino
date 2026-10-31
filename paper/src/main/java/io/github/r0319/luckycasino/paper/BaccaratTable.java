@@ -32,7 +32,7 @@ final class BaccaratTable extends SpotTable {
             new Spot("player_pair", "プレイヤーペア", "プレイヤーの最初の 2 枚が同じ数。配当 11:1（12 倍が戻る）", Material.LIGHT_BLUE_DYE, 11),
             new Spot("player", "プレイヤー", "プレイヤーが勝つ。配当 1:1（2 倍が戻る）。タイなら賭け金が戻る", Material.BLUE_CONCRETE, 20),
             new Spot("tie", "タイ（引き分け）", "同じ点で引き分け。配当 8:1（9 倍が戻る）", Material.LIME_CONCRETE, 22),
-            new Spot("banker", "バンカー", "バンカーが勝つ。配当 1:1 から 5% の手数料（端数切り捨て）。タイなら賭け金が戻る", Material.RED_CONCRETE, 24),
+            new Spot("banker", "バンカー", "バンカーが勝つ。配当 1:1 から 5%% の手数料（端数切り捨て）。タイなら賭け金が戻る", Material.RED_CONCRETE, 24),
             new Spot("banker_pair", "バンカーペア", "バンカーの最初の 2 枚が同じ数。配当 11:1（12 倍が戻る）", Material.PINK_DYE, 15));
 
     private final Shoe shoe;
@@ -111,7 +111,7 @@ final class BaccaratTable extends SpotTable {
         t = revealPair(Baccarat.Side.BANKER, 1, 3, t);
         if (hand.natural()) {
             later(t, () -> {
-                broadcast(Component.text("ナチュラル！", NamedTextColor.GOLD));
+                broadcast(L10n.tr("ナチュラル！").color(NamedTextColor.GOLD));
                 playSound(Sound.BLOCK_NOTE_BLOCK_CHIME, 1.4f);
             });
             t += 12;
@@ -121,7 +121,7 @@ final class BaccaratTable extends SpotTable {
             int index = i;
             Baccarat.Deal deal = deals.get(i);
             later(t, () -> {
-                broadcast(Component.text((deal.side() == Baccarat.Side.PLAYER ? "プレイヤー" : "バンカー") + "が 3 枚目を引きます", NamedTextColor.GRAY));
+                broadcast(L10n.tr(deal.side() == Baccarat.Side.PLAYER ? "プレイヤーが 3 枚目を引きます" : "バンカーが 3 枚目を引きます").color(NamedTextColor.GRAY));
                 dealCard(index, deal, false);
             });
             later(t + 16, () -> {
@@ -178,7 +178,7 @@ final class BaccaratTable extends SpotTable {
     }
 
     private static Component totalText(String name, int total, NamedTextColor color) {
-        return Component.text(name, color).append(Component.newline()).append(Component.text(total, NamedTextColor.WHITE));
+        return L10n.tr(name).color(color).append(Component.newline()).append(Component.text(total, NamedTextColor.WHITE));
     }
 
     private void showWinner() {
@@ -196,14 +196,14 @@ final class BaccaratTable extends SpotTable {
         int p = hand.playerTotal();
         int b = hand.bankerTotal();
         Component text = switch (hand.winner()) {
-            case PLAYER -> Component.text("プレイヤーの勝ち", NamedTextColor.AQUA);
-            case BANKER -> Component.text("バンカーの勝ち", NamedTextColor.RED);
-            case TIE -> Component.text("タイ", NamedTextColor.GREEN);
+            case PLAYER -> L10n.tr("プレイヤーの勝ち").color(NamedTextColor.AQUA);
+            case BANKER -> L10n.tr("バンカーの勝ち").color(NamedTextColor.RED);
+            case TIE -> L10n.tr("タイ").color(NamedTextColor.GREEN);
         };
-        text = text.append(Component.text("（" + p + " 対 " + b + "）", NamedTextColor.WHITE));
+        text = text.append(L10n.tr("（%s 対 %s）", p, b).color(NamedTextColor.WHITE));
         if (hand.playerPair() || hand.bankerPair()) {
             String pairs = hand.playerPair() && hand.bankerPair() ? "両ペア" : hand.playerPair() ? "プレイヤーペア" : "バンカーペア";
-            text = text.append(Component.text(" " + pairs, NamedTextColor.GOLD));
+            text = text.append(Component.space()).append(L10n.tr(pairs).color(NamedTextColor.GOLD));
         }
         return text;
     }

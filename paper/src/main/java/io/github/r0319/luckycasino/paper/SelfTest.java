@@ -71,7 +71,7 @@ final class SelfTest {
 
     static void start(LuckyCasinoPaper plugin, GameType type, int rounds, CommandSender sender) {
         if (running != null) {
-            sender.sendMessage(Component.text("自己テストはもう動いています（" + running.type.displayName() + "）", NamedTextColor.RED));
+            sender.sendMessage(L10n.tr("自己テストはもう動いています（%s）", L10n.tr(running.type.displayName())).color(NamedTextColor.RED));
             return;
         }
         running = new SelfTest(plugin, type, Math.max(1, Math.min(rounds, 200)), sender);
@@ -80,7 +80,7 @@ final class SelfTest {
 
     static void stopAll() {
         if (running != null) {
-            running.finish("プラグインの停止で中断しました");
+            running.finish(L10n.plain("プラグインの停止で中断しました"));
         }
     }
 
@@ -100,7 +100,7 @@ final class SelfTest {
             @Override
             public void error(Throwable error) {
                 errors++;
-                fail("例外: " + error);
+                fail(L10n.plain("例外: %s", error));
             }
 
             @Override
@@ -123,11 +123,10 @@ final class SelfTest {
         for (int i = 0; i < table.seatCount(); i++) {
             seatBot(i);
         }
-        log("開始: " + type.displayName() + " を " + rounds + " 回（" + world.getName() + " " + x + " " + y + " " + z + "、ボット "
-                + table.seatCount() + " 人）");
+        log(L10n.plain("開始: %s を %s 回（%s %s %s %s、ボット %s 人）", L10n.tr(type.displayName()), rounds, world.getName(), x, y, z, table.seatCount()));
         watchdog = plugin.getServer().getScheduler().runTaskTimer(plugin, () -> {
             if (++idleSeconds > STALL_SECONDS) {
-                fail("進行が " + STALL_SECONDS + " 秒止まっています（" + finished + " 回目のあと）");
+                fail(L10n.plain("進行が %s 秒止まっています（%s 回目のあと）", STALL_SECONDS, finished));
                 finish(null);
             }
         }, 20L, 20L);
@@ -141,8 +140,8 @@ final class SelfTest {
     private void onRoundFinished() {
         finished++;
         idleSeconds = 0;
-        check("勝負 " + finished);
-        plugin.getLogger().info("[自己テスト] " + finished + "/" + rounds + " 回目まで終了（問題 " + failures.size() + " 件）");
+        check(L10n.plain("勝負 %s", finished));
+        plugin.getLogger().info(L10n.plain("[自己テスト] %s/%s 回目まで終了（問題 %s 件）", finished, rounds, failures.size()));
         if (finished >= rounds) {
             // 卓の処理の途中なので、片付けは次の tick で
             plugin.getServer().getScheduler().runTask(plugin, () -> finish(null));
@@ -164,20 +163,20 @@ final class SelfTest {
                 continue;
             }
             if (seat.atRisk != 0) {
-                fail(when + ": 席 " + (i + 1) + " に賭けたままのチップ " + seat.atRisk + " 枚");
+                fail(L10n.plain("%s: 席 %s に賭けたままのチップ %s 枚", when, i + 1, seat.atRisk));
             }
             if (seat.chips < 0) {
-                fail(when + ": 席 " + (i + 1) + " のチップがマイナス（" + seat.chips + "）");
+                fail(L10n.plain("%s: 席 %s のチップがマイナス（%s）", when, i + 1, seat.chips));
             }
             onTable += seat.chips + seat.atRisk;
         }
         long expected = supplied + net;
         if (onTable + cashedOut != expected) {
-            fail(when + ": チップの合計が合いません（卓 " + onTable + " + 回収 " + cashedOut + " ≠ " + expected + "）");
+            fail(L10n.plain("%s: チップの合計が合いません（卓 %s + 回収 %s ≠ %s）", when, onTable, cashedOut, expected));
         }
         List<String> leftovers = leftovers();
         if (!leftovers.isEmpty()) {
-            fail(when + ": 片付け漏れのエンティティ " + leftovers.size() + " 個 " + leftovers);
+            fail(L10n.plain("%s: 片付け漏れのエンティティ %s 個 %s", when, leftovers.size(), leftovers));
         }
     }
 
@@ -198,7 +197,7 @@ final class SelfTest {
         if (failures.size() < 20) {
             failures.add(message);
         }
-        plugin.getLogger().warning("[自己テスト] " + message);
+        plugin.getLogger().warning(L10n.plain("[自己テスト] %s", message));
     }
 
     private void finish(String note) {
@@ -213,12 +212,12 @@ final class SelfTest {
         long onTable = 0;
         for (int i = 0; i < table.seatCount(); i++) {
             if (table.seat(i) != null) {
-                fail("片付けたあとも席 " + (i + 1) + " が埋まっています");
+                fail(L10n.plain("片付けたあとも席 %s が埋まっています", i + 1));
                 onTable += table.seat(i).chips + table.seat(i).atRisk;
             }
         }
         if (onTable + cashedOut != supplied + net) {
-            fail("片付けたあとのチップの合計が合いません（回収 " + cashedOut + " ≠ " + (supplied + net) + "）");
+            fail(L10n.plain("片付けたあとのチップの合計が合いません（回収 %s ≠ %s）", cashedOut, supplied + net));
         }
         List<String> leftovers = new ArrayList<>();
         Location center = table.frame().at(0, 1, 0);
@@ -228,22 +227,22 @@ final class SelfTest {
             }
         }
         if (!leftovers.isEmpty()) {
-            fail("片付けたあとも残っているエンティティ " + leftovers);
+            fail(L10n.plain("片付けたあとも残っているエンティティ %s", leftovers));
         }
         chunk.removePluginChunkTicket(plugin);
         if (note != null) {
             fail(note);
         }
         boolean ok = failures.isEmpty() && finished >= rounds;
-        log((ok ? "成功" : "失敗") + ": " + type.displayName() + " " + finished + "/" + rounds + " 回、精算 " + bets + " 件、"
-                + "胴元から見た損益 " + (-net) + " 枚、補充 " + supplied + " 枚、例外 " + errors + " 件、問題 " + failures.size() + " 件");
+        log(L10n.plain("%s: %s %s/%s 回、精算 %s 件、胴元から見た損益 %s 枚、補充 %s 枚、例外 %s 件、問題 %s 件",
+                L10n.tr(ok ? "成功" : "失敗"), L10n.tr(type.displayName()), finished, rounds, bets, -net, supplied, errors, failures.size()));
         failures.forEach(message -> log(" - " + message));
     }
 
     private void log(String message) {
-        plugin.getLogger().info("[自己テスト] " + message);
+        plugin.getLogger().info(L10n.plain("[自己テスト] %s", message));
         if (!(sender instanceof org.bukkit.command.ConsoleCommandSender)) {
-            sender.sendMessage(Component.text("[自己テスト] " + message, NamedTextColor.GRAY));
+            sender.sendMessage(L10n.tr("[自己テスト] %s", message).color(NamedTextColor.GRAY));
         }
     }
 }

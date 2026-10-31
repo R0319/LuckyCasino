@@ -26,7 +26,7 @@ final class ResourcePackListener implements Listener {
         this.request = ResourcePackRequest.resourcePackRequest()
                 .packs(ResourcePackInfo.resourcePackInfo(PACK_ID, URI.create(url), sha1))
                 .required(false)
-                .prompt(Component.text("LuckyCasino のカード表示用リソースパックです"))
+                .prompt(L10n.tr("LuckyCasino のカード表示用リソースパックです"))
                 .build();
     }
 

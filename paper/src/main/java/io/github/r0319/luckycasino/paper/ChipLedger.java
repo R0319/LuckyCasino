@@ -29,7 +29,7 @@ final class ChipLedger {
                 try {
                     chips.put(UUID.fromString(key), yaml.getLong(key));
                 } catch (IllegalArgumentException e) {
-                    logger.warning("chips.yml の不正な行を読み飛ばしました: " + key);
+                    logger.warning(L10n.plain("chips.yml の不正な行を読み飛ばしました: %s", key));
                 }
             }
         }
@@ -64,7 +64,7 @@ final class ChipLedger {
         try {
             yaml.save(file);
         } catch (IOException e) {
-            logger.log(Level.SEVERE, "chips.yml を保存できません", e);
+            logger.log(Level.SEVERE, L10n.plain("chips.yml を保存できません"), e);
         }
     }
 }

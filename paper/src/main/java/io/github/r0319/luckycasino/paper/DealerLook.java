@@ -61,7 +61,7 @@ record DealerLook(String skin, String name, Map<EquipmentSlot, ItemStack> equipm
     }
 
     Component nameText() {
-        return Component.text(name == null ? "ディーラー" : name, NamedTextColor.GOLD);
+        return (name == null ? L10n.tr("ディーラー") : Component.text(name)).color(NamedTextColor.GOLD);
     }
 
     void apply(Mannequin dealer) {

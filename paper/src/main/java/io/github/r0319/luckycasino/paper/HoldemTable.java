@@ -83,9 +83,9 @@ final class HoldemTable extends SpotTable {
     }
 
     @Override
-    String place(int index, String spotId, long amount) {
+    Component place(int index, String spotId, long amount) {
         if (CALL.id().equals(spotId)) {
-            return "コールは手札を見てから選びます";
+            return L10n.tr("コールは手札を見てから選びます");
         }
         return super.place(index, spotId, amount);
     }
@@ -188,15 +188,15 @@ final class HoldemTable extends SpotTable {
         // 手札と場の 3 枚までで、今できている役を見せる
         for (int seat = 0; seat < seats.length; seat++) {
             if (hand[seat] >= 0) {
-                showHand(seat, Component.text(flopHand(seat).displayName(), NamedTextColor.WHITE));
+                showHand(seat, L10n.tr(flopHand(seat).displayName()).color(NamedTextColor.WHITE));
             }
         }
-        broadcast(Component.text("コールかフォールドを選んでください（" + DECIDE_SECONDS + " 秒）", NamedTextColor.AQUA));
+        broadcast(L10n.tr("コールかフォールドを選んでください（%s 秒）", DECIDE_SECONDS).color(NamedTextColor.AQUA));
         later(DECIDE_SECONDS * 20L, () -> {
             if (current == token && deciding) {
                 for (int seat = 0; seat < seats.length; seat++) {
                     if (hand[seat] >= 0 && called[seat] == null) {
-                        send(seats[seat], Component.text("時間切れなので自動でコールしました", NamedTextColor.GRAY));
+                        send(seats[seat], L10n.tr("時間切れなので自動でコールしました").color(NamedTextColor.GRAY));
                         decide(seat, true);
                     }
                 }
@@ -222,11 +222,11 @@ final class HoldemTable extends SpotTable {
             return;
         }
         long call = ante(seat) * CasinoHoldem.CALL_MULTIPLE;
-        player.sendMessage(Component.text("あなたの手: " + flopHand(seat).displayName() + " ", NamedTextColor.AQUA)
-                .append(Component.text("[コール +" + call + " 枚]", NamedTextColor.GREEN).clickEvent(ClickEvent.runCommand("/casino call")))
+        player.sendMessage(L10n.tr("あなたの手: %s ", L10n.tr(flopHand(seat).displayName())).color(NamedTextColor.AQUA)
+                .append(L10n.tr("[コール +%s 枚]", call).color(NamedTextColor.GREEN).clickEvent(ClickEvent.runCommand("/casino call")))
                 .append(Component.text(" "))
-                .append(Component.text("[フォールド]", NamedTextColor.RED).clickEvent(ClickEvent.runCommand("/casino fold")))
-                .append(Component.text(" " + DECIDE_SECONDS + " 秒で自動でコールします", NamedTextColor.GRAY)));
+                .append(L10n.tr("[フォールド]").color(NamedTextColor.RED).clickEvent(ClickEvent.runCommand("/casino fold")))
+                .append(L10n.tr(" %s 秒で自動でコールします", DECIDE_SECONDS).color(NamedTextColor.GRAY)));
         player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 1f, 1.4f);
     }
 
@@ -234,7 +234,7 @@ final class HoldemTable extends SpotTable {
     void choose(Player player, boolean call) {
         int seat = seatOf(player.getUniqueId());
         if (seat < 0 || !deciding || hand[seat] < 0 || called[seat] != null) {
-            player.sendMessage(Component.text("今はコールかフォールドを選ぶときではありません", NamedTextColor.GRAY));
+            player.sendMessage(L10n.tr("今はコールかフォールドを選ぶときではありません").color(NamedTextColor.GRAY));
             return;
         }
         decide(seat, call);
@@ -256,11 +256,11 @@ final class HoldemTable extends SpotTable {
         }
         long amount = ante(seat) * CasinoHoldem.CALL_MULTIPLE;
         if (call && !addBet(seat, CALL.id(), amount)) {
-            send(seats[seat], Component.text("チップが足りないのでフォールドしました", NamedTextColor.RED));
+            send(seats[seat], L10n.tr("チップが足りないのでフォールドしました").color(NamedTextColor.RED));
             call = false;
         }
         called[seat] = call;
-        showHand(seat, Component.text(call ? "コール" : "フォールド", call ? NamedTextColor.GREEN : NamedTextColor.GRAY));
+        showHand(seat, L10n.tr(call ? "コール" : "フォールド").color(call ? NamedTextColor.GREEN : NamedTextColor.GRAY));
         if (!call) {
             playSound(Sound.ITEM_BOOK_PAGE_TURN, 1f);
         }
@@ -319,8 +319,8 @@ final class HoldemTable extends SpotTable {
                 case LOSE -> NamedTextColor.RED;
                 case FOLD -> NamedTextColor.GRAY;
             };
-            Component text = Component.text(best.displayName(), NamedTextColor.WHITE).append(Component.newline())
-                    .append(Component.text(outcome.displayName(), color));
+            Component text = L10n.tr(best.displayName()).color(NamedTextColor.WHITE).append(Component.newline())
+                    .append(L10n.tr(outcome.displayName()).color(color));
             showHand(seat, text);
             if (call && (outcome == Outcome.WIN || outcome == Outcome.NOT_QUALIFIED) && CasinoHoldem.anteMultiplier(best) > 1) {
                 big = true;
@@ -352,11 +352,11 @@ final class HoldemTable extends SpotTable {
     @Override
     protected Component resultText() {
         if (game == null) {
-            return Component.text("勝負なし", NamedTextColor.GRAY);
+            return L10n.tr("勝負なし").color(NamedTextColor.GRAY);
         }
         HandValue dealer = game.dealerBest();
-        Component text = Component.text("ディーラー ", NamedTextColor.WHITE).append(Component.text(dealer.displayName(), NamedTextColor.GOLD));
-        return game.dealerQualifies() ? text : text.append(Component.text("（不成立）", NamedTextColor.GREEN));
+        Component text = L10n.tr("ディーラー ").color(NamedTextColor.WHITE).append(L10n.tr(dealer.displayName()).color(NamedTextColor.GOLD));
+        return game.dealerQualifies() ? text : text.append(L10n.tr("（不成立）").color(NamedTextColor.GREEN));
     }
 
     @Override
@@ -390,7 +390,7 @@ final class HoldemTable extends SpotTable {
     @Override
     protected Component statusText() {
         if (state() == State.PLAYING && deciding) {
-            return Component.text("コールかフォールドを選んでいます（あと " + Math.max(decideLeft, 0) + " 秒）", NamedTextColor.YELLOW);
+            return L10n.tr("コールかフォールドを選んでいます（あと %s 秒）", Math.max(decideLeft, 0)).color(NamedTextColor.YELLOW);
         }
         return super.statusText();
     }

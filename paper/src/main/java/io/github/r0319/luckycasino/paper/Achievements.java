@@ -100,10 +100,10 @@ final class Achievements implements Listener {
         try {
             int loaded = Bukkit.getUnsafe().loadAdvancements(missing, false).size();
             if (loaded != missing.size()) {
-                logger.warning("実績を " + missing.size() + " 個中 " + loaded + " 個しか読み込めませんでした");
+                logger.warning(L10n.plain("実績を %s 個中 %s 個しか読み込めませんでした", missing.size(), loaded));
             }
         } catch (Exception e) {
-            logger.warning("実績を読み込めません: " + e);
+            logger.warning(L10n.plain("実績を読み込めません: %s", e));
         }
     }
 
@@ -155,9 +155,11 @@ final class Achievements implements Listener {
         return root.toString();
     }
 
+    /** 見る人の言語で出る文（パックが無ければサーバーの既定の言語）。 */
     private static JsonObject text(String value) {
         JsonObject text = new JsonObject();
-        text.addProperty("text", value);
+        text.addProperty("translate", value);
+        text.addProperty("fallback", L10n.format(L10n.serverLanguage(), value));
         return text;
     }
 }

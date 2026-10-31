@@ -1,3 +1,9 @@
+# 既定の言語（ja / en）。リソースパックを入れた Java 版の人には、その人のゲームの言語（日本語以外は英語）で出ます。
+# パックを入れていない人・統合版の人・サーバーのログはこの言語です。
+# Default language (ja / en). Java players with the resource pack see their own game language (English unless Japanese).
+# Players without the pack, Bedrock players and the server log use this language.
+language: ja
+
 # 通貨
 economy:
   # auto: Vault の経済プラグインがあればそのお金、無ければ練習用 / vault / practice
