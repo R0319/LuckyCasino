@@ -109,8 +109,13 @@ public final class LuckyCasinoPaper extends JavaPlugin {
     }
 
     private void startResourcePack() {
+        String mode = getConfig().getString("resource-pack.mode", "");
         String packUrl = getConfig().getString("resource-pack.url", "");
         String packSha1 = getConfig().getString("resource-pack.sha1", "");
+        Glyphs.external("external".equals(mode));
+        if ("external".equals(mode) || "off".equals(mode)) {
+            return;
+        }
         if (!packUrl.isEmpty() && packSha1.matches("[0-9a-f]{40}")) {
             getServer().getPluginManager().registerEvents(new ResourcePackListener(packUrl, packSha1), this);
         } else if (!packUrl.isEmpty()) {

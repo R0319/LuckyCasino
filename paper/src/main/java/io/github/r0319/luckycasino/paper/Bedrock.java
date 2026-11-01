@@ -32,7 +32,10 @@ final class Bedrock {
     }
 
     static boolean is(Player player) {
-        UUID id = player.getUniqueId();
+        return is(player.getUniqueId());
+    }
+
+    static boolean is(UUID id) {
         if (API != null) {
             try {
                 return (boolean) IS_FLOODGATE.invoke(API, id);
