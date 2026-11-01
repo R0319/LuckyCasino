@@ -23,6 +23,7 @@ public final class LuckyCasinoPaper extends JavaPlugin {
     private BridgeClient bridge;
     private Bank bank;
     private ChipLedger ledger;
+    private Stats stats;
     private BlackjackSettings blackjackSettings;
     private RouletteSettings rouletteSettings;
     private SlotSettings slotSettings;
@@ -45,6 +46,7 @@ public final class LuckyCasinoPaper extends JavaPlugin {
         ledger = new ChipLedger(new File(getDataFolder(), "chips.yml"), getLogger());
         bank = createBank();
         refundLedger();
+        stats = new Stats.Yaml(new File(getDataFolder(), "stats.yml"), getLogger());
 
         blackjackSettings = BlackjackSettings.load(section("blackjack"));
         rouletteSettings = RouletteSettings.load(section("roulette"));
@@ -76,6 +78,10 @@ public final class LuckyCasinoPaper extends JavaPlugin {
         tables.load();
 
         registerCommand("casino", L10n.plain("LuckyCasino のテーブル操作"), new CasinoCommand(this));
+        if (getServer().getPluginManager().getPlugin("PlaceholderAPI") != null) {
+            new RankingPlaceholders(this).register();
+            getLogger().info(L10n.plain("PlaceholderAPI に収支ランキングのプレースホルダー（%%luckycasino_…%%）を登録しました"));
+        }
     }
 
     private ConfigurationSection section(String path) {
@@ -88,6 +94,9 @@ public final class LuckyCasinoPaper extends JavaPlugin {
         SelfTest.stopAll();
         if (tables != null) {
             tables.despawnAll();
+        }
+        if (stats != null) {
+            stats.close();
         }
         if (bridge != null) {
             bridge.stop();
@@ -152,6 +161,10 @@ public final class LuckyCasinoPaper extends JavaPlugin {
             bank.deposit(getServer().getOfflinePlayer(uuid), chips);
             getLogger().info(L10n.plain("前回精算できなかったチップ %s 枚を %s に戻しました", chips, uuid));
         });
+    }
+
+    Stats stats() {
+        return stats;
     }
 
     BridgeClient bridge() {

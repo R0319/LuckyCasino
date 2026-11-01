@@ -2,12 +2,18 @@ repositories {
     maven("https://jitpack.io") {
         content { includeGroup("com.github.MilkBowl") }
     }
+    exclusiveContent {
+        forRepository { maven("https://repo.extendedclip.com/releases/") }
+        filter { includeGroup("me.clip") }
+    }
 }
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:26.2.build.134-stable")
     // VaultUnlocked も旧 Vault の API で使える
     compileOnly("com.github.MilkBowl:VaultAPI:1.7.1") { isTransitive = false }
+    // 収支ランキングをホログラムなどに出すプレースホルダー（入っているサーバーだけ）
+    compileOnly("me.clip:placeholderapi:2.12.3") { isTransitive = false }
     implementation(project(":common"))
     // ルールブックのページを JSON に書き出すテスト（tools/preview/rulebook.py の見本）で使う
     testImplementation("io.papermc.paper:paper-api:26.2.build.134-stable")
