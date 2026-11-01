@@ -4,20 +4,38 @@ import com.google.gson.JsonObject;
 import io.papermc.paper.event.server.ServerResourcesReloadedEvent;
 import net.kyori.adventure.key.Key;
 import org.bukkit.Bukkit;
+import org.bukkit.GameRules;
 import org.bukkit.NamespacedKey;
+import org.bukkit.World;
 import org.bukkit.advancement.Advancement;
+import org.bukkit.advancement.AdvancementProgress;
+import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerJoinEvent;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import java.util.logging.Logger;
 
 /**
  * カジノの実績。進捗の画面に「LuckyCasino」のタブを足す。中身はプラグインが起動のたびに読み込み、
  * ディスクには書かない（/minecraft:reload で消えるので、読み込み直しのあとにもう一度読み込む）。
  * 解除はプラグインから grant で行う（条件は minecraft:impossible なので、ほかの方法では解除されない）。
+ *
+ * <p>マインクラフトは、読み込まれていない実績の進み具合をプレイヤーのデータから消してしまう
+ * （このプラグインを外した・入れ替え中のサーバーに入った、/minecraft:reload のあと、など）。
+ * そのため解除した実績を achievements.yml にも書いておき、入ったとき・読み込み直しのあとに戻す。
  */
 final class Achievements implements Listener {
 
@@ -80,9 +98,41 @@ final class Achievements implements Listener {
     private static final String CRITERION = "unlocked";
 
     private final Logger logger;
+    private final File file;
+    /** 解除した実績（プレイヤーごとの path）。プレイヤーのデータから消えても、ここから戻す。 */
+    private final Map<UUID, Set<String>> unlocked = new HashMap<>();
 
-    Achievements(Logger logger) {
+    Achievements(Logger logger, File file) {
         this.logger = logger;
+        this.file = file;
+        load();
+    }
+
+    private void load() {
+        if (!file.exists()) {
+            return;
+        }
+        ConfigurationSection players = YamlConfiguration.loadConfiguration(file).getConfigurationSection("players");
+        if (players == null) {
+            return;
+        }
+        for (String id : players.getKeys(false)) {
+            try {
+                unlocked.put(UUID.fromString(id), new LinkedHashSet<>(players.getStringList(id)));
+            } catch (IllegalArgumentException e) {
+                // 壊れた行は飛ばす
+            }
+        }
+    }
+
+    private void save() {
+        YamlConfiguration yaml = new YamlConfiguration();
+        unlocked.forEach((id, paths) -> yaml.set("players." + id, new ArrayList<>(paths)));
+        try {
+            yaml.save(file);
+        } catch (IOException e) {
+            logger.warning(L10n.plain("実績の記録を保存できません: %s", e));
+        }
     }
 
     /** まだ読み込まれていなければ読み込む。 */
@@ -110,16 +160,66 @@ final class Achievements implements Listener {
     @EventHandler
     public void onReload(ServerResourcesReloadedEvent event) {
         register();
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            sync(player);
+        }
+    }
+
+    @EventHandler
+    public void onJoin(PlayerJoinEvent event) {
+        sync(event.getPlayer());
     }
 
     /** 実績を解除する（親がまだならいっしょに）。もう解除していれば何もしない。 */
     void grant(Player player, Achievement achievement) {
+        boolean changed = false;
         for (Achievement a = achievement; a != null; a = a.parent) {
             Advancement advancement = Bukkit.getAdvancement(a.key());
             if (advancement != null) {
                 player.getAdvancementProgress(advancement).awardCriteria(CRITERION);
             }
+            changed |= unlocked.computeIfAbsent(player.getUniqueId(), k -> new LinkedHashSet<>()).add(a.path);
         }
+        if (changed) {
+            save();
+        }
+    }
+
+    /**
+     * プレイヤーのデータと記録を合わせる。データにだけある実績（記録を始める前に解除したもの）は記録に足し、
+     * 記録にだけある実績（データから消えたもの）は、チャットに出さずに解除し直す。
+     */
+    private void sync(Player player) {
+        Set<String> record = unlocked.computeIfAbsent(player.getUniqueId(), k -> new LinkedHashSet<>());
+        List<AdvancementProgress> restore = new ArrayList<>();
+        boolean changed = false;
+        for (Achievement a : Achievement.values()) {
+            Advancement advancement = Bukkit.getAdvancement(a.key());
+            if (advancement == null) {
+                continue;
+            }
+            AdvancementProgress progress = player.getAdvancementProgress(advancement);
+            if (progress.isDone()) {
+                changed |= record.add(a.path);
+            } else if (record.contains(a.path)) {
+                restore.add(progress);
+            }
+        }
+        if (changed) {
+            save();
+        }
+        if (restore.isEmpty()) {
+            return;
+        }
+        World world = player.getWorld();
+        Boolean announce = world.getGameRuleValue(GameRules.SHOW_ADVANCEMENT_MESSAGES);
+        world.setGameRule(GameRules.SHOW_ADVANCEMENT_MESSAGES, false);
+        try {
+            restore.forEach(progress -> progress.awardCriteria(CRITERION));
+        } finally {
+            world.setGameRule(GameRules.SHOW_ADVANCEMENT_MESSAGES, announce == null || announce);
+        }
+        logger.info(L10n.plain("%s の実績を %s 個戻しました", player.getName(), restore.size()));
     }
 
     private static String json(Achievement a) {

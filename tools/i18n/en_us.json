@@ -853,5 +853,7 @@
  "＝ ": "= ",
  "＞ ": "> ",
  "？ ": "? ",
- "？ は何でも": "? means anything"
+ "？ は何でも": "? means anything",
+ "実績の記録を保存できません: %s": "Could not save the achievement record: %s",
+ "%s の実績を %s 個戻しました": "%s: restored %s achievement(s)"
 }

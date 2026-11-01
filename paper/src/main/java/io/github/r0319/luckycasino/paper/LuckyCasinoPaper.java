@@ -62,7 +62,7 @@ public final class LuckyCasinoPaper extends JavaPlugin {
         }
         tableItem = new TableItem(this);
         tableItem.registerRecipes(getConfig().getConfigurationSection("recipes"), getLogger());
-        achievements = new Achievements(getLogger());
+        achievements = new Achievements(getLogger(), new File(getDataFolder(), "achievements.yml"));
         achievements.register();
         getServer().getPluginManager().registerEvents(achievements, this);
         menus = new Menus(this);
