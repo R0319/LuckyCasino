@@ -38,6 +38,8 @@ abstract class CasinoTable {
         final UUID player;
         final String name;
         final boolean bot;
+        /** 席に着くときに両替したチップ（収支のランキングに使う） */
+        final long buyIn;
         long chips;
         long atRisk;
         /** 勝負中に席を立った。勝負が終わったら精算する */
@@ -49,6 +51,7 @@ abstract class CasinoTable {
             this.player = player;
             this.name = name;
             this.chips = chips;
+            this.buyIn = chips;
             this.bot = bot;
         }
     }
@@ -591,6 +594,9 @@ abstract class CasinoTable {
         bank.deposit(Bukkit.getOfflinePlayer(seat.player), seat.chips + seat.atRisk);
         eject(index);
         long total = seat.chips + seat.atRisk;
+        if (!bank.practice()) {
+            plugin.stats().add(seat.player, seat.name, type, total - seat.buyIn);
+        }
         Component message = bank.practice()
                 ? L10n.tr("席を立ちました（練習用チップ %s 枚は回収しました）", total).color(NamedTextColor.GRAY)
                 : L10n.tr("席を立ちました。チップ %s 枚をお金に戻しました。", total).color(NamedTextColor.GREEN);
@@ -598,6 +604,11 @@ abstract class CasinoTable {
             message = L10n.tr("%s：", L10n.tr(note)).color(NamedTextColor.YELLOW).append(message);
         }
         send(seat, message);
+        if (!bank.practice()) {
+            long net = total - seat.buyIn;
+            send(seat, L10n.tr("今回の収支: %s 枚（/casino top でランキング）", Ranking.signed(net))
+                    .color(net > 0 ? NamedTextColor.GREEN : net < 0 ? NamedTextColor.RED : NamedTextColor.GRAY));
+        }
         updateStatus();
     }
 

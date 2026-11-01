@@ -25,6 +25,7 @@ import java.util.stream.Stream;
  * /casino bet … 賭けのメニューを開き直す
  * /casino leave … 席を立つ
  * /casino rules [種類] … ルールブック
+ * /casino top [種類] … 収支のランキング（上位 10 人と自分の順位。コンソールからも可）
  * /casino dealer skin &lt;プレイヤー名&gt;|name &lt;名前&gt;|reset … 近くのテーブルのディーラーの見た目（置いた人と管理者）
  * /casino give &lt;種類&gt; [プレイヤー] … テーブルアイテムを渡す（管理者）
  * /casino remove [force] … 近くのテーブルを片付ける（管理者。座っている人がいるときは force を付けたときだけ、精算してから）
@@ -34,7 +35,7 @@ import java.util.stream.Stream;
 final class CasinoCommand implements BasicCommand {
 
     private static final List<String> PLAYER = List.of("hit", "stand", "double", "split", "fold", "check", "call", "raise", "allin",
-            "spin", "roll", "bet", "leave", "rules", "dealer");
+            "spin", "roll", "bet", "leave", "rules", "dealer", "top");
     private static final List<String> ADMIN = List.of("give", "remove", "status", "selftest");
 
     private final LuckyCasinoPaper plugin;
@@ -53,6 +54,10 @@ final class CasinoCommand implements BasicCommand {
                 return;
             }
             admin(source, sub, args);
+            return;
+        }
+        if (sub.equals("top")) {
+            top(source, args);
             return;
         }
         if (!(source.getExecutor() instanceof Player player)) {
@@ -125,6 +130,50 @@ final class CasinoCommand implements BasicCommand {
             }
             default -> plugin.dealerMenu().open(player, table);
         }
+    }
+
+    private static final int TOP = 10;
+
+    private void top(CommandSourceStack source, String[] args) {
+        CommandSender sender = source.getSender();
+        GameType type = null;
+        if (args.length > 1) {
+            type = GameType.byId(args[1].toLowerCase(Locale.ROOT));
+            if (type == null) {
+                sender.sendMessage(L10n.tr("使い方: /casino top [%s]", typeIds()).color(NamedTextColor.RED));
+                return;
+            }
+        }
+        if (plugin.bank().practice()) {
+            sender.sendMessage(L10n.tr("練習用チップで遊んでいるため、収支は記録していません").color(NamedTextColor.GRAY));
+            return;
+        }
+        Ranking ranking = plugin.stats().ranking();
+        Component title = type == null ? L10n.tr("全ゲーム") : L10n.tr(type.displayName());
+        sender.sendMessage(L10n.tr("―― 収支ランキング（%s） ――", title).color(NamedTextColor.GOLD));
+        List<Ranking.Row> rows = ranking.top(type, TOP);
+        if (rows.isEmpty()) {
+            sender.sendMessage(L10n.tr("まだ記録がありません。席を立つと、その回の収支が記録されます").color(NamedTextColor.GRAY));
+        }
+        for (Ranking.Row row : rows) {
+            sender.sendMessage(Component.text(row.rank() + ". ", NamedTextColor.YELLOW)
+                    .append(Component.text(row.name() + "  ", NamedTextColor.WHITE))
+                    .append(net(row.net()))
+                    .append(L10n.tr("（%s 回）", row.plays()).color(NamedTextColor.GRAY)));
+        }
+        if (source.getExecutor() instanceof Player player) {
+            Ranking.Row own = ranking.of(player.getUniqueId(), type);
+            sender.sendMessage(own == null
+                    ? L10n.tr("あなたはまだ記録がありません").color(NamedTextColor.GRAY)
+                    : L10n.tr("あなた: %s 位 / %s 人", own.rank(), ranking.size(type)).color(NamedTextColor.AQUA)
+                            .append(Component.text("  ")).append(net(own.net()))
+                            .append(L10n.tr("（%s 回）", own.plays()).color(NamedTextColor.GRAY)));
+        }
+    }
+
+    private static Component net(long net) {
+        return L10n.tr("%s 枚", Ranking.signed(net))
+                .color(net > 0 ? NamedTextColor.GREEN : net < 0 ? NamedTextColor.RED : NamedTextColor.GRAY);
     }
 
     private void blackjack(Player player, BlackjackTable table, String sub) {
@@ -240,7 +289,7 @@ final class CasinoCommand implements BasicCommand {
     @Override
     public Collection<String> suggest(CommandSourceStack source, String[] args) {
         String sub = args.length == 0 ? "" : args[0].toLowerCase(Locale.ROOT);
-        if (args.length == 2 && (sub.equals("give") || sub.equals("selftest") || sub.equals("rules"))) {
+        if (args.length == 2 && (sub.equals("give") || sub.equals("selftest") || sub.equals("rules") || sub.equals("top"))) {
             String prefix = args[1].toLowerCase(Locale.ROOT);
             return Arrays.stream(GameType.values()).map(GameType::id).filter(id -> id.startsWith(prefix)).toList();
         }

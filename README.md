@@ -178,6 +178,7 @@ Java 25 が必要です（Paper 26.2 の API が Java 25 向けのため）。
 | `/casino bet` | 賭けのメニューを開き直す（ルーレットと賭け場所を選ぶ卓） |
 | `/casino leave` | 席を立つ |
 | `/casino rules [種類]` | ルールブック |
+| `/casino top [種類]` | 収支ランキング（上位 10 人と自分の順位。種類を付けるとそのゲームだけ。コンソールからも可） |
 | `/casino give <種類> [プレイヤー]` | テーブルを渡す（管理者） |
 | `/casino dealer [skin <プレイヤー名>\|name <名前>\|reset]` | 近くのテーブルのディーラーの見た目を変える（置いた人と管理者。引数なしでメニュー） |
 | `/casino remove [force]` | 近くのテーブルを片付ける（管理者。座っている人がいるときは `force` を付けたときだけ、精算してから） |
@@ -192,6 +193,24 @@ Java 25 が必要です（Paper 26.2 の API が Java 25 向けのため）。
 - 席に着いている間のチップ（賭けている分を含む）を `plugins/LuckyCasino/chips.yml` に控えています。勝負の途中でサーバーが落ちても、次の起動時にお金に戻します。精算するときは控えを先に消してからお金を戻すので、二重には戻りません。
 - 勝負の途中でログアウト・切断・サーバー移動をしたり卓から離れすぎたりしても、その勝負は最後まで進めてから精算します（負け逃げはできません）。手番は自動で進めます（ブラックジャックはスタンド、ポーカーはチェックかフォールド、カジノホールデムはコール、チンチロは自動で振る）。勝負が始まる前に置いただけの賭けは戻します。
 - チャンクの読み込みが外れたりサーバーを止めたりしてテーブルが片付くときは、勝負の途中でも賭け金をそのまま返して精算します。
+
+## 収支ランキング
+
+- 席を立つたびに、その回の「お金に戻したチップ − 両替したチップ」をプレイヤーごと・ゲームごとに足していきます（練習用チップとボットは記録しません）。サーバーが落ちて次の起動時に戻した分は記録されません。
+- 記録は `plugins/LuckyCasino/stats.yml` にあります。消すとランキングが空に戻ります（サーバーを止めてから）。
+- 席を立つと、チャットにその回の収支が出ます。`/casino top` で全ゲーム合計、`/casino top blackjack` のように種類を付けるとそのゲームだけの上位 10 人と自分の順位を出します。収支が同じ人は同じ順位で、遊んだ回数の少ない人を上に並べます。
+- PlaceholderAPI が入っていれば、ホログラム（DecentHolograms など）やスコアボードに出せます。
+
+| プレースホルダー | 中身 |
+| --- | --- |
+| `%luckycasino_top_<n>_name%` | n 位の人の名前（いなければ `---`） |
+| `%luckycasino_top_<n>_net%` | n 位の人の収支（`+1,200` / `-300` の形） |
+| `%luckycasino_top_<n>_net_raw%` | n 位の人の収支（数だけ） |
+| `%luckycasino_top_<n>_plays%` | n 位の人の遊んだ回数 |
+| `%luckycasino_rank%` | 見ている人の順位（まだなら `-`） |
+| `%luckycasino_net%` `%luckycasino_net_raw%` `%luckycasino_plays%` | 見ている人の収支・回数 |
+
+先頭に種類を付けるとそのゲームだけになります（`%luckycasino_slot_top_1_name%`、`%luckycasino_blackjack_rank%` など）。
 
 ## 自己テスト
 
@@ -268,6 +287,7 @@ In-game text (menus, chat, floating table text, rule books and achievements) is 
 - Chip balances are journaled to `chips.yml`, so players are refunded once even if the server crashes mid-round.
 - Every bet has a return to player below 100% (checked by unit tests), shoes are reshuffled every round, and table chunks stay loaded while players are seated.
 - Craftable tables (recipes are configurable), picture rule books, and an achievements tab.
+- Profit ranking: each time a player leaves a seat, "chips cashed out − chips bought in" is added per player and per game. `/casino top [type]` shows the top 10 and your rank; with PlaceholderAPI, `%luckycasino_top_<n>_name%`, `%luckycasino_top_<n>_net%`, `%luckycasino_rank%` and `%luckycasino_net%` (prefix a game type such as `slot_` for one game) can be shown in holograms or scoreboards.
 - Optional Geyser extension that shows blackjack cards to Bedrock players (work in progress).
 
 ### Requirements
