@@ -17,6 +17,8 @@ dependencies {
     implementation(project(":common"))
     // ルールブックのページを JSON に書き出すテスト（tools/preview/rulebook.py の見本）で使う
     testImplementation("io.papermc.paper:paper-api:26.2.build.134-stable")
+    // 収支の DB 保存のテスト（MySQL の書き方で動かす）
+    testImplementation("com.h2database:h2:2.3.232")
     testImplementation(platform("org.junit:junit-bom:5.13.4"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
