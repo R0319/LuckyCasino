@@ -46,7 +46,7 @@ public final class LuckyCasinoPaper extends JavaPlugin {
         ledger = new ChipLedger(new File(getDataFolder(), "chips.yml"), getLogger());
         bank = createBank();
         refundLedger();
-        stats = new Stats.Yaml(new File(getDataFolder(), "stats.yml"), getLogger());
+        stats = createStats();
 
         blackjackSettings = BlackjackSettings.load(section("blackjack"));
         rouletteSettings = RouletteSettings.load(section("roulette"));
@@ -130,6 +130,29 @@ public final class LuckyCasinoPaper extends JavaPlugin {
         } else if (!packUrl.isEmpty()) {
             getLogger().warning(L10n.plain("resource-pack.sha1 が 40 文字の 16 進ではないため、リソースパックを送りません"));
         }
+    }
+
+    /** 収支の記録の置き場所。ranking.storage が mysql なら DB（つながらなければファイル）、それ以外はファイル。 */
+    private Stats createStats() {
+        File file = new File(getDataFolder(), "stats.yml");
+        String storage = getConfig().getString("ranking.storage", "file");
+        if ("mysql".equalsIgnoreCase(storage)) {
+            ConfigurationSection db = section("ranking.mysql");
+            String host = db.getString("host", "127.0.0.1");
+            int port = db.getInt("port", 3306);
+            String database = db.getString("database", "luckycasino");
+            String prefix = db.getString("table-prefix", "luckycasino_");
+            try {
+                Stats sql = new SqlStats(SqlStats.mysqlUrl(host, port, database), db.getString("user", ""), db.getString("password", ""),
+                        prefix, db.getLong("refresh-seconds", 30), getLogger());
+                getLogger().info(L10n.plain("収支のランキング: DB（%s:%s/%s、表 %sstats）", host, port, database, prefix));
+                return sql;
+            } catch (java.sql.SQLException | RuntimeException e) {
+                getLogger().log(java.util.logging.Level.SEVERE,
+                        L10n.plain("収支のランキングの DB（%s:%s/%s）につなげないため、このサーバーの stats.yml に記録します", host, port, database), e);
+            }
+        }
+        return new Stats.Yaml(file, getLogger());
     }
 
     /** Vault の経済プラグインがあればそのお金で、無ければ練習用チップで遊ぶ。 */
