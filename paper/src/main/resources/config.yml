@@ -13,6 +13,23 @@ economy:
   # 練習用のとき、席に着くと配るチップの枚数
   practice-chips: 1000
 
+# 収支のランキング（/casino top）。席を立つたびに「戻したチップ - 両替したチップ」を足す
+ranking:
+  # file: このサーバーの plugins/LuckyCasino/stats.yml に記録する
+  # mysql: MySQL・MariaDB に記録する（同じ DB を使うサーバーどうしで 1 つのランキングになる）。
+  #        つながらないときは file で動きます
+  storage: file
+  mysql:
+    host: 127.0.0.1
+    port: 3306
+    database: luckycasino
+    user: luckycasino
+    password: ''
+    # 表の名前の頭につける文字（英数字と _）
+    table-prefix: luckycasino_
+    # ほかのサーバーの記録を読み直す間隔（秒）
+    refresh-seconds: 30
+
 # ブラックジャックのルール（全テーブル共通）
 blackjack:
   decks: 6

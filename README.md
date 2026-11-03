@@ -197,7 +197,8 @@ Java 25 が必要です（Paper 26.2 の API が Java 25 向けのため）。
 ## 収支ランキング
 
 - 席を立つたびに、その回の「お金に戻したチップ − 両替したチップ」をプレイヤーごと・ゲームごとに足していきます（練習用チップとボットは記録しません）。サーバーが落ちて次の起動時に戻した分は記録されません。
-- 記録は `plugins/LuckyCasino/stats.yml` にあります。消すとランキングが空に戻ります（サーバーを止めてから）。
+- 記録は既定では `plugins/LuckyCasino/stats.yml` にあります。消すとランキングが空に戻ります（サーバーを止めてから）。
+- 複数のサーバーで 1 つのランキングにしたいときは、`config.yml` の `ranking.storage` を `mysql` にして、`ranking.mysql` に MySQL か MariaDB の接続先を書きます。表（`luckycasino_meta`・`luckycasino_players`・`luckycasino_stats`。頭の文字は `table-prefix`）は起動時に自動で作ります。ほかのサーバーの記録は `refresh-seconds`（既定 30 秒）ごとに読み直し、自分のサーバーの記録はすぐ順位に入ります。DB の書き込みは専用のスレッドで行うので、DB が遅くてもゲームは止まりません。書けなかった記録は覚えておいて、つながったときに書き直します。起動時につながらなければ `stats.yml` に記録します。接続には Paper に入っている MySQL Connector/J を使うので、追加の jar は要りません。`stats.yml` から DB への移し替えはしません。
 - 席を立つと、チャットにその回の収支が出ます。`/casino top` で全ゲーム合計、`/casino top blackjack` のように種類を付けるとそのゲームだけの上位 10 人と自分の順位を出します。収支が同じ人は同じ順位で、遊んだ回数の少ない人を上に並べます。
 - PlaceholderAPI が入っていれば、ホログラム（DecentHolograms など）やスコアボードに出せます。
 
@@ -287,7 +288,7 @@ In-game text (menus, chat, floating table text, rule books and achievements) is 
 - Chip balances are journaled to `chips.yml`, so players are refunded once even if the server crashes mid-round.
 - Every bet has a return to player below 100% (checked by unit tests), shoes are reshuffled every round, and table chunks stay loaded while players are seated.
 - Craftable tables (recipes are configurable), picture rule books, and an achievements tab.
-- Profit ranking: each time a player leaves a seat, "chips cashed out − chips bought in" is added per player and per game. `/casino top [type]` shows the top 10 and your rank; with PlaceholderAPI, `%luckycasino_top_<n>_name%`, `%luckycasino_top_<n>_net%`, `%luckycasino_rank%` and `%luckycasino_net%` (prefix a game type such as `slot_` for one game) can be shown in holograms or scoreboards.
+- Profit ranking: each time a player leaves a seat, "chips cashed out − chips bought in" is added per player and per game. `/casino top [type]` shows the top 10 and your rank; with PlaceholderAPI, `%luckycasino_top_<n>_name%`, `%luckycasino_top_<n>_net%`, `%luckycasino_rank%` and `%luckycasino_net%` (prefix a game type such as `slot_` for one game) can be shown in holograms or scoreboards. Records go to `stats.yml` by default; set `ranking.storage: mysql` to share one ranking across servers through MySQL or MariaDB (tables are created automatically; uses the MySQL driver bundled with Paper).
 - Optional Geyser extension that shows blackjack cards to Bedrock players (work in progress).
 
 ### Requirements
