@@ -4,7 +4,7 @@ import io.github.r0319.luckycasino.poker.Legal;
 import io.github.r0319.luckycasino.roulette.BetType;
 import io.github.r0319.luckycasino.roulette.RouletteBet;
 import io.github.r0319.luckycasino.roulette.Wheel;
-import io.github.r0319.luckycasino.slot.Line;
+import io.github.r0319.luckycasino.slot.LineSet;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -602,6 +602,7 @@ final class Menus implements Listener {
     private static final int SLOT_INFO = 4;
     private static final int SLOT_SPIN = 22;
     private static final int SLOT_RULES = 18;
+    private static final int SLOT_LINES = 20;
 
     private static final class SlotMenu extends Menu {
         SlotMenu(SlotMachine table) {
@@ -632,13 +633,15 @@ final class Menus implements Listener {
         SlotMachine table = menu.slot();
         Inventory inv = menu.inventory;
         inv.clear();
-        List<Long> bets = table.settings().bets();
+        List<Long> bets = table.settings().lineBets();
+        LineSet lineSet = table.lineSet();
         int first = 13 - bets.size() / 2;
         for (int i = 0; i < bets.size(); i++) {
             long value = bets.get(i);
-            boolean selected = value == table.bet();
+            boolean selected = value == table.lineBet();
             ItemStack item = named(Items.model("chip/" + chipIcon(value, selected ? 3 : 1)),
-                    L10n.tr("1 回 %s 枚（1 ライン %s 枚）", value, value / Line.COUNT).color(selected ? NamedTextColor.GREEN : NamedTextColor.GOLD),
+                    L10n.tr("1 ライン %s 枚（%s で 1 回 %s 枚）", value, L10n.tr(lineSet.displayName()), value * lineSet.size())
+                            .color(selected ? NamedTextColor.GREEN : NamedTextColor.GOLD),
                     List.of(L10n.tr(selected ? "選択中" : "クリックで切り替え").color(selected ? NamedTextColor.GREEN : NamedTextColor.YELLOW)));
             if (selected) {
                 item.editMeta(meta -> meta.setEnchantmentGlintOverride(true));
@@ -646,18 +649,25 @@ final class Menus implements Listener {
             inv.setItem(first + i, item);
         }
         io.github.r0319.luckycasino.slot.Paytable p = table.settings().paytable();
-        long bet = table.bet();
-        long lineBet = bet / Line.COUNT;
+        long lineBet = table.lineBet();
         inv.setItem(SLOT_INFO, named(ItemStack.of(Material.PAPER), L10n.tr("配当表（1 ライン %s 枚あたり）", lineBet).color(NamedTextColor.YELLOW),
                 List.of(payLine("7 7 7", p.sevens(), lineBet), payLine("BAR BAR BAR", p.bars(), lineBet), payLine("ベル 3 つ", p.bells(), lineBet),
                         payLine("スイカ 3 つ", p.melons(), lineBet), payLine("レモン 3 つ", p.lemons(), lineBet),
                         payLine("チェリー 3 つ", p.cherry3(), lineBet), payLine("チェリー 左から 2 つ", p.cherry2(), lineBet),
                         payLine("チェリー 左に 1 つ", p.cherry1(), lineBet),
-                        L10n.tr("横 3 本と斜め 2 本、5 ラインを全部見ます。").color(NamedTextColor.GRAY),
-                        L10n.tr("1 回 %s 枚を 5 ラインに分けて賭け、", bet).color(NamedTextColor.GRAY),
+                        L10n.tr("倍率は 1 ラインの賭け金に掛かります。").color(NamedTextColor.GRAY),
                         L10n.tr("当たったラインの分を合計して戻します。").color(NamedTextColor.GRAY),
                         L10n.tr("還元率 %s%%", String.format("%.1f", p.returnRate() * 100)).color(NamedTextColor.GRAY))));
-        inv.setItem(SLOT_SPIN, named(ItemStack.of(Material.LEVER), L10n.tr("回す（%s 枚）", bet).color(NamedTextColor.GREEN),
+        List<Component> lineLore = new ArrayList<>();
+        for (LineSet set : LineSet.values()) {
+            boolean selected = set == lineSet;
+            lineLore.add(L10n.tr(selected ? "▶ %s（1 回 %s 枚）" : "・%s（1 回 %s 枚）", L10n.tr(set.displayName()), lineBet * set.size())
+                    .color(selected ? NamedTextColor.GREEN : NamedTextColor.GRAY));
+        }
+        lineLore.add(L10n.tr("クリックで切り替え（台の上で光ります）").color(NamedTextColor.YELLOW));
+        inv.setItem(SLOT_LINES, named(ItemStack.of(Material.TRIPWIRE_HOOK), L10n.tr("賭けるライン：%s", L10n.tr(lineSet.displayName())).color(NamedTextColor.AQUA),
+                lineLore));
+        inv.setItem(SLOT_SPIN, named(ItemStack.of(Material.LEVER), L10n.tr("回す（%s 枚）", table.bet()).color(NamedTextColor.GREEN),
                 List.of(L10n.tr("台の右のレバーをクリックしても回せます").color(NamedTextColor.GRAY))));
         inv.setItem(SLOT_RULES, rulesItem());
         inv.setItem(LEAVE_27, leaveItem());
@@ -698,11 +708,14 @@ final class Menus implements Listener {
             table.spin(player);
             return;
         }
-        List<Long> bets = table.settings().bets();
+        if (slot == SLOT_LINES) {
+            table.setLineSet(player, table.lineSet().next());
+        }
+        List<Long> bets = table.settings().lineBets();
         int first = 13 - bets.size() / 2;
         int index = slot - first;
         if (index >= 0 && index < bets.size() && slot >= SLOT_BET_SLOTS[0] && slot <= SLOT_BET_SLOTS[SLOT_BET_SLOTS.length - 1]) {
-            table.setBet(player, bets.get(index));
+            table.setLineBet(player, bets.get(index));
         }
         renderSlot(menu);
         retitle(menu, player, slotTitle(table, player));

@@ -1,6 +1,7 @@
 package io.github.r0319.luckycasino.paper;
 
 import io.github.r0319.luckycasino.slot.Line;
+import io.github.r0319.luckycasino.slot.LineSet;
 import io.github.r0319.luckycasino.slot.Reels;
 import io.github.r0319.luckycasino.slot.Spin;
 import io.github.r0319.luckycasino.slot.Symbol;
@@ -55,7 +56,9 @@ final class SlotMachine extends CasinoTable {
     private final SlotSettings settings;
     private final Random random = new SecureRandom();
     private State state = State.IDLE;
-    private long bet;
+    /** 1 ラインの賭け金と、賭けるライン。1 回の賭け金はその積。 */
+    private long lineBet;
+    private LineSet lineSet = LineSet.ALL;
     private final ItemDisplay[] reels = new ItemDisplay[Reels.REELS];
     private final double[] reelAngle = new double[Reels.REELS];
     private final boolean[] blurred = new boolean[Reels.REELS];
@@ -69,11 +72,13 @@ final class SlotMachine extends CasinoTable {
     private boolean lampPhase;
     /** ランプを速く流している間（当たり・リーチ）。 */
     private boolean celebrating;
+    /** ライン切り替えで光らせた回数（前の切り替えの消灯が新しい表示を消さないように）。 */
+    private int lineFlash;
 
     SlotMachine(LuckyCasinoPaper plugin, String id, Frame frame, UUID owner, Bank bank, SlotSettings settings) {
         super(plugin, id, GameType.SLOT, frame, owner, bank);
         this.settings = settings;
-        this.bet = settings.minBet();
+        this.lineBet = settings.minLineBet();
         for (int i = 0; i < reelAngle.length; i++) {
             reelAngle[i] = random.nextInt(Reels.STOPS) * FACE_DEGREES;
         }
@@ -91,7 +96,7 @@ final class SlotMachine extends CasinoTable {
 
     @Override
     long minChips() {
-        return settings.minBet();
+        return settings.minLineBet();
     }
 
     SlotSettings settings() {
@@ -102,8 +107,17 @@ final class SlotMachine extends CasinoTable {
         return state;
     }
 
+    /** 1 回の賭け金（1 ライン × 本数）。 */
     long bet() {
-        return bet;
+        return lineBet * lineSet.size();
+    }
+
+    long lineBet() {
+        return lineBet;
+    }
+
+    LineSet lineSet() {
+        return lineSet;
     }
 
     // ---- 表示 ----
@@ -247,9 +261,9 @@ final class SlotMachine extends CasinoTable {
 
     @Override
     protected void onSeated(int seat, Player player) {
-        bet = Math.min(Math.max(bet, settings.minBet()), Math.max(settings.minBet(), seats[seat].chips));
-        if (!settings.bets().contains(bet)) {
-            bet = settings.minBet();
+        // 前の人の設定が手元のチップで回せないときは、一番小さい額に戻す（ラインはそのまま）
+        if (!settings.lineBets().contains(lineBet) || bet() > seats[seat].chips) {
+            lineBet = settings.minLineBet();
         }
         if (player == null) {
             later(10, this::botSpin);
@@ -301,14 +315,31 @@ final class SlotMachine extends CasinoTable {
     protected void tickSecond() {
     }
 
-    /** 1 回の賭け金を変える。 */
-    void setBet(Player player, long amount) {
-        if (!settings.bets().contains(amount)) {
+    /** 1 ラインの賭け金を変える。 */
+    void setLineBet(Player player, long amount) {
+        if (!settings.lineBets().contains(amount)) {
             return;
         }
-        bet = amount;
+        lineBet = amount;
         player.playSound(player.getLocation(), Sound.BLOCK_CHAIN_PLACE, 0.6f, 1.6f);
         updateStatus();
+    }
+
+    /** 賭けるラインを変え、止まっている間なら選んだラインを台の上で少し光らせる。 */
+    void setLineSet(Player player, LineSet set) {
+        lineSet = set;
+        player.playSound(player.getLocation(), Sound.BLOCK_CHAIN_PLACE, 0.6f, 1.2f);
+        updateStatus();
+        if (state == State.IDLE) {
+            hideLines();
+            showLines(set.lines(), true);
+            int shownFor = ++lineFlash;
+            later(30, () -> {
+                if (state == State.IDLE && lineFlash == shownFor) {
+                    hideLines();
+                }
+            });
+        }
     }
 
     // ---- 回す ----
@@ -333,6 +364,7 @@ final class SlotMachine extends CasinoTable {
         if (state != State.IDLE) {
             return L10n.tr("リールが止まるまで待ってください");
         }
+        long bet = bet();
         if (seat.chips < bet) {
             return L10n.tr("チップが足りません（1 回 %s 枚）", bet);
         }
@@ -340,8 +372,9 @@ final class SlotMachine extends CasinoTable {
         seat.atRisk += bet;
         writeLedger(seat);
         state = State.SPINNING;
-        Spin spin = Spin.random(random, bet, settings.paytable());
+        Spin spin = Spin.random(random, lineBet, lineSet, settings.paytable());
         resultLabel.text(Component.empty());
+        lineFlash++;
         hideLines();
         updateStatus();
         pullLever();
@@ -542,10 +575,9 @@ final class SlotMachine extends CasinoTable {
                 long net = spin.payout() - spin.bet();
                 player.sendMessage(L10n.tr(spin.big() ? "大当たり  %s 枚もどり" : "当たり  %s 枚もどり", spin.payout()).color(NamedTextColor.GOLD)
                         .append(L10n.tr("（差し引き %s%s 枚）", (net >= 0 ? "+" : "−"), Math.abs(net)).color(net >= 0 ? NamedTextColor.GREEN : NamedTextColor.GRAY)));
-                long lineBet = spin.bet() / Line.COUNT;
                 for (Spin.LineWin w : spin.wins()) {
                     player.sendMessage(L10n.tr("  %s：%s", L10n.tr(w.line().displayName()), L10n.win(w.win())).color(NamedTextColor.YELLOW)
-                            .append(L10n.tr("  +%s 枚", lineBet * w.win().times()).color(NamedTextColor.GRAY)));
+                            .append(L10n.tr("  +%s 枚", spin.payout(w)).color(NamedTextColor.GRAY)));
                 }
             }
         }
@@ -630,12 +662,17 @@ final class SlotMachine extends CasinoTable {
         if (seat == null || !seat.bot || state != State.IDLE) {
             return;
         }
-        List<Long> affordable = settings.bets().stream().filter(b -> b <= seat.chips).toList();
+        lineSet = LineSet.values()[random.nextInt(LineSet.values().length)];
+        List<Long> affordable = settings.lineBets().stream().filter(b -> b * lineSet.size() <= seat.chips).toList();
+        if (affordable.isEmpty()) {
+            lineSet = LineSet.CENTER;
+            affordable = settings.lineBets().stream().filter(b -> b <= seat.chips).toList();
+        }
         if (affordable.isEmpty()) {
             cashOut(0, null);
             return;
         }
-        bet = affordable.get(random.nextInt(affordable.size()));
+        lineBet = affordable.get(random.nextInt(affordable.size()));
         startSpin(0);
     }
 
@@ -644,11 +681,11 @@ final class SlotMachine extends CasinoTable {
         Seat seat = seats[0];
         if (seat != null) {
             return Component.text(seat.name, NamedTextColor.AQUA).append(Component.newline())
-                    .append(L10n.tr("1 回 %s 枚", bet).color(NamedTextColor.GRAY));
+                    .append(L10n.tr("%s・1 ライン %s 枚", L10n.tr(lineSet.displayName()), lineBet).color(NamedTextColor.GRAY));
         }
         return L10n.tr("スロット").color(NamedTextColor.GOLD).append(Component.newline())
                 .append(L10n.tr("椅子で座る").color(NamedTextColor.GRAY)).append(Component.newline())
-                .append(L10n.tr("1 回 %s 枚", String.join("/", settings.bets().stream().map(String::valueOf).toList()))
+                .append(L10n.tr("1 ライン %s 枚", String.join("/", settings.lineBets().stream().map(String::valueOf).toList()))
                         .color(NamedTextColor.GRAY));
     }
 }

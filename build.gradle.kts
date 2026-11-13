@@ -3,7 +3,7 @@ subprojects {
     apply(plugin = "java")
 
     group = "io.github.r0319"
-    version = "0.3.4"
+    version = "0.3.5"
 
     repositories {
         mavenCentral()
