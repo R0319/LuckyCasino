@@ -116,7 +116,7 @@ Java 25 が必要です（Paper 26.2 の API が Java 25 向けのため）。
 
 ### スロット（1 人用）
 
-リール 3 本で、横 3 本（上・中・下の段）と斜め 2 本の 5 ラインをいつも全部見ます。1 回の賭け金は 5 ラインに等分し（1 回 10 / 50 / 100 枚 = 1 ライン 2 / 10 / 20 枚）、当たったラインの配当を合計して戻します。当たったラインには光る帯が点滅します。台をクリックすると賭け金のメニュー、台の右のレバーをクリックすると回ります（メニューの「回す」と `/casino spin` でも回せます）。チャットには結果と、当たったラインと役だけを出します。止まる位置は先に乱数で決め、リールがそこに止まるように動きを逆算しています。どれかのラインで左の 2 本が 7 か BAR でそろうとリーチになり、そのラインが点滅して右のリールが長く回ります。
+リール 3 本で、ラインは横 3 本（上・中・下の段）と斜め 2 本の 5 本です。賭けるラインはメニューで「5 本全部・横 3 本・斜め 2 本・中央 1 本」から選び（切り替えると台の上で選んだラインが光ります）、賭け金は 1 ラインごとに選びます（既定 2 / 10 / 20 枚）。1 回の賭け金は 1 ライン × 本数で、当たったラインの配当（1 ラインの賭け金 × 倍率）を合計して戻します。当たったラインには光る帯が点滅します。台をクリックすると賭け金とラインのメニュー、台の右のレバーをクリックすると回ります（メニューの「回す」と `/casino spin` でも回せます）。チャットには結果と、当たったラインと役だけを出します。止まる位置は先に乱数で決め、リールがそこに止まるように動きを逆算しています。賭けたラインのどれかで左の 2 本が 7 か BAR でそろうとリーチになり、そのラインが点滅して右のリールが長く回ります。
 
 | 役 | 戻る額（1 ラインの賭け金の何倍） |
 | --- | --- |
@@ -129,7 +129,7 @@ Java 25 が必要です（Paper 26.2 の API が Java 25 向けのため）。
 | チェリー 左から 2 つ | 4 |
 | チェリー 左に 1 つ | 1 |
 
-既定の配当で還元率 96.0%、5 ラインのどれかで何か戻る確率 65.4% です（チェリー 1 つなどは賭け金より少ない戻り）。`slot.bets` は 5 の倍数だけ使えます（`config.yml` の `slot.paytable` で変えられ、起動時のログに還元率が出ます）。リールの絵柄の並びは `common` の `Reels` と `tools/gen_slot.py` で同じにしてあります。
+既定の配当で還元率 96.0% で、どのラインを選んでも同じです。何か戻る確率は 5 本 65.4%・横 3 本 61.7%・斜め 2 本 42.7%・中央 1 本 22.2% です（チェリー 1 つなどは賭け金より少ない戻り）。1 ラインの賭け金は `slot.line-bets` で変えられます（0.3.4 までの `slot.bets` は 5 で割って 1 ラインの額として読みます）。配当は `config.yml` の `slot.paytable` で変えられ、起動時のログに還元率が出ます。リールの絵柄の並びは `common` の `Reels` と `tools/gen_slot.py` で同じにしてあります。
 
 ### 賭け場所を選ぶ卓（バカラ・ビッグホイール・チンチロ・ハイ＆ロー・競馬。競馬は 6 席、ほかは 5 席）
 
@@ -277,7 +277,7 @@ Minecraft の公式製品ではありません。Mojang および Microsoft が�
 
 ## English
 
-LuckyCasino is a casino plugin for Paper / Purpur 26.2. Place tables and play blackjack, roulette (European), Texas hold'em poker, casino hold'em (heads-up against the dealer, playable alone), baccarat, big wheel, chinchiro (a Japanese dice game), high & low, horse racing, and a 5-line slot machine. Cards, chips, wheels and reels are drawn with ItemDisplay entities and a resource pack, and every deal, spin and payout is animated with display interpolation.
+LuckyCasino is a casino plugin for Paper / Purpur 26.2. Place tables and play blackjack, roulette (European), Texas hold'em poker, casino hold'em (heads-up against the dealer, playable alone), baccarat, big wheel, chinchiro (a Japanese dice game), high & low, horse racing, and a 5-line slot machine (bet all 5 lines, the 3 rows, the 2 diagonals or the middle row). Cards, chips, wheels and reels are drawn with ItemDisplay entities and a resource pack, and every deal, spin and payout is animated with display interpolation.
 
 In-game text (menus, chat, floating table text, rule books and achievements) is available in English and Japanese. Java players with the resource pack see their own game language (English for any language other than Japanese), even on shared table text. Players without the pack, Bedrock players and the server log use `language` in `config.yml` (`ja` by default; set it to `en` for an English server). Rule books always open in the player's own language.
 

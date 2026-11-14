@@ -28,7 +28,7 @@ Cards, chips, wheels and reels are real 3D models (ItemDisplay + resource pack),
 - Texas hold'em poker (6 seats, no-limit, side pots)
 - Casino hold'em (5 seats, each player against the dealer, so you can play alone)
 - European roulette (5 seats, inside and outside bets)
-- Slot machine (3 reels, 5 fixed lines)
+- Slot machine (3 reels, 5 lines; bet all, rows, diagonals or the middle row)
 - Baccarat, big wheel, chinchiro (Japanese dice), high & low, horse racing
 
 ## Features

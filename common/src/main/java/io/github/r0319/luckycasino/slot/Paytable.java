@@ -1,7 +1,7 @@
 package io.github.r0319.luckycasino.slot;
 
 /**
- * 配当表。どれも 1 ラインの賭け金の何倍が戻るか（賭け金を含む）。5 本のラインをそれぞれこの表で見る。
+ * 配当表。どれも 1 ラインの賭け金の何倍が戻るか（賭け金を含む）。賭けたラインをそれぞれこの表で見る。
  *
  * @param sevens  7 が 3 つ
  * @param bars    BAR が 3 つ
@@ -55,7 +55,7 @@ public record Paytable(long sevens, long bars, long bells, long melons, long lem
 
     /**
      * 全部の止まり方を数えた還元率（戻る額の期待値 ÷ 賭け金）。どのラインも絵柄の出方は同じなので、
-     * 1 ラインの還元率がそのまま 5 ライン全体の還元率になる。
+     * 1 ラインの還元率がそのまま、どのラインの組み合わせでも全体の還元率になる。
      */
     public double returnRate() {
         double sum = 0;
@@ -73,14 +73,19 @@ public record Paytable(long sevens, long bars, long bells, long melons, long lem
         return sum / (Reels.STOPS * Reels.STOPS * Reels.STOPS);
     }
 
-    /** 5 本のどれかで何か戻ってくる確率（賭け金より少ない戻りも含む）。 */
+    /** 5 ライン全部に賭けたとき、どれかで何か戻ってくる確率（賭け金より少ない戻りも含む）。 */
     public double hitRate() {
+        return hitRate(LineSet.ALL);
+    }
+
+    /** 賭けたラインのどれかで何か戻ってくる確率（賭け金より少ない戻りも含む）。 */
+    public double hitRate(LineSet lineSet) {
         int hits = 0;
         int[] stops = new int[Reels.REELS];
         for (stops[0] = 0; stops[0] < Reels.STOPS; stops[0]++) {
             for (stops[1] = 0; stops[1] < Reels.STOPS; stops[1]++) {
                 for (stops[2] = 0; stops[2] < Reels.STOPS; stops[2]++) {
-                    for (Line l : Line.values()) {
+                    for (Line l : lineSet.lines()) {
                         if (evaluate(l.symbols(stops)).times() > 0) {
                             hits++;
                             break;
